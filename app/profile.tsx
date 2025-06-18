@@ -23,7 +23,7 @@ import Toast from 'react-native-toast-message';
 import CustomTextInput from '../components/CustomTextInput';
 import AddressValidator, { AddressValidationResult } from '../components/AddressValidator';
 import ProfileUpdateProgress from '../components/ProfileUpdateProgress';
-import { validateField } from '../utils/profileValidation';
+import { validateField, validateProfileData } from '../utils/profileValidation';
 
 type TabType = 'orders' | 'profile' | 'settings';
 type SettingsScreenType = 'main' | 'notifications' | 'privacy' | 'payment' | 'help';
@@ -163,22 +163,16 @@ export default function ProfileScreen() {
   const validateForm = useCallback((): boolean => {
     const errors: FormErrors = {};
     
-    // Validate each field
-    const fieldsToValidate = ['name', 'phone', 'streetAddress', 'city'];
+    // Validate the complete form data including individual address fields
+    const validationResult = validateProfileData(formData);
     
-    fieldsToValidate.forEach(field => {
-      const validation = validateField(field, formData[field]);
-      if (!validation.isValid && validation.error) {
-        errors[field] = validation.error;
-      }
-    });
-    
-    // Email validation (optional but must be valid if provided)
-    if (formData.email.trim()) {
-      const emailValidation = validateField('email', formData.email);
-      if (!emailValidation.isValid && emailValidation.error) {
-        errors.email = emailValidation.error;
-      }
+    if (!validationResult.isValid) {
+      // Map validation errors to form errors
+      Object.entries(validationResult.errors).forEach(([field, fieldErrors]) => {
+        if (fieldErrors && fieldErrors.length > 0) {
+          errors[field] = fieldErrors[0]; // Take the first error for each field
+        }
+      });
     }
     
     // Address validation
@@ -234,12 +228,18 @@ export default function ProfileScreen() {
         return;
       }
 
-      // Prepare cleaned data for submission
+      // Prepare cleaned data for submission - map form data to User interface
       const cleanedData = {
         name: formData.name.trim(),
         email: formData.email.trim(),
         phone: formData.phone.trim(),
         address: combineAddress(formData),
+        // Include individual address fields for validation
+        streetAddress: formData.streetAddress.trim(),
+        city: formData.city.trim(),
+        state: formData.state.trim(),
+        postalCode: formData.postalCode.trim(),
+        country: formData.country.trim(),
       };
 
       console.log('handleSaveProfile: Cleaned data prepared:', cleanedData);
