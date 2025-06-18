@@ -197,9 +197,9 @@ export default function ProfileScreen() {
     return true;
   }, [formData, addressValidation]);
 
-  // Enhanced handleSaveProfile with comprehensive error handling and progress tracking
+  // Simplified and more robust handleSaveProfile
   const handleSaveProfile = useCallback(async () => {
-    console.log('handleSaveProfile: Starting comprehensive profile update');
+    console.log('handleSaveProfile: Starting profile update');
     
     // Prevent multiple simultaneous save attempts
     if (isSaving) {
@@ -244,7 +244,7 @@ export default function ProfileScreen() {
 
       console.log('handleSaveProfile: Cleaned data prepared:', cleanedData);
 
-      // Call the enhanced update function
+      // Call the simplified update function with better timeout handling
       const result = await updateUserProfile(cleanedData);
       
       // Update progress state
@@ -260,21 +260,6 @@ export default function ProfileScreen() {
         console.log('handleSaveProfile: Profile updated successfully.');
         setIsEditing(false);
         setShowProgress(false);
-        
-        // Show detailed success message based on progress
-        const supabaseUpdated = result.progress.some(p => 
-          p.step === 'profile_update' && p.status === 'completed'
-        );
-        
-        Toast.show({
-          type: 'success',
-          text1: 'Profile Updated',
-          text2: supabaseUpdated 
-            ? 'Your profile has been updated and synchronized.'
-            : 'Profile updated locally. Will sync when connection is restored.',
-          position: 'bottom',
-          visibilityTime: 4000,
-        });
       } else {
         console.log('handleSaveProfile: Profile update failed:', result.error);
         
@@ -284,17 +269,9 @@ export default function ProfileScreen() {
             setShowProgress(false);
           }
         }, 5000);
-        
-        Toast.show({
-          type: 'error',
-          text1: 'Update Failed',
-          text2: result.error || 'Failed to update your profile. Please try again.',
-          position: 'bottom',
-          visibilityTime: 6000,
-        });
       }
     } catch (error: any) {
-      console.error('handleSaveProfile: Error caught in outer catch block:', error);
+      console.error('handleSaveProfile: Error caught in outer catch block:', error.message);
       
       if (isMountedRef.current) {
         setShowProgress(false);

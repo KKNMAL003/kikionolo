@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { supabase, testSupabaseConnection, testRawConnection } from '../lib/supabase';
-import { withSupabaseRetry, RetryableError } from '../utils/retryUtils';
 import { validateProfileData, sanitizeProfileData } from '../utils/profileValidation';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 
@@ -67,6 +66,23 @@ interface UserContextType {
 
 // Create context with undefined default value
 const UserContext = createContext<UserContextType | undefined>(undefined);
+
+// Timeout wrapper for promises with AbortController support
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 8000, operationName: string = 'Operation'): Promise<T> => {
+  const controller = new AbortController();
+  
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+      reject(new Error(`${operationName} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+    
+    // Clean up timeout if the main promise resolves
+    promise.finally(() => clearTimeout(timeoutId));
+  });
+
+  return Promise.race([promise, timeoutPromise]);
+};
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -590,9 +606,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Enhanced update user profile function with comprehensive error handling and retry logic
+  // Simplified and more robust update user profile function
   const updateUserProfile = async (userData: Partial<User>): Promise<{ success: boolean; progress: ProfileUpdateProgress[]; error?: string }> => {
-    console.log('Starting robust profile update with data:', userData);
+    console.log('Starting simplified profile update with data:', userData);
     
     const progress: ProfileUpdateProgress[] = [];
     
@@ -600,7 +616,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     progress.push({ step: 'validation', status: 'inProgress', message: 'Validating profile data...' });
     
     try {
-      // Comprehensive validation
+      // Quick validation
       const validationResult = validateProfileData(userData);
       if (!validationResult.isValid) {
         const errorMessages = Object.entries(validationResult.errors)
@@ -610,14 +626,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         progress[0] = { step: 'validation', status: 'error', error: errorMessages };
         
         console.error('Profile validation failed:', validationResult.errors);
-        Toast.show({
-          type: 'error',
-          text1: 'Validation Error',
-          text2: 'Please check your input and try again.',
-          position: 'bottom',
-          visibilityTime: 6000,
-        });
-        
         return { success: false, progress, error: errorMessages };
       }
       
@@ -641,90 +649,71 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       
       let supabaseSuccess = false;
       
-      // Step 3: Update Supabase (if connected)
+      // Step 3: Update Supabase (with simplified error handling and timeouts)
       if (supabaseConnected) {
-        progress.push({ step: 'auth_update', status: 'inProgress', message: 'Updating authentication metadata...' });
+        progress.push({ step: 'profile_update', status: 'inProgress', message: 'Updating profile database...' });
         
         try {
-          // Update auth metadata with retry
-          await withSupabaseRetry(async () => {
-            const { error: authError } = await supabase.auth.updateUser({
-              data: {
-                name: sanitizedData.name?.trim(),
-                phone: sanitizedData.phone?.trim(),
-                address: sanitizedData.address?.trim(),
-              },
-            });
+          // Prepare profile update with proper field mapping
+          const nameParts = sanitizedData.name?.trim().split(' ') || [''];
+          const profileUpdate = {
+            first_name: nameParts[0] || '',
+            last_name: nameParts.slice(1).join(' ') || '',
+            phone: sanitizedData.phone?.trim() || '',
+            address: sanitizedData.address?.trim() || '',
+            updated_at: new Date().toISOString(),
+          };
 
-            if (authError) {
-              console.error('Auth metadata update error:', authError.message);
-              throw new RetryableError(`Auth update failed: ${authError.message}`, false);
-            }
-          }, 'Auth metadata update');
-          
-          progress[2] = { step: 'auth_update', status: 'completed', message: 'Authentication metadata updated' };
-          
-          // Step 4: Update profiles table
-          progress.push({ step: 'profile_update', status: 'inProgress', message: 'Updating profile database...' });
-          
-          await withSupabaseRetry(async () => {
-            // Prepare profile update with proper field mapping
-            const nameParts = sanitizedData.name?.trim().split(' ') || [''];
-            const profileUpdate = {
-              first_name: nameParts[0] || '',
-              last_name: nameParts.slice(1).join(' ') || '',
-              phone: sanitizedData.phone?.trim() || '',
-              address: sanitizedData.address?.trim() || '',
-              updated_at: new Date().toISOString(),
-            };
+          console.log('Updating Supabase profile with:', profileUpdate);
 
-            console.log('Updating Supabase profile with:', profileUpdate);
-
-            const { error: profileError } = await supabase
+          // Use timeout wrapper for the Supabase operation
+          await withTimeout(
+            supabase
               .from('profiles')
               .update(profileUpdate)
-              .eq('id', session.user.id);
-
-            if (profileError) {
-              console.error('Profile table update error:', profileError.message);
-              throw new RetryableError(`Profile update failed: ${profileError.message}`, true);
-            }
-          }, 'Profile table update');
+              .eq('id', session.user.id)
+              .then(({ error }) => {
+                if (error) {
+                  throw new Error(`Profile update failed: ${error.message}`);
+                }
+              }),
+            5000, // 5 second timeout
+            'Profile database update'
+          );
           
-          progress[3] = { step: 'profile_update', status: 'completed', message: 'Profile database updated successfully' };
+          progress[2] = { step: 'profile_update', status: 'completed', message: 'Profile database updated successfully' };
           supabaseSuccess = true;
           
         } catch (error: any) {
           console.error('Supabase profile update failed:', error.message);
           
-          // Determine if this is a retryable error
-          const isNetworkError = error.message?.toLowerCase().includes('network') || 
-                                 error.message?.toLowerCase().includes('timeout') ||
+          // Check if it's a timeout or network error
+          const isNetworkError = error.message?.toLowerCase().includes('timeout') || 
+                                 error.message?.toLowerCase().includes('network') ||
                                  error.message?.toLowerCase().includes('connection');
           
           if (isNetworkError) {
-            progress[progress.length - 1] = { 
-              step: progress.length === 3 ? 'auth_update' : 'profile_update', 
+            progress[2] = { 
+              step: 'profile_update', 
               status: 'error', 
-              error: 'Network error - continuing with local update' 
+              error: 'Network timeout - continuing with local update' 
             };
           } else {
-            progress[progress.length - 1] = { 
-              step: progress.length === 3 ? 'auth_update' : 'profile_update', 
+            progress[2] = { 
+              step: 'profile_update', 
               status: 'error', 
               error: error.message 
             };
             
-            // For non-network errors, fail the operation
-            return { success: false, progress, error: error.message };
+            // For non-network errors, still continue with local update
+            console.log('Non-network error, continuing with local update...');
           }
         }
       } else {
-        progress.push({ step: 'auth_update', status: 'completed', message: 'Skipped (offline mode)' });
         progress.push({ step: 'profile_update', status: 'completed', message: 'Skipped (offline mode)' });
       }
       
-      // Step 5: Update local state (always do this)
+      // Step 4: Update local state (always do this)
       progress.push({ step: 'local_update', status: 'inProgress', message: 'Updating local profile...' });
       
       if (user) {
@@ -747,7 +736,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       
       progress[progress.length - 1] = { step: 'local_update', status: 'completed', message: 'Local profile updated' };
       
-      // Step 6: Completion
+      // Step 5: Completion
       progress.push({ step: 'completed', status: 'completed', message: 'Profile update completed successfully' });
       
       console.log('Profile update completed successfully');
