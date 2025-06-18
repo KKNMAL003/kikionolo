@@ -625,7 +625,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
           if (authError) {
             console.error('Auth metadata update error:', authError.message);
-            // Don't fail completely for metadata errors
+            // Return false immediately for auth errors
+            return false;
           }
 
           // Update profile in profiles table with proper field mapping
@@ -653,7 +654,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           console.log('Profile updated successfully in Supabase');
         } catch (supabaseError: any) {
           console.error('Supabase update error:', supabaseError.message);
-          // Continue with local update but note the error
+          // Return false immediately for Supabase errors
+          return false;
         }
       }
 
