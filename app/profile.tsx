@@ -18,7 +18,7 @@ import Header from '../components/Header';
 import { Ionicons } from '@expo/vector-icons';
 import Button from '../components/Button';
 import { useRouter } from 'expo-router';
-import { useUser, ProfileUpdateProgress } from '../context/UserContext';
+import { useUser, ProfileUpdateProgress as UserProfileUpdateProgress } from '../context/UserContext';
 import Toast from 'react-native-toast-message';
 import CustomTextInput from '../components/CustomTextInput';
 import AddressValidator, { AddressValidationResult } from '../components/AddressValidator';
@@ -51,7 +51,7 @@ export default function ProfileScreen() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
-  const [updateProgress, setUpdateProgress] = useState<ProfileUpdateProgress[]>([]);
+  const [updateProgress, setUpdateProgress] = useState<UserProfileUpdateProgress[]>([]);
   const [formData, setFormData] = useState<FormData>({
     name: '',
     email: '',
