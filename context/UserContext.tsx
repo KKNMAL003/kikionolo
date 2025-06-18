@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { supabase, testSupabaseConnection, testRawConnection } from '../lib/supabase';
+import { withSupabaseRetry, RetryableError } from '../utils/retryUtils';
+import { validateProfileData, sanitizeProfileData } from '../utils/profileValidation';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 
 // User interface
@@ -35,6 +37,14 @@ interface Order {
   notes?: string;
 }
 
+// Profile update progress tracking
+export interface ProfileUpdateProgress {
+  step: 'validation' | 'sanitization' | 'auth_update' | 'profile_update' | 'local_update' | 'completed';
+  status: 'pending' | 'inProgress' | 'completed' | 'error';
+  message?: string;
+  error?: string;
+}
+
 // Context interface
 interface UserContextType {
   user: User | null;
@@ -42,7 +52,7 @@ interface UserContextType {
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
-  updateUserProfile: (userData: Partial<User>) => Promise<boolean>;
+  updateUserProfile: (userData: Partial<User>) => Promise<{ success: boolean; progress: ProfileUpdateProgress[]; error?: string }>;
   loginAsGuest: () => Promise<void>;
   isAuthenticated: boolean;
   orders: Order[];
@@ -52,6 +62,7 @@ interface UserContextType {
   loadUserOrders: () => Promise<void>;
   supabaseConnected: boolean;
   resetNavigationState: () => void;
+  isProcessingOrder: boolean;
 }
 
 // Create context with undefined default value
@@ -61,6 +72,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProcessingOrder, setIsProcessingOrder] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [supabaseConnected, setSupabaseConnected] = useState(false);
 
@@ -578,99 +590,154 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Enhanced update user profile function with simplified state management
-  const updateUserProfile = async (userData: Partial<User>): Promise<boolean> => {
-    console.log('Updating user profile with data:', userData);
+  // Enhanced update user profile function with comprehensive error handling and retry logic
+  const updateUserProfile = async (userData: Partial<User>): Promise<{ success: boolean; progress: ProfileUpdateProgress[]; error?: string }> => {
+    console.log('Starting robust profile update with data:', userData);
     
-    // Validation helpers
-    const isValidEmail = (email: string): boolean => {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      return emailRegex.test(email.trim());
-    };
-
-    const isValidPhone = (phone: string): boolean => {
-      const phoneRegex = /^[\+]?[\d\s\-\(\)]{10,15}$/;
-      return phoneRegex.test(phone.replace(/\s/g, ''));
-    };
+    const progress: ProfileUpdateProgress[] = [];
     
-    // Input validation
-    if (!userData.name?.trim()) {
-      return false;
-    }
-
-    if (userData.email && userData.email.trim() && !isValidEmail(userData.email)) {
-      return false;
-    }
-
-    if (userData.phone && userData.phone.trim() && !isValidPhone(userData.phone)) {
-      return false;
-    }
-
-    if (!session?.user) {
-      console.log('Update profile failed: No user logged in');
-      return false;
-    }
+    // Step 1: Validation
+    progress.push({ step: 'validation', status: 'inProgress', message: 'Validating profile data...' });
     
     try {
-      if (supabaseConnected) {
-        try {
-          // Update user metadata in Supabase Auth (but not email via auth)
-          const { error: authError } = await supabase.auth.updateUser({
-            data: {
-              name: userData.name?.trim(),
-              phone: userData.phone?.trim(),
-              address: userData.address?.trim(),
-            },
-          });
-
-          if (authError) {
-            console.error('Auth metadata update error:', authError.message);
-            // Return false immediately for auth errors
-            return false;
-          }
-
-          // Update profile in profiles table with proper field mapping
-          const nameParts = userData.name?.trim().split(' ') || [''];
-          const profileUpdate = {
-            first_name: nameParts[0] || '',
-            last_name: nameParts.slice(1).join(' ') || '',
-            phone: userData.phone?.trim() || '',
-            address: userData.address?.trim() || '',
-            updated_at: new Date().toISOString(),
-          };
-
-          console.log('Updating profile with:', profileUpdate);
-
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .update(profileUpdate)
-            .eq('id', session.user.id);
-
-          if (profileError) {
-            console.error('Profile update error:', profileError.message);
-            throw new Error(`Database update failed: ${profileError.message}`);
-          }
-
-          console.log('Profile updated successfully in Supabase');
-        } catch (supabaseError: any) {
-          console.error('Supabase update error:', supabaseError.message);
-          // Return false immediately for Supabase errors
-          return false;
-        }
+      // Comprehensive validation
+      const validationResult = validateProfileData(userData);
+      if (!validationResult.isValid) {
+        const errorMessages = Object.entries(validationResult.errors)
+          .map(([field, errors]) => `${field}: ${errors.join(', ')}`)
+          .join('; ');
+        
+        progress[0] = { step: 'validation', status: 'error', error: errorMessages };
+        
+        console.error('Profile validation failed:', validationResult.errors);
+        Toast.show({
+          type: 'error',
+          text1: 'Validation Error',
+          text2: 'Please check your input and try again.',
+          position: 'bottom',
+          visibilityTime: 6000,
+        });
+        
+        return { success: false, progress, error: errorMessages };
       }
+      
+      progress[0] = { step: 'validation', status: 'completed', message: 'Profile data validated successfully' };
+      
+      // Step 2: Sanitization
+      progress.push({ step: 'sanitization', status: 'inProgress', message: 'Sanitizing input data...' });
+      
+      const sanitizedData = sanitizeProfileData(userData);
+      console.log('Sanitized profile data:', sanitizedData);
+      
+      progress[1] = { step: 'sanitization', status: 'completed', message: 'Input data sanitized' };
+      
+      // Check if user is authenticated
+      if (!session?.user) {
+        const error = 'No authenticated user found';
+        progress.push({ step: 'auth_update', status: 'error', error });
+        console.error('Profile update failed:', error);
+        return { success: false, progress, error };
+      }
+      
+      let supabaseSuccess = false;
+      
+      // Step 3: Update Supabase (if connected)
+      if (supabaseConnected) {
+        progress.push({ step: 'auth_update', status: 'inProgress', message: 'Updating authentication metadata...' });
+        
+        try {
+          // Update auth metadata with retry
+          await withSupabaseRetry(async () => {
+            const { error: authError } = await supabase.auth.updateUser({
+              data: {
+                name: sanitizedData.name?.trim(),
+                phone: sanitizedData.phone?.trim(),
+                address: sanitizedData.address?.trim(),
+              },
+            });
 
-      // Update local state regardless of Supabase connection
+            if (authError) {
+              console.error('Auth metadata update error:', authError.message);
+              throw new RetryableError(`Auth update failed: ${authError.message}`, false);
+            }
+          }, 'Auth metadata update');
+          
+          progress[2] = { step: 'auth_update', status: 'completed', message: 'Authentication metadata updated' };
+          
+          // Step 4: Update profiles table
+          progress.push({ step: 'profile_update', status: 'inProgress', message: 'Updating profile database...' });
+          
+          await withSupabaseRetry(async () => {
+            // Prepare profile update with proper field mapping
+            const nameParts = sanitizedData.name?.trim().split(' ') || [''];
+            const profileUpdate = {
+              first_name: nameParts[0] || '',
+              last_name: nameParts.slice(1).join(' ') || '',
+              phone: sanitizedData.phone?.trim() || '',
+              address: sanitizedData.address?.trim() || '',
+              updated_at: new Date().toISOString(),
+            };
+
+            console.log('Updating Supabase profile with:', profileUpdate);
+
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .update(profileUpdate)
+              .eq('id', session.user.id);
+
+            if (profileError) {
+              console.error('Profile table update error:', profileError.message);
+              throw new RetryableError(`Profile update failed: ${profileError.message}`, true);
+            }
+          }, 'Profile table update');
+          
+          progress[3] = { step: 'profile_update', status: 'completed', message: 'Profile database updated successfully' };
+          supabaseSuccess = true;
+          
+        } catch (error: any) {
+          console.error('Supabase profile update failed:', error.message);
+          
+          // Determine if this is a retryable error
+          const isNetworkError = error.message?.toLowerCase().includes('network') || 
+                                 error.message?.toLowerCase().includes('timeout') ||
+                                 error.message?.toLowerCase().includes('connection');
+          
+          if (isNetworkError) {
+            progress[progress.length - 1] = { 
+              step: progress.length === 3 ? 'auth_update' : 'profile_update', 
+              status: 'error', 
+              error: 'Network error - continuing with local update' 
+            };
+          } else {
+            progress[progress.length - 1] = { 
+              step: progress.length === 3 ? 'auth_update' : 'profile_update', 
+              status: 'error', 
+              error: error.message 
+            };
+            
+            // For non-network errors, fail the operation
+            return { success: false, progress, error: error.message };
+          }
+        }
+      } else {
+        progress.push({ step: 'auth_update', status: 'completed', message: 'Skipped (offline mode)' });
+        progress.push({ step: 'profile_update', status: 'completed', message: 'Skipped (offline mode)' });
+      }
+      
+      // Step 5: Update local state (always do this)
+      progress.push({ step: 'local_update', status: 'inProgress', message: 'Updating local profile...' });
+      
       if (user) {
         const updatedUser = { 
           ...user, 
-          name: userData.name?.trim() || user.name,
-          email: userData.email?.trim() || user.email,
-          phone: userData.phone?.trim() || user.phone,
-          address: userData.address?.trim() || user.address,
+          name: sanitizedData.name?.trim() || user.name,
+          email: sanitizedData.email?.trim() || user.email,
+          phone: sanitizedData.phone?.trim() || user.phone,
+          address: sanitizedData.address?.trim() || user.address,
         };
         setUser(updatedUser);
         
-        // Also save to local storage as backup
+        // Save to local storage as backup
         try {
           await AsyncStorage.setItem('@onolo_user_data_v2', JSON.stringify(updatedUser));
         } catch (storageError: any) {
@@ -678,11 +745,55 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         }
       }
       
-      console.log('Profile updated successfully');
-      return true;
+      progress[progress.length - 1] = { step: 'local_update', status: 'completed', message: 'Local profile updated' };
+      
+      // Step 6: Completion
+      progress.push({ step: 'completed', status: 'completed', message: 'Profile update completed successfully' });
+      
+      console.log('Profile update completed successfully');
+      
+      // Show appropriate success message
+      if (supabaseSuccess) {
+        Toast.show({
+          type: 'success',
+          text1: 'Profile Updated',
+          text2: 'Your profile has been updated and synchronized.',
+          position: 'bottom',
+          visibilityTime: 4000,
+        });
+      } else {
+        Toast.show({
+          type: 'info',
+          text1: 'Profile Updated Locally',
+          text2: 'Changes saved locally. Will sync when connection is restored.',
+          position: 'bottom',
+          visibilityTime: 4000,
+        });
+      }
+      
+      return { success: true, progress };
+      
     } catch (error: any) {
-      console.error('Update profile error:', error.message);
-      return false;
+      console.error('Unexpected error in profile update:', error.message);
+      
+      // Update the last progress item with error
+      if (progress.length > 0) {
+        progress[progress.length - 1] = { 
+          ...progress[progress.length - 1], 
+          status: 'error', 
+          error: error.message 
+        };
+      }
+      
+      Toast.show({
+        type: 'error',
+        text1: 'Update Failed',
+        text2: 'An unexpected error occurred. Please try again.',
+        position: 'bottom',
+        visibilityTime: 6000,
+      });
+      
+      return { success: false, progress, error: error.message };
     }
   };
 
@@ -718,6 +829,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   // Enhanced add order function with proper error handling and validation
   const addOrder = async (orderData: Omit<Order, 'id' | 'date'>): Promise<Order> => {
     console.log('Adding new order:', orderData);
+    setIsProcessingOrder(true);
     
     // Input validation
     if (!orderData.items || orderData.items.length === 0) {
@@ -830,6 +942,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       console.error('Error adding order:', error.message);
       // Fall back to local storage
       return addOrderLocally(orderData);
+    } finally {
+      setIsProcessingOrder(false);
     }
   };
 
@@ -926,6 +1040,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     loadUserOrders,
     supabaseConnected,
     resetNavigationState,
+    isProcessingOrder,
   };
 
   return (

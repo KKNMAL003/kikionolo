@@ -6,7 +6,6 @@ import {
   TouchableOpacity, 
   Alert, 
   FlatList, 
-  Switch, 
   ScrollView,
   KeyboardAvoidingView,
   Platform,
@@ -19,12 +18,31 @@ import Header from '../components/Header';
 import { Ionicons } from '@expo/vector-icons';
 import Button from '../components/Button';
 import { useRouter } from 'expo-router';
-import { useUser } from '../context/UserContext';
+import { useUser, ProfileUpdateProgress } from '../context/UserContext';
 import Toast from 'react-native-toast-message';
 import CustomTextInput from '../components/CustomTextInput';
+import AddressValidator, { AddressValidationResult } from '../components/AddressValidator';
+import ProfileUpdateProgress from '../components/ProfileUpdateProgress';
+import { validateField } from '../utils/profileValidation';
 
 type TabType = 'orders' | 'profile' | 'settings';
 type SettingsScreenType = 'main' | 'notifications' | 'privacy' | 'payment' | 'help';
+
+interface FormErrors {
+  [key: string]: string;
+}
+
+interface FormData {
+  name: string;
+  email: string;
+  phone: string;
+  streetAddress: string;
+  apartment: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+}
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -32,7 +50,9 @@ export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('orders');
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [formData, setFormData] = useState({
+  const [showProgress, setShowProgress] = useState(false);
+  const [updateProgress, setUpdateProgress] = useState<ProfileUpdateProgress[]>([]);
+  const [formData, setFormData] = useState<FormData>({
     name: '',
     email: '',
     phone: '',
@@ -43,18 +63,12 @@ export default function ProfileScreen() {
     postalCode: '',
     country: 'South Africa',
   });
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [addressValidation, setAddressValidation] = useState<AddressValidationResult | null>(null);
   const [settingsScreen, setSettingsScreen] = useState<SettingsScreenType>('main');
   
   // Ref to track if component is mounted
   const isMountedRef = useRef(true);
-
-  // Notification settings
-  const [notificationSettings, setNotificationSettings] = useState({
-    orderUpdates: true,
-    promotions: false,
-    deliveryAlerts: true,
-    appUpdates: true,
-  });
 
   // Cleanup on unmount
   useEffect(() => {
@@ -110,7 +124,7 @@ export default function ProfileScreen() {
   }, []);
 
   // Combine address parts into a single string
-  const combineAddress = useCallback((formData: any) => {
+  const combineAddress = useCallback((formData: FormData) => {
     const addressParts = [
       formData.streetAddress,
       formData.apartment,
@@ -129,88 +143,69 @@ export default function ProfileScreen() {
 
   const handleChange = useCallback((field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    
+    // Clear existing error for this field
+    if (formErrors[field]) {
+      setFormErrors(prev => ({ ...prev, [field]: '' }));
+    }
+    
+    // Real-time validation
+    const validation = validateField(field, value);
+    if (!validation.isValid && validation.error) {
+      setFormErrors(prev => ({ ...prev, [field]: validation.error || '' }));
+    }
+  }, [formErrors]);
+
+  const handleAddressValidation = useCallback((result: AddressValidationResult) => {
+    setAddressValidation(result);
   }, []);
 
-  const isValidEmail = useCallback((email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  }, []);
-
-  const isValidPhone = useCallback((phone: string): boolean => {
-    // More comprehensive phone validation
-    const cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
-    const phoneRegex = /^[\+]?[\d]{10,15}$/;
-    return phoneRegex.test(cleanPhone);
-  }, []);
-
-  const validateForm = useCallback(() => {
-    const trimmedName = formData.name.trim();
-    const trimmedEmail = formData.email.trim();
-    const trimmedPhone = formData.phone.trim();
-    const trimmedStreetAddress = formData.streetAddress.trim();
-    const trimmedCity = formData.city.trim();
-
-    if (!trimmedName) {
+  const validateForm = useCallback((): boolean => {
+    const errors: FormErrors = {};
+    
+    // Validate each field
+    const fieldsToValidate = ['name', 'phone', 'streetAddress', 'city'];
+    
+    fieldsToValidate.forEach(field => {
+      const validation = validateField(field, formData[field]);
+      if (!validation.isValid && validation.error) {
+        errors[field] = validation.error;
+      }
+    });
+    
+    // Email validation (optional but must be valid if provided)
+    if (formData.email.trim()) {
+      const emailValidation = validateField('email', formData.email);
+      if (!emailValidation.isValid && emailValidation.error) {
+        errors.email = emailValidation.error;
+      }
+    }
+    
+    // Address validation
+    if (addressValidation && !addressValidation.isValid) {
+      errors.streetAddress = 'Please review your address based on the suggestions above';
+    }
+    
+    setFormErrors(errors);
+    
+    if (Object.keys(errors).length > 0) {
+      const firstError = Object.values(errors)[0];
       Toast.show({
         type: 'error',
-        text1: 'Name Required',
-        text2: 'Please enter your full name.',
+        text1: 'Validation Error',
+        text2: firstError,
         position: 'bottom',
         visibilityTime: 4000,
       });
       return false;
     }
-
-    if (trimmedName.length < 2) {
-      Toast.show({
-        type: 'error',
-        text1: 'Invalid Name',
-        text2: 'Name must be at least 2 characters long.',
-        position: 'bottom',
-        visibilityTime: 4000,
-      });
-      return false;
-    }
-
-    if (trimmedEmail && !isValidEmail(trimmedEmail)) {
-      Toast.show({
-        type: 'error',
-        text1: 'Invalid Email',
-        text2: 'Please enter a valid email address.',
-        position: 'bottom',
-        visibilityTime: 4000,
-      });
-      return false;
-    }
-
-    if (trimmedPhone && !isValidPhone(trimmedPhone)) {
-      Toast.show({
-        type: 'error',
-        text1: 'Invalid Phone',
-        text2: 'Please enter a valid phone number (10-15 digits).',
-        position: 'bottom',
-        visibilityTime: 4000,
-      });
-      return false;
-    }
-
-    if (trimmedStreetAddress && !trimmedCity) {
-      Toast.show({
-        type: 'error',
-        text1: 'Incomplete Address',
-        text2: 'Please enter both street address and city.',
-        position: 'bottom',
-        visibilityTime: 4000,
-      });
-      return false;
-    }
-
+    
     return true;
-  }, [formData, isValidEmail, isValidPhone]);
+  }, [formData, addressValidation]);
 
-  // Enhanced handleSaveProfile with comprehensive logging
+  // Enhanced handleSaveProfile with comprehensive error handling and progress tracking
   const handleSaveProfile = useCallback(async () => {
-    console.log('handleSaveProfile: Start. isSaving:', isSaving);
+    console.log('handleSaveProfile: Starting comprehensive profile update');
     
     // Prevent multiple simultaneous save attempts
     if (isSaving) {
@@ -218,11 +213,11 @@ export default function ProfileScreen() {
       return;
     }
 
-    console.log('handleSaveProfile: isSaving set to true.');
     setIsSaving(true);
+    setShowProgress(true);
+    setUpdateProgress([]);
     
     try {
-      console.log('handleSaveProfile: Keyboard dismissed.');
       dismissKeyboard();
       
       // Validate form first
@@ -249,53 +244,65 @@ export default function ProfileScreen() {
 
       console.log('handleSaveProfile: Cleaned data prepared:', cleanedData);
 
-      // Add timeout to prevent infinite loading - increased to 20 seconds
-      const savePromise = updateUserProfile(cleanedData);
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => {
-          console.log('handleSaveProfile: Timeout promise triggered.');
-          reject(new Error('Save operation timed out'));
-        }, 20000)
-      );
-
-      console.log('handleSaveProfile: Awaiting Promise.race...');
-      const success = await Promise.race([savePromise, timeoutPromise]);
-      console.log('handleSaveProfile: Promise.race resolved. Success:', success);
+      // Call the enhanced update function
+      const result = await updateUserProfile(cleanedData);
+      
+      // Update progress state
+      setUpdateProgress(result.progress);
       
       // Check if component is still mounted before updating state
       if (!isMountedRef.current) {
-        console.log('handleSaveProfile: Component unmounted after promise.race, not updating UI.');
+        console.log('handleSaveProfile: Component unmounted after update, not updating UI.');
         return;
       }
 
-      if (success) {
-        console.log('handleSaveProfile: Profile saved successfully.');
+      if (result.success) {
+        console.log('handleSaveProfile: Profile updated successfully.');
         setIsEditing(false);
+        setShowProgress(false);
+        
+        // Show detailed success message based on progress
+        const supabaseUpdated = result.progress.some(p => 
+          p.step === 'profile_update' && p.status === 'completed'
+        );
+        
         Toast.show({
           type: 'success',
           text1: 'Profile Updated',
-          text2: 'Your profile has been updated successfully.',
-          position: 'bottom',
-          visibilityTime: 3000,
-        });
-      } else {
-        console.log('handleSaveProfile: Profile save failed (updateUserProfile returned false).');
-        Toast.show({
-          type: 'error',
-          text1: 'Update Failed',
-          text2: 'Failed to update your profile. Please try again.',
+          text2: supabaseUpdated 
+            ? 'Your profile has been updated and synchronized.'
+            : 'Profile updated locally. Will sync when connection is restored.',
           position: 'bottom',
           visibilityTime: 4000,
         });
+      } else {
+        console.log('handleSaveProfile: Profile update failed:', result.error);
+        
+        // Keep progress visible for user to see what went wrong
+        setTimeout(() => {
+          if (isMountedRef.current) {
+            setShowProgress(false);
+          }
+        }, 5000);
+        
+        Toast.show({
+          type: 'error',
+          text1: 'Update Failed',
+          text2: result.error || 'Failed to update your profile. Please try again.',
+          position: 'bottom',
+          visibilityTime: 6000,
+        });
       }
     } catch (error: any) {
-      console.error('handleSaveProfile: Error caught in catch block:', error);
+      console.error('handleSaveProfile: Error caught in outer catch block:', error);
       
       if (isMountedRef.current) {
+        setShowProgress(false);
+        
         let errorMessage = 'An unexpected error occurred. Please try again.';
         
         if (error.message?.includes('timeout')) {
-          errorMessage = 'Save operation timed out. Please check your connection and try again.';
+          errorMessage = 'Request timed out. Please check your connection and try again.';
         } else if (error.message?.includes('network')) {
           errorMessage = 'Network error. Please check your connection and try again.';
         }
@@ -305,7 +312,7 @@ export default function ProfileScreen() {
           text1: 'Update Failed',
           text2: errorMessage,
           position: 'bottom',
-          visibilityTime: 4000,
+          visibilityTime: 6000,
         });
       }
     } finally {
@@ -329,6 +336,9 @@ export default function ProfileScreen() {
 
     dismissKeyboard();
     setIsEditing(false);
+    setShowProgress(false);
+    setFormErrors({});
+    setAddressValidation(null);
     
     // Reset form data to original user data
     if (user) {
@@ -540,6 +550,16 @@ export default function ProfileScreen() {
               >
                 <Text style={styles.sectionTitle}>Profile Information</Text>
                 
+                {/* Show progress during update */}
+                {showProgress && updateProgress.length > 0 && (
+                  <ProfileUpdateProgress steps={updateProgress.map(p => ({
+                    id: p.step,
+                    title: p.step.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                    status: p.status,
+                    description: p.message || p.error
+                  }))} />
+                )}
+                
                 {isEditing ? (
                   <View style={styles.profileSection}>
                     <View style={styles.inputGroup}>
@@ -551,6 +571,7 @@ export default function ProfileScreen() {
                         returnKeyType="next"
                         editable={!isSaving}
                         autoCapitalize="words"
+                        error={formErrors.name}
                       />
                     </View>
                     
@@ -564,6 +585,7 @@ export default function ProfileScreen() {
                         autoCapitalize="none"
                         editable={!user?.isGuest && !isSaving}
                         returnKeyType="next"
+                        error={formErrors.email}
                       />
                       {user?.isGuest && (
                         <Text style={styles.helperText}>
@@ -574,20 +596,21 @@ export default function ProfileScreen() {
                     
                     <View style={styles.inputGroup}>
                       <CustomTextInput
-                        label="Phone Number"
+                        label="Phone Number *"
                         value={formData.phone}
                         onChangeText={(text) => handleChange('phone', text)}
                         placeholder="Enter your phone number"
                         keyboardType="phone-pad"
                         returnKeyType="next"
                         editable={!isSaving}
+                        error={formErrors.phone}
                       />
                       <Text style={styles.helperText}>
                         📞 Used for delivery coordination
                       </Text>
                     </View>
 
-                    {/* Address Section */}
+                    {/* Enhanced Address Section */}
                     <View style={styles.addressSection}>
                       <Text style={styles.addressSectionTitle}>📍 Delivery Address</Text>
                       
@@ -600,6 +623,14 @@ export default function ProfileScreen() {
                           returnKeyType="next"
                           editable={!isSaving}
                           autoCapitalize="words"
+                          error={formErrors.streetAddress}
+                        />
+                        
+                        {/* Address Validation Component */}
+                        <AddressValidator
+                          address={combineAddress(formData)}
+                          onValidationComplete={handleAddressValidation}
+                          enabled={formData.streetAddress.length > 5 && formData.city.length > 1}
                         />
                       </View>
 
@@ -625,6 +656,7 @@ export default function ProfileScreen() {
                             returnKeyType="next"
                             editable={!isSaving}
                             autoCapitalize="words"
+                            error={formErrors.city}
                           />
                         </View>
                         <View style={styles.inputHalf}>
