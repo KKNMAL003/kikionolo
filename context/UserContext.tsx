@@ -1,0 +1,943 @@
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Toast from 'react-native-toast-message';
+import { supabase, testSupabaseConnection, testRawConnection } from '../lib/supabase';
+import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
+
+// User interface
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  isGuest: boolean;
+}
+
+// Order interface matching Supabase schema
+interface Order {
+  id: string;
+  date: string;
+  items: Array<{
+    productId: string;
+    productName: string;
+    quantity: number;
+    price: number;
+  }>;
+  totalAmount: number;
+  status: 'pending' | 'order_received' | 'order_confirmed' | 'preparing' | 'scheduled_for_delivery' | 'driver_dispatched' | 'out_for_delivery' | 'delivered' | 'cancelled';
+  paymentMethod: string;
+  deliveryAddress: string;
+  deliverySchedule?: string;
+  customerName?: string;
+  customerPhone?: string;
+  customerEmail?: string;
+  notes?: string;
+}
+
+// Context interface
+interface UserContextType {
+  user: User | null;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (name: string, email: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
+  updateUserProfile: (userData: Partial<User>) => Promise<boolean>;
+  loginAsGuest: () => Promise<void>;
+  isAuthenticated: boolean;
+  orders: Order[];
+  addOrder: (order: Omit<Order, 'id' | 'date'>) => Promise<Order>;
+  cancelOrder: (orderId: string) => Promise<boolean>;
+  getOrderById: (orderId: string) => Order | undefined;
+  loadUserOrders: () => Promise<void>;
+  supabaseConnected: boolean;
+  resetNavigationState: () => void;
+}
+
+// Create context with undefined default value
+const UserContext = createContext<UserContextType | undefined>(undefined);
+
+export function UserProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [session, setSession] = useState<Session | null>(null);
+  const [supabaseConnected, setSupabaseConnected] = useState(false);
+
+  // Navigation state reset function
+  const resetNavigationState = useCallback(() => {
+    console.log('Resetting navigation state...');
+    // This function can be called to clear navigation history
+    // Implementation will depend on how the app navigation is structured
+  }, []);
+
+  // Enhanced Supabase connection testing
+  useEffect(() => {
+    const checkConnection = async () => {
+      console.log('Testing Supabase connection...');
+      
+      // Test both methods to get better diagnostics
+      const [basicConnection, rawConnection] = await Promise.all([
+        testSupabaseConnection(),
+        testRawConnection()
+      ]);
+      
+      const connected = basicConnection || rawConnection;
+      setSupabaseConnected(connected);
+      
+      if (!connected) {
+        console.warn('Supabase connection failed, app will work in offline mode');
+        console.warn('To fix this issue:');
+        console.warn('1. Check your internet connection');
+        console.warn('2. Verify Supabase project settings');
+        console.warn('3. Add http://localhost:8081 to CORS allowed origins in Supabase dashboard');
+        
+        Toast.show({
+          type: 'info',
+          text1: 'Offline Mode',
+          text2: 'Working in offline mode. Some features may be limited.',
+          position: 'bottom',
+          visibilityTime: 4000,
+        });
+      } else {
+        console.log('Supabase connection successful');
+        Toast.show({
+          type: 'success',
+          text1: 'Connected',
+          text2: 'Database connection established successfully.',
+          position: 'bottom',
+          visibilityTime: 3000,
+        });
+      }
+    };
+    
+    checkConnection();
+  }, []);
+
+  // Convert Supabase user to our User interface
+  const convertSupabaseUser = async (supabaseUser: SupabaseUser): Promise<User> => {
+    // Only try to get profile data if Supabase is connected
+    let profileData = null;
+    if (supabaseConnected) {
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', supabaseUser.id)
+          .single();
+        
+        if (error) {
+          console.log('Could not fetch profile data:', error.message);
+        } else {
+          profileData = profile;
+        }
+      } catch (error: any) {
+        console.log('Error fetching profile data:', error.message);
+      }
+    }
+
+    const name = profileData?.first_name && profileData?.last_name 
+      ? `${profileData.first_name} ${profileData.last_name}`.trim()
+      : supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User';
+
+    return {
+      id: supabaseUser.id,
+      name,
+      email: supabaseUser.email || '',
+      phone: profileData?.phone || supabaseUser.user_metadata?.phone || '',
+      address: profileData?.address || supabaseUser.user_metadata?.address || '',
+      isGuest: false,
+    };
+  };
+
+  // Ensure user profile exists in database
+  const ensureUserProfile = async (supabaseUser: SupabaseUser) => {
+    // Skip profile creation if Supabase is not connected
+    if (!supabaseConnected) {
+      console.log('Skipping profile creation - Supabase not connected');
+      return;
+    }
+
+    try {
+      // Check if profile exists
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', supabaseUser.id)
+        .single();
+
+      if (!existingProfile) {
+        // Create profile if it doesn't exist
+        const name = supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User';
+        const nameParts = name.split(' ');
+        
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([
+            {
+              id: supabaseUser.id,
+              first_name: nameParts[0] || name,
+              last_name: nameParts.slice(1).join(' ') || '',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+          ]);
+
+        if (profileError) {
+          console.warn('Could not create profile automatically:', profileError.message);
+          // Don't throw error, profile creation is optional for app functionality
+        } else {
+          console.log('Profile created successfully for user:', supabaseUser.id);
+        }
+      }
+    } catch (error: any) {
+      console.warn('Error ensuring user profile:', error.message);
+      // Don't throw error, app should still work without profile table access
+    }
+  };
+
+  // Load user orders from Supabase
+  const loadUserOrders = useCallback(async () => {
+    if (!session?.user) {
+      console.log('No authenticated user, skipping order load');
+      return;
+    }
+
+    // Skip if Supabase is not connected
+    if (!supabaseConnected) {
+      console.log('Supabase not connected, loading orders from storage');
+      await loadOrdersFromStorage();
+      return;
+    }
+
+    try {
+      console.log('Loading orders for user:', session.user.id);
+      
+      // Fetch orders with order items
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (
+            product_id,
+            product_name,
+            quantity,
+            unit_price
+          )
+        `)
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false });
+
+      if (ordersError) {
+        console.error('Error fetching orders:', ordersError);
+        // Fall back to AsyncStorage if Supabase fails
+        await loadOrdersFromStorage();
+        return;
+      }
+
+      if (ordersData) {
+        const formattedOrders: Order[] = ordersData.map(order => ({
+          id: order.id,
+          date: order.created_at,
+          items: order.order_items.map(item => ({
+            productId: item.product_id,
+            productName: item.product_name,
+            quantity: item.quantity,
+            price: item.unit_price,
+          })),
+          totalAmount: order.total_amount,
+          status: order.status,
+          paymentMethod: order.payment_method,
+          deliveryAddress: order.delivery_address,
+          deliverySchedule: order.preferred_delivery_window ? 
+            `${order.delivery_date || 'TBD'} - ${order.preferred_delivery_window}` : undefined,
+          customerName: order.customer_name,
+          customerPhone: order.delivery_phone,
+          customerEmail: order.customer_email,
+          notes: order.notes,
+        }));
+
+        console.log('Loaded orders from Supabase:', formattedOrders.length);
+        setOrders(formattedOrders);
+        
+        // Also save to AsyncStorage as backup
+        await AsyncStorage.setItem('@onolo_orders_data_v2', JSON.stringify(formattedOrders));
+      }
+    } catch (error: any) {
+      console.error('Error loading user orders:', error.message);
+      // Fall back to AsyncStorage
+      await loadOrdersFromStorage();
+    }
+  }, [session?.user, supabaseConnected]);
+
+  // Fallback: Load orders from AsyncStorage
+  const loadOrdersFromStorage = async () => {
+    try {
+      const ordersData = await AsyncStorage.getItem('@onolo_orders_data_v2');
+      if (ordersData) {
+        console.log('Loaded orders from AsyncStorage fallback');
+        setOrders(JSON.parse(ordersData));
+      }
+    } catch (error: any) {
+      console.error('Error loading orders from AsyncStorage:', error.message);
+    }
+  };
+
+  // Initialize auth state with better error handling
+  useEffect(() => {
+    console.log('Initializing auth state...');
+    setIsLoading(true);
+
+    // Only proceed with auth if Supabase is connected
+    if (!supabaseConnected) {
+      console.log('Supabase not connected, skipping auth initialization');
+      setIsLoading(false);
+      return;
+    }
+
+    // Get initial session with timeout handling
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting initial session:', error.message);
+          setIsLoading(false);
+          return;
+        }
+
+        console.log('Initial session:', session?.user?.email || 'No session');
+        setSession(session);
+        
+        if (session?.user) {
+          // Ensure profile exists
+          await ensureUserProfile(session.user);
+          // Convert to our user format
+          const convertedUser = await convertSupabaseUser(session.user);
+          setUser(convertedUser);
+        }
+        setIsLoading(false);
+      } catch (error: any) {
+        console.error('Error initializing auth:', error.message);
+        setIsLoading(false);
+      }
+    };
+
+    initializeAuth();
+
+    // Listen for auth changes with better error handling
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user?.email || 'No session');
+      setSession(session);
+      
+      try {
+        if (session?.user) {
+          // Ensure profile exists when user signs in
+          await ensureUserProfile(session.user);
+          // Convert to our user format
+          const convertedUser = await convertSupabaseUser(session.user);
+          setUser(convertedUser);
+        } else {
+          setUser(null);
+          setOrders([]); // Clear orders when user logs out
+          // Reset navigation state when user logs out
+          resetNavigationState();
+        }
+      } catch (error: any) {
+        console.error('Error handling auth state change:', error.message);
+      }
+      
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabaseConnected, resetNavigationState]);
+
+  // Load orders when user changes
+  useEffect(() => {
+    if (session?.user && !isLoading) {
+      loadUserOrders();
+    } else if (!session?.user) {
+      // If no authenticated user, try to load guest orders from AsyncStorage
+      loadOrdersFromStorage();
+    }
+  }, [session?.user, isLoading, loadUserOrders]);
+
+  // Login function with enhanced error handling
+  const login = async (email: string, password: string): Promise<boolean> => {
+    console.log('Attempting login with email:', email);
+    
+    // Check if Supabase is connected
+    if (!supabaseConnected) {
+      console.error('Cannot login: Supabase not connected');
+      Toast.show({
+        type: 'error',
+        text1: 'Connection Error',
+        text2: 'Unable to connect to authentication service. Check your network connection.',
+        position: 'bottom',
+        visibilityTime: 6000,
+      });
+      return false;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (error) {
+        // Use console.warn for invalid credentials since this is expected user behavior
+        if (error.message.includes('Invalid login credentials')) {
+          console.warn('Login failed due to invalid credentials for email:', email);
+        } else {
+          console.error('Login error:', error.message);
+        }
+        
+        // Provide specific error messages
+        let errorMessage = error.message;
+        if (error.message.includes('Invalid login credentials')) {
+          errorMessage = 'Invalid email or password. Please try again.';
+        } else if (error.message.includes('Failed to fetch')) {
+          errorMessage = 'Connection failed. Please check your internet connection.';
+        }
+        
+        Toast.show({
+          type: 'error',
+          text1: 'Login Failed',
+          text2: errorMessage,
+          position: 'bottom',
+          visibilityTime: 6000,
+        });
+        return false;
+      }
+
+      if (data.user) {
+        console.log('Login successful for user:', data.user.email);
+        
+        // Reset navigation state on successful login
+        resetNavigationState();
+        
+        // Show success toast
+        Toast.show({
+          type: 'success',
+          text1: 'Login Successful',
+          text2: `Welcome back!`,
+          position: 'bottom',
+        });
+        
+        return true;
+      }
+      
+      return false;
+    } catch (error: any) {
+      console.error('Login error:', error.message);
+      Toast.show({
+        type: 'error',
+        text1: 'Login Error',
+        text2: 'An unexpected error occurred during login. Please try again.',
+        position: 'bottom',
+        visibilityTime: 6000,
+      });
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Register function with enhanced error handling
+  const register = async (
+    name: string,
+    email: string,
+    password: string
+  ): Promise<boolean> => {
+    console.log('Attempting registration for:', name, email);
+    
+    // Check if Supabase is connected
+    if (!supabaseConnected) {
+      console.error('Cannot register: Supabase not connected');
+      Toast.show({
+        type: 'error',
+        text1: 'Connection Error',
+        text2: 'Unable to connect to authentication service. Check your network connection.',
+        position: 'bottom',
+        visibilityTime: 6000,
+      });
+      return false;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            name: name.trim(),
+          },
+        },
+      });
+
+      if (error) {
+        console.error('Registration error:', error.message);
+        
+        // Provide specific error messages
+        let errorMessage = error.message;
+        if (error.message.includes('User already registered')) {
+          errorMessage = 'An account with this email already exists. Please try logging in instead.';
+        } else if (error.message.includes('Failed to fetch')) {
+          errorMessage = 'Connection failed. Please check your internet connection.';
+        }
+        
+        Toast.show({
+          type: 'error',
+          text1: 'Registration Failed',
+          text2: errorMessage,
+          position: 'bottom',
+          visibilityTime: 6000,
+        });
+        return false;
+      }
+
+      if (data.user) {
+        console.log('Registration successful for:', name);
+        
+        // Reset navigation state on successful registration
+        resetNavigationState();
+        
+        // Note: Profile creation will be handled by the auth state change listener
+        // when the user is confirmed and authenticated, not immediately here
+        
+        // Show success toast
+        Toast.show({
+          type: 'success',
+          text1: 'Registration Successful',
+          text2: `Welcome, ${name}!`,
+          position: 'bottom',
+        });
+        
+        return true;
+      }
+      
+      return false;
+    } catch (error: any) {
+      console.error('Registration error:', error.message);
+      Toast.show({
+        type: 'error',
+        text1: 'Registration Error',
+        text2: 'An unexpected error occurred during registration. Please try again.',
+        position: 'bottom',
+        visibilityTime: 6000,
+      });
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Logout function with navigation reset
+  const logout = async (): Promise<void> => {
+    console.log('Logging out user');
+    try {
+      if (supabaseConnected) {
+        const { error } = await supabase.auth.signOut();
+        
+        if (error) {
+          console.error('Logout error:', error.message);
+          return;
+        }
+      }
+      
+      // Clear local state
+      setUser(null);
+      setSession(null);
+      setOrders([]);
+      
+      // Clear AsyncStorage
+      await AsyncStorage.removeItem('@onolo_orders_data_v2');
+      
+      // Reset navigation state on logout
+      resetNavigationState();
+      
+      // Show success toast
+      Toast.show({
+        type: 'success',
+        text1: 'Logged Out',
+        text2: 'You have been successfully logged out.',
+        position: 'bottom',
+      });
+      
+      console.log('Logout successful');
+    } catch (error: any) {
+      console.error('Logout error:', error.message);
+    }
+  };
+
+  // Enhanced update user profile function with simplified state management
+  const updateUserProfile = async (userData: Partial<User>): Promise<boolean> => {
+    console.log('Updating user profile with data:', userData);
+    
+    // Validation helpers
+    const isValidEmail = (email: string): boolean => {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return emailRegex.test(email.trim());
+    };
+
+    const isValidPhone = (phone: string): boolean => {
+      const phoneRegex = /^[\+]?[\d\s\-\(\)]{10,15}$/;
+      return phoneRegex.test(phone.replace(/\s/g, ''));
+    };
+    
+    // Input validation
+    if (!userData.name?.trim()) {
+      return false;
+    }
+
+    if (userData.email && userData.email.trim() && !isValidEmail(userData.email)) {
+      return false;
+    }
+
+    if (userData.phone && userData.phone.trim() && !isValidPhone(userData.phone)) {
+      return false;
+    }
+
+    if (!session?.user) {
+      console.log('Update profile failed: No user logged in');
+      return false;
+    }
+    
+    try {
+      if (supabaseConnected) {
+        try {
+          // Update user metadata in Supabase Auth (but not email via auth)
+          const { error: authError } = await supabase.auth.updateUser({
+            data: {
+              name: userData.name?.trim(),
+              phone: userData.phone?.trim(),
+              address: userData.address?.trim(),
+            },
+          });
+
+          if (authError) {
+            console.error('Auth metadata update error:', authError.message);
+            // Don't fail completely for metadata errors
+          }
+
+          // Update profile in profiles table with proper field mapping
+          const nameParts = userData.name?.trim().split(' ') || [''];
+          const profileUpdate = {
+            first_name: nameParts[0] || '',
+            last_name: nameParts.slice(1).join(' ') || '',
+            phone: userData.phone?.trim() || '',
+            address: userData.address?.trim() || '',
+            updated_at: new Date().toISOString(),
+          };
+
+          console.log('Updating profile with:', profileUpdate);
+
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .update(profileUpdate)
+            .eq('id', session.user.id);
+
+          if (profileError) {
+            console.error('Profile update error:', profileError.message);
+            throw new Error(`Database update failed: ${profileError.message}`);
+          }
+
+          console.log('Profile updated successfully in Supabase');
+        } catch (supabaseError: any) {
+          console.error('Supabase update error:', supabaseError.message);
+          // Continue with local update but note the error
+        }
+      }
+
+      // Update local state regardless of Supabase connection
+      if (user) {
+        const updatedUser = { 
+          ...user, 
+          name: userData.name?.trim() || user.name,
+          email: userData.email?.trim() || user.email,
+          phone: userData.phone?.trim() || user.phone,
+          address: userData.address?.trim() || user.address,
+        };
+        setUser(updatedUser);
+        
+        // Also save to local storage as backup
+        try {
+          await AsyncStorage.setItem('@onolo_user_data_v2', JSON.stringify(updatedUser));
+        } catch (storageError: any) {
+          console.warn('Failed to save to local storage:', storageError.message);
+        }
+      }
+      
+      console.log('Profile updated successfully');
+      return true;
+    } catch (error: any) {
+      console.error('Update profile error:', error.message);
+      return false;
+    }
+  };
+
+  // Login as guest
+  const loginAsGuest = async (): Promise<void> => {
+    console.log('Logging in as guest');
+    const guestUser: User = {
+      id: 'guest-' + Date.now(),
+      name: 'Guest User',
+      email: '',
+      phone: '',
+      address: '',
+      isGuest: true
+    };
+    
+    // Update state
+    setUser(guestUser);
+    
+    // Reset navigation state for guest login
+    resetNavigationState();
+    
+    // Show info toast
+    Toast.show({
+      type: 'info',
+      text1: 'Guest Mode',
+      text2: 'You are now browsing as a guest.',
+      position: 'bottom',
+    });
+    
+    console.log('Guest login successful');
+  };
+
+  // Enhanced add order function with proper error handling and validation
+  const addOrder = async (orderData: Omit<Order, 'id' | 'date'>): Promise<Order> => {
+    console.log('Adding new order:', orderData);
+    
+    // Input validation
+    if (!orderData.items || orderData.items.length === 0) {
+      throw new Error('Order must contain at least one item');
+    }
+
+    if (!orderData.customerName?.trim()) {
+      throw new Error('Customer name is required');
+    }
+
+    if (!orderData.deliveryAddress?.trim()) {
+      throw new Error('Delivery address is required');
+    }
+
+    if (!orderData.paymentMethod?.trim()) {
+      throw new Error('Payment method is required');
+    }
+
+    if (!orderData.totalAmount || orderData.totalAmount <= 0) {
+      throw new Error('Invalid order total amount');
+    }
+    
+    try {
+      if (session?.user && supabaseConnected) {
+        // Save to Supabase for authenticated users
+        const orderInsert = {
+          user_id: session.user.id,
+          status: orderData.status || 'pending',
+          total_amount: orderData.totalAmount,
+          delivery_address: orderData.deliveryAddress,
+          delivery_phone: orderData.customerPhone || '',
+          payment_method: orderData.paymentMethod,
+          customer_name: orderData.customerName || '',
+          customer_email: orderData.customerEmail || '',
+          notes: orderData.notes || '',
+          delivery_date: orderData.deliverySchedule ? new Date().toISOString().split('T')[0] : null,
+          preferred_delivery_window: orderData.deliverySchedule?.includes('morning') ? 'morning' :
+                                   orderData.deliverySchedule?.includes('afternoon') ? 'afternoon' :
+                                   orderData.deliverySchedule?.includes('evening') ? 'evening' : null,
+        };
+
+        console.log('Creating order in Supabase:', orderInsert);
+
+        const { data: order, error: orderError } = await supabase
+          .from('orders')
+          .insert([orderInsert])
+          .select()
+          .single();
+
+        if (orderError) {
+          console.error('Error creating order in Supabase:', orderError);
+          // Fall back to local storage
+          return addOrderLocally(orderData);
+        }
+
+        // Insert order items
+        const orderItems = orderData.items.map(item => ({
+          order_id: order.id,
+          product_id: item.productId,
+          product_name: item.productName,
+          quantity: item.quantity,
+          unit_price: item.price,
+          total_price: item.price * item.quantity,
+        }));
+
+        console.log('Creating order items:', orderItems);
+
+        const { error: itemsError } = await supabase
+          .from('order_items')
+          .insert(orderItems);
+
+        if (itemsError) {
+          console.error('Error creating order items:', itemsError);
+          // Order was created but items failed - this is recoverable
+        }
+
+        const newOrder: Order = {
+          id: order.id,
+          date: order.created_at,
+          items: orderData.items,
+          totalAmount: orderData.totalAmount,
+          status: orderData.status || 'pending',
+          paymentMethod: orderData.paymentMethod,
+          deliveryAddress: orderData.deliveryAddress,
+          deliverySchedule: orderData.deliverySchedule,
+          customerName: orderData.customerName,
+          customerPhone: orderData.customerPhone,
+          customerEmail: orderData.customerEmail,
+          notes: orderData.notes,
+        };
+
+        // Update local state
+        const updatedOrders = [newOrder, ...orders];
+        setOrders(updatedOrders);
+        
+        // Also save to AsyncStorage as backup
+        try {
+          await AsyncStorage.setItem('@onolo_orders_data_v2', JSON.stringify(updatedOrders));
+        } catch (storageError: any) {
+          console.warn('Failed to save orders to local storage:', storageError.message);
+        }
+
+        console.log('Order added successfully to Supabase:', newOrder.id);
+        return newOrder;
+      } else {
+        // For guest users or when Supabase is not connected, save locally only
+        return addOrderLocally(orderData);
+      }
+    } catch (error: any) {
+      console.error('Error adding order:', error.message);
+      // Fall back to local storage
+      return addOrderLocally(orderData);
+    }
+  };
+
+  // Add order locally (fallback)
+  const addOrderLocally = async (orderData: Omit<Order, 'id' | 'date'>): Promise<Order> => {
+    const newOrder: Order = {
+      ...orderData,
+      id: `order-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      date: new Date().toISOString(),
+      status: orderData.status || 'pending',
+    };
+
+    const updatedOrders = [newOrder, ...orders];
+    setOrders(updatedOrders);
+    
+    // Save to AsyncStorage
+    try {
+      await AsyncStorage.setItem('@onolo_orders_data_v2', JSON.stringify(updatedOrders));
+    } catch (error: any) {
+      console.error('Failed to save order to AsyncStorage:', error.message);
+    }
+    
+    console.log('Order added locally:', newOrder.id);
+    return newOrder;
+  };
+
+  // Cancel order
+  const cancelOrder = async (orderId: string): Promise<boolean> => {
+    console.log('Cancelling order:', orderId);
+    try {
+      if (session?.user && supabaseConnected) {
+        // Update in Supabase
+        const { error } = await supabase
+          .from('orders')
+          .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+          .eq('id', orderId)
+          .eq('user_id', session.user.id);
+
+        if (error) {
+          console.error('Error cancelling order in Supabase:', error);
+          // Fall back to local update
+        }
+      }
+
+      // Update local state
+      const orderIndex = orders.findIndex(order => order.id === orderId);
+      if (orderIndex === -1) {
+        console.log('Cancel order failed: Order not found');
+        return false;
+      }
+
+      const updatedOrders = [...orders];
+      updatedOrders[orderIndex] = {
+        ...updatedOrders[orderIndex],
+        status: 'cancelled'
+      };
+
+      setOrders(updatedOrders);
+      
+      // Save to AsyncStorage
+      try {
+        await AsyncStorage.setItem('@onolo_orders_data_v2', JSON.stringify(updatedOrders));
+      } catch (error: any) {
+        console.error('Failed to save cancelled order to AsyncStorage:', error.message);
+      }
+      
+      console.log('Order cancelled successfully');
+      return true;
+    } catch (error: any) {
+      console.error('Cancel order error:', error.message);
+      return false;
+    }
+  };
+
+  // Get order by ID
+  const getOrderById = (orderId: string): Order | undefined => {
+    return orders.find(order => order.id === orderId);
+  };
+
+  // Context value
+  const contextValue: UserContextType = {
+    user,
+    isLoading,
+    login,
+    register,
+    logout,
+    updateUserProfile,
+    loginAsGuest,
+    isAuthenticated: !!session && !!user && !user.isGuest,
+    orders,
+    addOrder,
+    cancelOrder,
+    getOrderById,
+    loadUserOrders,
+    supabaseConnected,
+    resetNavigationState,
+  };
+
+  return (
+    <UserContext.Provider value={contextValue}>
+      {children}
+    </UserContext.Provider>
+  );
+}
+
+// Custom hook to use the context
+export function useUser() {
+  const context = useContext(UserContext);
+  if (context === undefined) {
+    throw new Error('useUser must be used within a UserProvider');
+  }
+  return context;
+}
