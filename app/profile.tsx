@@ -21,7 +21,6 @@ import { useRouter } from 'expo-router';
 import { useUser, ProfileUpdateProgress as UserProfileUpdateProgress } from '../context/UserContext';
 import Toast from 'react-native-toast-message';
 import CustomTextInput from '../components/CustomTextInput';
-import AddressValidator, { AddressValidationResult } from '../components/AddressValidator';
 import ProfileUpdateProgress from '../components/ProfileUpdateProgress';
 import { validateField, validateProfileData } from '../utils/profileValidation';
 
@@ -64,7 +63,6 @@ export default function ProfileScreen() {
     country: 'South Africa',
   });
   const [formErrors, setFormErrors] = useState<FormErrors>({});
-  const [addressValidation, setAddressValidation] = useState<AddressValidationResult | null>(null);
   const [settingsScreen, setSettingsScreen] = useState<SettingsScreenType>('main');
   
   // Ref to track if component is mounted
@@ -156,10 +154,6 @@ export default function ProfileScreen() {
     }
   }, [formErrors]);
 
-  const handleAddressValidation = useCallback((result: AddressValidationResult) => {
-    setAddressValidation(result);
-  }, []);
-
   const validateForm = useCallback((): boolean => {
     const errors: FormErrors = {};
     
@@ -173,11 +167,6 @@ export default function ProfileScreen() {
           errors[field] = fieldErrors[0]; // Take the first error for each field
         }
       });
-    }
-    
-    // Address validation
-    if (addressValidation && !addressValidation.isValid) {
-      errors.streetAddress = 'Please review your address based on the suggestions above';
     }
     
     setFormErrors(errors);
@@ -195,7 +184,7 @@ export default function ProfileScreen() {
     }
     
     return true;
-  }, [formData, addressValidation]);
+  }, [formData]);
 
   // Simplified and more robust handleSaveProfile
   const handleSaveProfile = useCallback(async () => {
@@ -315,7 +304,6 @@ export default function ProfileScreen() {
     setIsEditing(false);
     setShowProgress(false);
     setFormErrors({});
-    setAddressValidation(null);
     
     // Reset form data to original user data
     if (user) {
@@ -587,7 +575,7 @@ export default function ProfileScreen() {
                       </Text>
                     </View>
 
-                    {/* Enhanced Address Section */}
+                    {/* Enhanced Address Section - Remove AddressValidator */}
                     <View style={styles.addressSection}>
                       <Text style={styles.addressSectionTitle}>📍 Delivery Address</Text>
                       
@@ -601,13 +589,6 @@ export default function ProfileScreen() {
                           editable={!isSaving}
                           autoCapitalize="words"
                           error={formErrors.streetAddress}
-                        />
-                        
-                        {/* Address Validation Component */}
-                        <AddressValidator
-                          address={combineAddress(formData)}
-                          onValidationComplete={handleAddressValidation}
-                          enabled={formData.streetAddress.length > 5 && formData.city.length > 1}
                         />
                       </View>
 

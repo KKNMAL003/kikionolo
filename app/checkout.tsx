@@ -13,7 +13,6 @@ import Toast from 'react-native-toast-message';
 import CustomTextInput from '../components/CustomTextInput';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import DeliveryScheduler from '../components/DeliveryScheduler';
-import { WebView } from 'react-native-webview';
 import { sendOrderConfirmationEmail } from '../utils/email';
 
 type PaymentMethod = 'cash_on_delivery' | 'card' | 'payfast' | 'paypal' | 'eft';
@@ -24,7 +23,6 @@ export default function CheckoutScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash_on_delivery');
-  const [showPayPalWebView, setShowPayPalWebView] = useState(false);
   
   // Delivery scheduling state with tomorrow as minimum
   const tomorrow = new Date();
@@ -103,22 +101,6 @@ export default function CheckoutScreen() {
     return formData.name.trim() !== '' && 
            formData.phone.trim() !== '' && 
            formData.address.trim() !== '';
-  };
-
-  const handlePayPalSuccess = async () => {
-    setShowPayPalWebView(false);
-    await completeOrder('paypal');
-  };
-
-  const handlePayPalCancel = () => {
-    setShowPayPalWebView(false);
-    setLoading(false);
-    Toast.show({
-      type: 'info',
-      text1: 'Payment Cancelled',
-      text2: 'PayPal payment was cancelled.',
-      position: 'bottom',
-    });
   };
 
   const formatDeliverySchedule = () => {
@@ -283,6 +265,98 @@ export default function CheckoutScreen() {
     }
   };
 
+  const handlePayPalPayment = async () => {
+    try {
+      setLoading(true);
+      
+      if (Platform.OS === 'web') {
+        // For web, open PayPal in a new window
+        const paypalUrl = `https://www.sandbox.paypal.com/cgi-bin/webscr?cmd=_xclick&business=sb-o47kbq31063649@business.example.com&item_name=Onolo Gas Order&amount=${(totalPrice + 50).toFixed(2)}&currency_code=USD&return=http://localhost:8081&cancel_return=http://localhost:8081`;
+        
+        Alert.alert(
+          'PayPal Payment',
+          'You will be redirected to PayPal to complete your payment. After payment, please return to complete your order.',
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel',
+              onPress: () => setLoading(false)
+            },
+            {
+              text: 'Continue to PayPal',
+              onPress: async () => {
+                try {
+                  await Linking.openURL(paypalUrl);
+                  // Simulate successful payment for demo
+                  setTimeout(() => {
+                    Alert.alert(
+                      'Payment Status',
+                      'Did you complete the PayPal payment successfully?',
+                      [
+                        {
+                          text: 'No, Cancel',
+                          style: 'cancel',
+                          onPress: () => setLoading(false)
+                        },
+                        {
+                          text: 'Yes, Complete Order',
+                          onPress: () => completeOrder('paypal')
+                        }
+                      ]
+                    );
+                  }, 2000);
+                } catch (error) {
+                  console.error('Failed to open PayPal URL:', error);
+                  Toast.show({
+                    type: 'error',
+                    text1: 'Error',
+                    text2: 'Could not open PayPal. Please try another payment method.',
+                    position: 'bottom',
+                  });
+                  setLoading(false);
+                }
+              }
+            }
+          ]
+        );
+      } else {
+        // For mobile, show a simplified PayPal simulation
+        Alert.alert(
+          'PayPal Payment (Demo)',
+          `Amount: R ${(totalPrice + 50).toFixed(2)}\n\nThis is a demo PayPal payment. In a real app, this would integrate with PayPal SDK.`,
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel',
+              onPress: () => setLoading(false)
+            },
+            {
+              text: 'Simulate Payment',
+              onPress: () => {
+                Toast.show({
+                  type: 'success',
+                  text1: 'Payment Simulated',
+                  text2: 'PayPal payment simulation successful.',
+                  position: 'bottom',
+                });
+                completeOrder('paypal');
+              }
+            }
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('PayPal payment error:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Payment Error',
+        text2: 'PayPal payment failed. Please try another method.',
+        position: 'bottom',
+      });
+      setLoading(false);
+    }
+  };
+
   const handlePlaceOrder = async () => {
     // Dismiss keyboard
     Keyboard.dismiss();
@@ -307,9 +381,7 @@ export default function CheckoutScreen() {
     try {
       // Process based on payment method
       if (paymentMethod === 'paypal') {
-        // Show PayPal WebView
-        setShowPayPalWebView(true);
-        setLoading(false); // Reset loading since we're showing webview
+        await handlePayPalPayment();
         return;
       }
       
@@ -363,245 +435,6 @@ export default function CheckoutScreen() {
       setLoading(false);
     }
   };
-
-  // Enhanced PayPal WebView with proper Smart Buttons integration
-  const paypalHTML = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>PayPal Payment</title>
-      <style>
-        body { 
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
-          margin: 0; 
-          padding: 20px; 
-          background-color: #f5f5f5; 
-          color: #333;
-        }
-        .container { 
-          max-width: 400px; 
-          margin: 0 auto; 
-          background: white; 
-          padding: 30px 20px; 
-          border-radius: 12px; 
-          box-shadow: 0 4px 20px rgba(0,0,0,0.1); 
-        }
-        .header {
-          text-align: center;
-          margin-bottom: 30px;
-        }
-        .logo {
-          color: #0070ba;
-          font-size: 28px;
-          font-weight: bold;
-          margin-bottom: 10px;
-        }
-        .amount {
-          font-size: 32px;
-          font-weight: bold;
-          color: #333;
-          margin: 20px 0;
-          text-align: center;
-        }
-        .order-details {
-          background-color: #f8f9fa;
-          border-radius: 8px;
-          padding: 15px;
-          margin: 20px 0;
-        }
-        .order-item {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 8px;
-        }
-        .total-row {
-          border-top: 1px solid #ddd;
-          padding-top: 10px;
-          margin-top: 10px;
-          font-weight: bold;
-        }
-        #paypal-button-container {
-          margin: 30px 0 20px 0;
-        }
-        .cancel-button {
-          background-color: #6c757d;
-          color: white;
-          border: none;
-          padding: 12px 24px;
-          border-radius: 6px;
-          width: 100%;
-          font-size: 16px;
-          cursor: pointer;
-          margin-top: 15px;
-        }
-        .cancel-button:hover {
-          background-color: #5a6268;
-        }
-        .loading {
-          text-align: center;
-          color: #666;
-          margin: 20px 0;
-        }
-        .api-info {
-          font-size: 11px;
-          color: #999;
-          text-align: center;
-          margin-top: 20px;
-          padding: 10px;
-          background-color: #f8f9fa;
-          border-radius: 4px;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <div class="logo">PayPal</div>
-          <div>Secure Payment</div>
-        </div>
-        
-        <div class="amount">R ${(totalPrice + 50).toFixed(2)}</div>
-        
-        <div class="order-details">
-          <div class="order-item">
-            <span>Subtotal:</span>
-            <span>R ${totalPrice.toFixed(2)}</span>
-          </div>
-          <div class="order-item">
-            <span>Delivery Fee:</span>
-            <span>R 50.00</span>
-          </div>
-          <div class="order-item total-row">
-            <span>Total:</span>
-            <span>R ${(totalPrice + 50).toFixed(2)}</span>
-          </div>
-        </div>
-        
-        <div id="paypal-button-container"></div>
-        <div id="loading" class="loading">Loading PayPal...</div>
-        
-        <button class="cancel-button" onclick="cancelPayment()">
-          Cancel Payment
-        </button>
-        
-        <div class="api-info">
-          Sandbox Mode - Using provided credentials<br>
-          Client ID: AQXiJ3htdCqiXbnleDxdkHIEqXlNYrGYW-gTWj-OObM4cjZzzaxRXynW2rXHJuNsiH6Z0oftxGs1ziZK
-        </div>
-      </div>
-
-      <script src="https://www.paypal.com/sdk/js?client-id=AQXiJ3htdCqiXbnleDxdkHIEqXlNYrGYW-gTWj-OObM4cjZzzaxRXynW2rXHJuNsiH6Z0oftxGs1ziZK&currency=USD&intent=capture"></script>
-      <script>
-        function cancelPayment() {
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'CANCEL'
-          }));
-        }
-
-        // Initialize PayPal Smart Buttons
-        paypal.Buttons({
-          style: {
-            shape: 'rect',
-            color: 'blue',
-            layout: 'vertical',
-            label: 'paypal'
-          },
-          
-          createOrder: function(data, actions) {
-            return actions.order.create({
-              purchase_units: [{
-                amount: {
-                  value: '${((totalPrice + 50) / 18).toFixed(2)}' // Convert ZAR to USD approximately
-                },
-                description: 'Onolo Gas Delivery Order'
-              }]
-            });
-          },
-          
-          onApprove: function(data, actions) {
-            document.getElementById('loading').textContent = 'Processing payment...';
-            
-            return actions.order.capture().then(function(details) {
-              console.log('Payment completed:', details);
-              
-              // Notify React Native of successful payment
-              window.ReactNativeWebView.postMessage(JSON.stringify({
-                type: 'SUCCESS',
-                orderID: data.orderID,
-                payerID: data.payerID,
-                details: details
-              }));
-            });
-          },
-          
-          onCancel: function(data) {
-            console.log('Payment cancelled:', data);
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'CANCEL'
-            }));
-          },
-          
-          onError: function(err) {
-            console.error('PayPal error:', err);
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'ERROR',
-              error: err.toString()
-            }));
-          }
-          
-        }).render('#paypal-button-container').then(function() {
-          document.getElementById('loading').style.display = 'none';
-        });
-      </script>
-    </body>
-    </html>
-  `;
-
-  const handleWebViewMessage = (event) => {
-    const { data } = event.nativeEvent;
-    
-    try {
-      const parsedData = JSON.parse(data);
-      
-      if (parsedData.type === 'SUCCESS') {
-        console.log('PayPal payment successful:', parsedData);
-        handlePayPalSuccess();
-      } else if (parsedData.type === 'CANCEL') {
-        console.log('PayPal payment cancelled');
-        handlePayPalCancel();
-      } else if (parsedData.type === 'ERROR') {
-        console.error('PayPal payment error:', parsedData.error);
-        setShowPayPalWebView(false);
-        setLoading(false);
-        Toast.show({
-          type: 'error',
-          text1: 'Payment Error',
-          text2: 'An error occurred during payment. Please try again.',
-          position: 'bottom',
-        });
-      }
-    } catch (e) {
-      console.error('Error parsing WebView message:', e);
-    }
-  };
-
-  if (showPayPalWebView) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Header showBackButton />
-        <WebView
-          source={{ html: paypalHTML }}
-          onMessage={handleWebViewMessage}
-          style={styles.webview}
-          javaScriptEnabled={true}
-          domStorageEnabled={true}
-          startInLoadingState={true}
-          mixedContentMode="compatibility"
-        />
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -789,7 +622,7 @@ export default function CheckoutScreen() {
               </View>
               <View style={styles.paymentOptionContent}>
                 <Text style={styles.paymentOptionTitle}>PayPal</Text>
-                <Text style={styles.paymentOptionDescription}>Pay now with PayPal secure payment</Text>
+                <Text style={styles.paymentOptionDescription}>Pay securely with PayPal (Demo Mode)</Text>
               </View>
               {paymentMethod === 'paypal' && (
                 <Ionicons name="checkmark-circle" size={24} color={COLORS.primary} />
@@ -949,8 +782,5 @@ const styles = StyleSheet.create({
   },
   placeOrderButton: {
     marginBottom: 40,
-  },
-  webview: {
-    flex: 1,
   },
 });
