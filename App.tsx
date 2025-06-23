@@ -10,6 +10,12 @@ import * as SplashScreen from 'expo-splash-screen';
 import { View } from 'react-native';
 import Toast from 'react-native-toast-message';
 
+// Force all toast messages to appear at the top unless explicitly overridden
+const originalToastShow = Toast.show;
+Toast.show = (options: any) => {
+  originalToastShow({ ...options, position: 'top', topOffset: 60 });
+};
+
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
@@ -42,7 +48,7 @@ export default function App() {
           <View style={{ flex: 1, backgroundColor: COLORS.background }} onLayout={onLayoutRootView}>
             <ExpoRoot context={ctx} />
           </View>
-          <Toast />
+          <Toast position="top" topOffset={60} />
         </CartProvider>
       </UserProvider>
     </SafeAreaProvider>

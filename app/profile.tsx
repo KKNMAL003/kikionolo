@@ -19,6 +19,8 @@ import { Ionicons } from '@expo/vector-icons';
 import Button from '../components/Button';
 import { useRouter } from 'expo-router';
 import { useUser, ProfileUpdateProgress as UserProfileUpdateProgress } from '../context/UserContext';
+import { NotificationsSettings } from '../components/settings/NotificationsSettings';
+import { PrivacySecuritySettings } from '../components/settings/PrivacySecuritySettings';
 import Toast from 'react-native-toast-message';
 import CustomTextInput from '../components/CustomTextInput';
 import AddressValidator, { AddressValidationResult } from '../components/AddressValidator';
@@ -729,6 +731,67 @@ export default function ProfileScreen() {
         );
 
       case 'settings':
+        return renderSettingsScreen();
+
+      default:
+        return null;
+    }
+  };
+
+  // Count pending orders for badge
+  const pendingOrdersCount = orders?.filter(order => order.status === 'pending').length || 0;
+
+  // Handle settings updates
+  const handleUpdateSettings = (updates: any) => {
+    // TODO: Implement actual update logic with your backend
+    console.log('Updating settings:', updates);
+    // This would typically call an API to update the user's settings
+  };
+
+  // Handle change password
+  const handleChangePassword = () => {
+    // TODO: Navigate to change password screen
+    Alert.alert(
+      'Change Password',
+      'Navigate to change password screen',
+      [{ text: 'OK' }]
+    );
+  };
+
+  // Handle two-factor authentication setup
+  const handleSetUpTwoFactor = () => {
+    // TODO: Navigate to two-factor setup screen
+    Alert.alert(
+      'Two-Factor Authentication',
+      'Navigate to two-factor authentication setup',
+      [{ text: 'OK' }]
+    );
+  };
+
+  // Render the appropriate settings screen
+  const renderSettingsScreen = () => {
+    switch (settingsScreen) {
+      case 'notifications':
+        return (
+          <NotificationsSettings
+            notificationSettings={user?.notificationSettings}
+            notificationPreferences={user?.notificationPreferences}
+            onBack={() => setSettingsScreen('main')}
+            onUpdateSettings={handleUpdateSettings}
+          />
+        );
+      case 'privacy':
+        return (
+          <PrivacySecuritySettings
+            securitySettings={user?.securitySettings}
+            onBack={() => setSettingsScreen('main')}
+            onUpdateSettings={handleUpdateSettings}
+            onChangePassword={handleChangePassword}
+            onSetUpTwoFactor={handleSetUpTwoFactor}
+          />
+        );
+      case 'main':
+      default:
         return (
           <ScrollView 
             style={styles.scrollView}
@@ -785,14 +848,8 @@ export default function ProfileScreen() {
             </View>
           </ScrollView>
         );
-
-      default:
-        return null;
     }
   };
-
-  // Count pending orders for badge
-  const pendingOrdersCount = orders?.filter(order => order.status === 'pending').length || 0;
 
   return (
     <SafeAreaView style={styles.container}>

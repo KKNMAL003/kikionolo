@@ -4,14 +4,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
+type TimeSlot = 'morning' | 'afternoon' | 'evening';
+
 interface DeliverySchedulerProps {
   selectedDate: Date;
-  selectedTimeSlot: string;
+  selectedTimeSlot: TimeSlot;
   onDateChange: (date: Date) => void;
-  onTimeSlotChange: (timeSlot: string) => void;
+  onTimeSlotChange: (timeSlot: TimeSlot) => void;
+  minDate?: Date;
 }
 
-const TIME_SLOTS = [
+const TIME_SLOTS: { id: string; label: string; value: TimeSlot }[] = [
   { id: 'morning', label: 'Morning (8:00 AM - 12:00 PM)', value: 'morning' },
   { id: 'afternoon', label: 'Afternoon (12:00 PM - 5:00 PM)', value: 'afternoon' },
   { id: 'evening', label: 'Evening (5:00 PM - 8:00 PM)', value: 'evening' },
@@ -22,6 +25,7 @@ export default function DeliveryScheduler({
   selectedTimeSlot,
   onDateChange,
   onTimeSlotChange,
+  minDate,
 }: DeliverySchedulerProps) {
   const [showDatePicker, setShowDatePicker] = useState(false);
 

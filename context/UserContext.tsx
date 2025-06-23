@@ -67,8 +67,10 @@ interface UserContextType {
 // Create context with undefined default value
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
+
+
 // Timeout wrapper for promises with AbortController support
-const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 8000, operationName: string = 'Operation'): Promise<T> => {
+const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number = 8000, operationName: string = 'Operation'): Promise<T> => {
   const controller = new AbortController();
   
   const timeoutPromise = new Promise<never>((_, reject) => {
@@ -267,7 +269,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         const formattedOrders: Order[] = ordersData.map(order => ({
           id: order.id,
           date: order.created_at,
-          items: order.order_items.map(item => ({
+          items: order.order_items.map((item: any) => ({
             productId: item.product_id,
             productName: item.product_name,
             quantity: item.quantity,

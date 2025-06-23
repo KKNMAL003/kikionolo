@@ -8,9 +8,10 @@ import { useUser } from '../context/UserContext';
 
 interface HeaderProps {
   showBackButton?: boolean;
+  title?: string;
 }
 
-export default function Header({ showBackButton = false }: HeaderProps) {
+export default function Header({ showBackButton = false, title }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, orders } = useUser();
@@ -98,7 +99,7 @@ export default function Header({ showBackButton = false }: HeaderProps) {
             </View>
           </TouchableOpacity>
         )}
-        <Text style={styles.companyName}>{COMPANY.name}</Text>
+        <Text style={styles.companyName}>{title || COMPANY.name}</Text>
       </View>
 
       <View style={styles.rightSection}>
@@ -193,11 +194,10 @@ const styles = StyleSheet.create({
     right: -5,
     backgroundColor: COLORS.primary,
     borderRadius: 10,
-    minWidth: 20,
+    width: 20,
     height: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 4,
   },
   ordersBadgeText: {
     color: COLORS.text.white,

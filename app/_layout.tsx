@@ -4,6 +4,7 @@ import { CartProvider } from '../context/CartContext';
 import { UserProvider } from '../context/UserContext';
 import { COLORS } from '../constants/colors';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useEffect } from 'react';
 import { useRouter, useSegments } from 'expo-router';
 import { useUser } from '../context/UserContext'
@@ -57,9 +58,10 @@ export default function RootLayout() {
   useFrameworkReady();
   
   return (
-    <SafeAreaProvider>
-      <UserProvider>
-        <CartProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <UserProvider>
+          <CartProvider>
           <StatusBar style="light" />
           <AuthGuard>
             <Stack
@@ -129,8 +131,9 @@ export default function RootLayout() {
               />
             </Stack>
           </AuthGuard>
-        </CartProvider>
-      </UserProvider>
-    </SafeAreaProvider>
+          </CartProvider>
+        </UserProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
