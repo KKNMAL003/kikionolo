@@ -10,7 +10,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
-  TouchableWithoutFeedback
+  TouchableWithoutFeedback,
+  Modal,
+  TextInput,
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../constants/colors';
@@ -23,9 +26,10 @@ import { NotificationsSettings } from '../components/settings/NotificationsSetti
 import { PrivacySecuritySettings } from '../components/settings/PrivacySecuritySettings';
 import Toast from 'react-native-toast-message';
 import CustomTextInput from '../components/CustomTextInput';
-import AddressValidator, { AddressValidationResult } from '../components/AddressValidator';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 import ProfileUpdateProgress from '../components/ProfileUpdateProgress';
 import { validateField, validateProfileData } from '../utils/profileValidation';
+import { supabase } from '../lib/supabase';
 
 type TabType = 'orders' | 'profile' | 'settings';
 type SettingsScreenType = 'main' | 'notifications' | 'privacy' | 'payment' | 'help';
@@ -48,7 +52,19 @@ interface FormData {
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, logout, updateUserProfile, isAuthenticated, orders, cancelOrder } = useUser();
+  const {
+    user,
+    logout,
+    updateUserProfile,
+    isAuthenticated,
+    orders,
+    cancelOrder,
+    notificationSettings,
+    notificationPreferences,
+    updateNotificationPreferences,
+    registerForPushNotifications,
+    fetchNotificationPreferences,
+  } = useUser();
   const [activeTab, setActiveTab] = useState<TabType>('orders');
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -66,8 +82,12 @@ export default function ProfileScreen() {
     country: 'South Africa',
   });
   const [formErrors, setFormErrors] = useState<FormErrors>({});
-  const [addressValidation, setAddressValidation] = useState<AddressValidationResult | null>(null);
   const [settingsScreen, setSettingsScreen] = useState<SettingsScreenType>('main');
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
   
   // Ref to track if component is mounted
   const isMountedRef = useRef(true);
@@ -158,10 +178,6 @@ export default function ProfileScreen() {
     }
   }, [formErrors]);
 
-  const handleAddressValidation = useCallback((result: AddressValidationResult) => {
-    setAddressValidation(result);
-  }, []);
-
   const validateForm = useCallback((): boolean => {
     const errors: FormErrors = {};
     
@@ -175,11 +191,6 @@ export default function ProfileScreen() {
           errors[field] = fieldErrors[0]; // Take the first error for each field
         }
       });
-    }
-    
-    // Address validation
-    if (addressValidation && !addressValidation.isValid) {
-      errors.streetAddress = 'Please review your address based on the suggestions above';
     }
     
     setFormErrors(errors);
@@ -197,7 +208,7 @@ export default function ProfileScreen() {
     }
     
     return true;
-  }, [formData, addressValidation]);
+  }, [formData]);
 
   // Simplified and more robust handleSaveProfile
   const handleSaveProfile = useCallback(async () => {
@@ -317,7 +328,6 @@ export default function ProfileScreen() {
     setIsEditing(false);
     setShowProgress(false);
     setFormErrors({});
-    setAddressValidation(null);
     
     // Reset form data to original user data
     if (user) {
@@ -590,96 +600,98 @@ export default function ProfileScreen() {
                     </View>
 
                     {/* Enhanced Address Section */}
-                    <View style={styles.addressSection}>
-                      <Text style={styles.addressSectionTitle}>📍 Delivery Address</Text>
-                      
-                      <View style={styles.inputGroup}>
-                        <CustomTextInput
-                          label="Street Address *"
-                          value={formData.streetAddress}
-                          onChangeText={(text) => handleChange('streetAddress', text)}
-                          placeholder="e.g., 123 Main Street"
-                          returnKeyType="next"
-                          editable={!isSaving}
-                          autoCapitalize="words"
-                          error={formErrors.streetAddress}
-                        />
-                        
-                        {/* Address Validation Component */}
-                        <AddressValidator
-                          address={combineAddress(formData)}
-                          onValidationComplete={handleAddressValidation}
-                          enabled={formData.streetAddress.length > 5 && formData.city.length > 1}
-                        />
-                      </View>
-
-                      <View style={styles.inputGroup}>
-                        <CustomTextInput
-                          label="Apartment, Suite, Unit (Optional)"
-                          value={formData.apartment}
-                          onChangeText={(text) => handleChange('apartment', text)}
-                          placeholder="e.g., Apt 4B, Suite 100"
-                          returnKeyType="next"
-                          editable={!isSaving}
-                          autoCapitalize="words"
-                        />
-                      </View>
-
-                      <View style={styles.inputRow}>
-                        <View style={styles.inputHalf}>
-                          <CustomTextInput
-                            label="City *"
-                            value={formData.city}
-                            onChangeText={(text) => handleChange('city', text)}
-                            placeholder="e.g., Johannesburg"
-                            returnKeyType="next"
-                            editable={!isSaving}
-                            autoCapitalize="words"
-                            error={formErrors.city}
-                          />
-                        </View>
-                        <View style={styles.inputHalf}>
-                          <CustomTextInput
-                            label="State/Province"
-                            value={formData.state}
-                            onChangeText={(text) => handleChange('state', text)}
-                            placeholder="e.g., Gauteng"
-                            returnKeyType="next"
-                            editable={!isSaving}
-                            autoCapitalize="words"
-                          />
-                        </View>
-                      </View>
-
-                      <View style={styles.inputRow}>
-                        <View style={styles.inputHalf}>
-                          <CustomTextInput
-                            label="ZIP/Postal Code"
-                            value={formData.postalCode}
-                            onChangeText={(text) => handleChange('postalCode', text)}
-                            placeholder="e.g., 2000"
-                            returnKeyType="next"
-                            editable={!isSaving}
-                            keyboardType="numeric"
-                          />
-                        </View>
-                        <View style={styles.inputHalf}>
-                          <CustomTextInput
-                            label="Country"
-                            value={formData.country}
-                            onChangeText={(text) => handleChange('country', text)}
-                            placeholder="South Africa"
-                            returnKeyType="done"
-                            editable={!isSaving}
-                            autoCapitalize="words"
-                          />
-                        </View>
-                      </View>
-
-                      <Text style={styles.helperText}>
-                        🚚 This will be your primary delivery address for orders
-                      </Text>
+                    <View style={styles.inputGroup}>
+                      <AddressAutocomplete
+                        label="Delivery Address *"
+                        value={formData.streetAddress}
+                        onAddressSelect={(feature) => {
+                          if (typeof feature === 'string') {
+                            setFormData(prev => ({ ...prev, streetAddress: feature }));
+                            return;
+                          }
+                          // Parse Mapbox feature context for structured address fields
+                          const context = feature.context || [];
+                          const getContext = (type) => context.find((c) => c.id.startsWith(type + '.'))?.text || '';
+                          setFormData(prev => ({
+                            ...prev,
+                            streetAddress: feature.place_name || '',
+                            city: getContext('place') || getContext('locality') || '',
+                            state: getContext('region') || '',
+                            postalCode: getContext('postcode') || '',
+                            country: getContext('country') || '',
+                          }));
+                        }}
+                        placeholder="Start typing your address..."
+                        style={{ zIndex: 10 }}
+                      />
                     </View>
+                    
+                    <View style={styles.inputGroup}>
+                      <CustomTextInput
+                        label="Apartment, Suite, Unit (Optional)"
+                        value={formData.apartment}
+                        onChangeText={(text) => handleChange('apartment', text)}
+                        placeholder="e.g., Apt 4B, Suite 100"
+                        returnKeyType="next"
+                        editable={!isSaving}
+                        autoCapitalize="words"
+                      />
+                    </View>
+
+                    <View style={styles.inputRow}>
+                      <View style={styles.inputHalf}>
+                        <CustomTextInput
+                          label="City *"
+                          value={formData.city}
+                          onChangeText={(text) => handleChange('city', text)}
+                          placeholder="e.g., Johannesburg"
+                          returnKeyType="next"
+                          editable={!isSaving}
+                          autoCapitalize="words"
+                          error={formErrors.city}
+                        />
+                      </View>
+                      <View style={styles.inputHalf}>
+                        <CustomTextInput
+                          label="State/Province"
+                          value={formData.state}
+                          onChangeText={(text) => handleChange('state', text)}
+                          placeholder="e.g., Gauteng"
+                          returnKeyType="next"
+                          editable={!isSaving}
+                          autoCapitalize="words"
+                        />
+                      </View>
+                    </View>
+
+                    <View style={styles.inputRow}>
+                      <View style={styles.inputHalf}>
+                        <CustomTextInput
+                          label="ZIP/Postal Code"
+                          value={formData.postalCode}
+                          onChangeText={(text) => handleChange('postalCode', text)}
+                          placeholder="e.g., 2000"
+                          returnKeyType="next"
+                          editable={!isSaving}
+                          keyboardType="numeric"
+                        />
+                      </View>
+                      <View style={styles.inputHalf}>
+                        <CustomTextInput
+                          label="Country"
+                          value={formData.country}
+                          onChangeText={(text) => handleChange('country', text)}
+                          placeholder="South Africa"
+                          returnKeyType="done"
+                          editable={!isSaving}
+                          autoCapitalize="words"
+                        />
+                      </View>
+                    </View>
+
+                    <Text style={styles.helperText}>
+                      🚚 This will be your primary delivery address for orders
+                    </Text>
                     
                     <View style={styles.buttonRow}>
                       <Button 
@@ -742,20 +754,72 @@ export default function ProfileScreen() {
   const pendingOrdersCount = orders?.filter(order => order.status === 'pending').length || 0;
 
   // Handle settings updates
-  const handleUpdateSettings = (updates: any) => {
-    // TODO: Implement actual update logic with your backend
-    console.log('Updating settings:', updates);
-    // This would typically call an API to update the user's settings
+  const handleUpdateSettings = async (updates: any) => {
+    // Split settings
+    const { notificationSettings: ns, notificationPreferences: np } = updates;
+    await updateNotificationPreferences(ns, np);
+    // If push notifications are enabled, register for push notifications
+    if (ns.push) {
+      await registerForPushNotifications();
+    }
   };
 
   // Handle change password
   const handleChangePassword = () => {
-    // TODO: Navigate to change password screen
-    Alert.alert(
-      'Change Password',
-      'Navigate to change password screen',
-      [{ text: 'OK' }]
-    );
+    setShowPasswordModal(true);
+  };
+
+  const handlePasswordChangeSubmit = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      Toast.show({ type: 'error', text1: 'All fields required' });
+      setChangingPassword(false);
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Toast.show({ type: 'error', text1: 'Passwords do not match' });
+      setChangingPassword(false);
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      // Re-authenticate user (Supabase requires session)
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user?.email,
+        password: currentPassword,
+      });
+      if (signInError) {
+        Toast.show({ type: 'error', text1: 'Current password incorrect' });
+        setChangingPassword(false);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        return;
+      }
+      // Update password
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        Toast.show({ type: 'error', text1: 'Error', text2: error.message });
+        setChangingPassword(false);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        return;
+      } else {
+        Toast.show({ type: 'success', text1: 'Password changed successfully' });
+        setShowPasswordModal(false);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setChangingPassword(false);
+        return;
+      }
+    } catch (e) {
+      Toast.show({ type: 'error', text1: 'Error', text2: e.message });
+      setChangingPassword(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    }
   };
 
   // Handle two-factor authentication setup
@@ -768,14 +832,21 @@ export default function ProfileScreen() {
     );
   };
 
+  // Add this at the top level of the component, after useState/useUser declarations
+  useEffect(() => {
+    if (settingsScreen === 'notifications') {
+      fetchNotificationPreferences();
+    }
+  }, [settingsScreen, fetchNotificationPreferences]);
+
   // Render the appropriate settings screen
   const renderSettingsScreen = () => {
     switch (settingsScreen) {
       case 'notifications':
         return (
           <NotificationsSettings
-            notificationSettings={user?.notificationSettings}
-            notificationPreferences={user?.notificationPreferences}
+            notificationSettings={notificationSettings}
+            notificationPreferences={notificationPreferences}
             onBack={() => setSettingsScreen('main')}
             onUpdateSettings={handleUpdateSettings}
           />
@@ -954,6 +1025,51 @@ export default function ProfileScreen() {
           {renderTabContent()}
         </View>
       </View>
+
+      <Modal
+        visible={showPasswordModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowPasswordModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: '#000A', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ backgroundColor: COLORS.card, borderRadius: 12, padding: 24, width: '85%' }}>
+            <Text style={{ color: COLORS.primary, fontWeight: 'bold', fontSize: 18, marginBottom: 16 }}>Change Password</Text>
+            <TextInput
+              placeholder="Current Password"
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              secureTextEntry
+              style={{ backgroundColor: '#222', color: '#fff', borderRadius: 8, marginBottom: 12, padding: 10 }}
+            />
+            <TextInput
+              placeholder="New Password"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureTextEntry
+              style={{ backgroundColor: '#222', color: '#fff', borderRadius: 8, marginBottom: 12, padding: 10 }}
+            />
+            <TextInput
+              placeholder="Confirm New Password"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+              style={{ backgroundColor: '#222', color: '#fff', borderRadius: 8, marginBottom: 16, padding: 10 }}
+            />
+            <Button
+              title={changingPassword ? 'Changing...' : 'Change Password'}
+              onPress={handlePasswordChangeSubmit}
+              disabled={changingPassword}
+            />
+            <Button
+              title="Cancel"
+              onPress={() => setShowPasswordModal(false)}
+              style={{ marginTop: 8, backgroundColor: COLORS.error + '22' }}
+              textStyle={{ color: COLORS.error }}
+            />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

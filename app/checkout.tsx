@@ -256,6 +256,16 @@ export default function CheckoutScreen() {
     );
   }
 
+  // Add descriptions for each payment method
+  const paymentMethodDescriptions: Record<PaymentMethod, string> = {
+    cash_on_delivery: 'Pay the driver in cash when your order arrives.',
+    card_on_delivery: 'Pay with your debit or credit card using our mobile POS on delivery.',
+    card: 'Pay online with your debit or credit card.',
+    payfast: 'Pay securely online via PayFast.',
+    paypal: 'Pay securely online with your PayPal account or card.',
+    eft: 'Transfer funds directly from your bank. Proof of payment required.',
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <Header title="Checkout" />
@@ -291,12 +301,28 @@ export default function CheckoutScreen() {
                 {(['cash_on_delivery', 'card_on_delivery', 'paypal', 'eft'] as PaymentMethod[]).map(method => (
                   <TouchableOpacity
                     key={method}
-                    style={[styles.paymentButton, paymentMethod === method && styles.paymentButtonSelected]}
-                    onPress={() => setPaymentMethod(method)}>
-                    <Ionicons name={method === 'paypal' ? 'logo-paypal' : method === 'eft' ? 'newspaper-outline' : method === 'card_on_delivery' ? 'card-outline' : 'cash-outline'} size={24} color={paymentMethod === method ? COLORS.text.white : COLORS.primary} />
-                    <Text style={[styles.paymentButtonText, paymentMethod === method && styles.paymentButtonTextSelected]}>
-                      {getPaymentMethodDisplayName(method)}
-                    </Text>
+                    style={[
+                      styles.paymentCard,
+                      paymentMethod === method && styles.paymentCardSelected
+                    ]}
+                    onPress={() => setPaymentMethod(method)}
+                    activeOpacity={0.85}
+                  >
+                    <View style={styles.paymentCardIconRow}>
+                      <Ionicons
+                        name={method === 'paypal' ? 'logo-paypal' : method === 'eft' ? 'newspaper-outline' : method === 'card_on_delivery' ? 'card-outline' : 'cash-outline'}
+                        size={28}
+                        color={paymentMethod === method ? COLORS.primary : COLORS.text.gray}
+                        style={styles.paymentCardIcon}
+                      />
+                      <Text style={[
+                        styles.paymentCardTitle,
+                        paymentMethod === method && styles.paymentCardTitleSelected
+                      ]}>
+                        {getPaymentMethodDisplayName(method)}
+                      </Text>
+                    </View>
+                    <Text style={styles.paymentCardDescription}>{paymentMethodDescriptions[method]}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -318,6 +344,20 @@ export default function CheckoutScreen() {
                 <View style={styles.eftDetailsContainer}>
                   <Text style={styles.eftTitle}>Card on Delivery</Text>
                   <Text style={styles.eftText}>Please have your card ready. Our driver will have a mobile POS machine for payment upon arrival.</Text>
+                </View>
+              )}
+
+              {paymentMethod === 'paypal' && (
+                <View style={styles.eftDetailsContainer}>
+                  <Text style={styles.eftTitle}>PayPal Payment</Text>
+                  <Text style={styles.eftText}>You will be redirected to PayPal to complete your payment securely online.</Text>
+                </View>
+              )}
+
+              {paymentMethod === 'cash_on_delivery' && (
+                <View style={styles.eftDetailsContainer}>
+                  <Text style={styles.eftTitle}>Cash on Delivery</Text>
+                  <Text style={styles.eftText}>Please have the exact amount ready. Our driver will collect payment upon delivery.</Text>
                 </View>
               )}
             </View>
@@ -403,28 +443,50 @@ const styles = StyleSheet.create({
   },
   paymentOptions: {
     flexDirection: 'column',
-    gap: 12,
+    gap: 16,
   },
-  paymentButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 8,
+  paymentCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
-    backgroundColor: COLORS.card,
-    gap: 12,
+    padding: 18,
+    marginBottom: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+    marginTop: 0,
   },
-  paymentButtonSelected: {
-    backgroundColor: COLORS.primary,
+  paymentCardSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary + '18',
+    shadowOpacity: 0.18,
+    elevation: 4,
   },
-  paymentButtonText: {
-    marginLeft: 8,
-    color: COLORS.primary,
-    fontWeight: '600',
+  paymentCardIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
   },
-  paymentButtonTextSelected: {
+  paymentCardIcon: {
+    marginRight: 12,
+  },
+  paymentCardTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
     color: COLORS.text.white,
+  },
+  paymentCardTitleSelected: {
+    color: COLORS.primary,
+  },
+  paymentCardDescription: {
+    color: COLORS.text.gray,
+    fontSize: 13,
+    marginLeft: 40,
+    marginTop: 2,
+    marginBottom: 0,
   },
   centeredMessage: {
     flex: 1,

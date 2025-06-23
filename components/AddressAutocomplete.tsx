@@ -1,23 +1,27 @@
-import React from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  StyleSheet, 
-  StyleProp, 
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  StyleProp,
   ViewStyle,
+  FlatList,
+  TouchableOpacity,
   Keyboard,
-  Platform
+  Platform,
 } from 'react-native';
 import { COLORS } from '../constants/colors';
 
 interface AddressAutocompleteProps {
   label?: string;
   value: string;
-  onAddressSelect: (address: string) => void;
+  onAddressSelect: (address: string | any) => void;
   placeholder?: string;
   style?: StyleProp<ViewStyle>;
 }
+
+const MAPBOX_TOKEN = 'pk.eyJ1Ijoia2tubWFsMDAzIiwiYSI6ImNtOWI2NGF1MjBjdWwya3M1Mmxua3hqaXgifQ._PMbFD1tTIq4zmjGCwnAHg';
 
 export default function AddressAutocomplete({
   label,
@@ -26,33 +30,84 @@ export default function AddressAutocomplete({
   placeholder = 'Enter your address...',
   style,
 }: AddressAutocompleteProps) {
-  const handleSubmitEditing = () => {
+  const [query, setQuery] = useState(value);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    setQuery(value);
+  }, [value]);
+
+  useEffect(() => {
+    if (query.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+    const fetchSuggestions = async () => {
+      try {
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&autocomplete=true&country=ZA&limit=5`;
+        const res = await fetch(url);
+        const data = await res.json();
+        setSuggestions(data.features || []);
+      } catch (e) {
+        setSuggestions([]);
+      }
+    };
+    const timeout = setTimeout(fetchSuggestions, 300); // debounce
+    return () => clearTimeout(timeout);
+  }, [query]);
+
+  const handleSelect = (feature: any) => {
+    setQuery(feature.place_name);
+    setShowSuggestions(false);
+    setSuggestions([]);
+    onAddressSelect(feature);
     Keyboard.dismiss();
   };
 
+  const handleChangeText = (text: string) => {
+    setQuery(text);
+    setShowSuggestions(true);
+    onAddressSelect(text); // keep parent in sync
+  };
+
   const handleBlur = () => {
-    // Keyboard will dismiss naturally on blur
+    setTimeout(() => setShowSuggestions(false), 200); // allow tap
   };
 
   return (
     <View style={[styles.container, style]}>
       {label && <Text style={styles.label}>{label}</Text>}
       <TextInput
+        ref={inputRef}
         style={styles.input}
-        value={value}
-        onChangeText={onAddressSelect}
+        value={query}
+        onChangeText={handleChangeText}
         placeholder={placeholder}
         placeholderTextColor="#9A9A9A"
-        multiline
-        numberOfLines={3}
-        textAlignVertical="top"
         returnKeyType="done"
-        onSubmitEditing={handleSubmitEditing}
         onBlur={handleBlur}
+        onFocus={() => setShowSuggestions(true)}
         blurOnSubmit={true}
         enablesReturnKeyAutomatically={true}
         clearButtonMode={Platform.OS === 'ios' ? 'while-editing' : 'never'}
+        autoCorrect={false}
+        autoCapitalize="none"
       />
+      {showSuggestions && suggestions.length > 0 && (
+        <View style={styles.suggestionsContainer}>
+          {suggestions.map(item => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.suggestionItem}
+              onPress={() => handleSelect(item)}
+            >
+              <Text style={styles.suggestionText}>{item.place_name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -60,6 +115,7 @@ export default function AddressAutocomplete({
 const styles = StyleSheet.create({
   container: {
     marginBottom: 16,
+    zIndex: 10,
   },
   label: {
     color: '#BBBBBB',
@@ -75,6 +131,32 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: '#333333',
-    minHeight: 80,
+    minHeight: 48,
+  },
+  suggestionsContainer: {
+    position: 'absolute',
+    top: 60,
+    left: 0,
+    right: 0,
+    backgroundColor: '#222',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#333',
+    zIndex: 100,
+    maxHeight: 180,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  suggestionItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  suggestionText: {
+    color: '#fff',
+    fontSize: 15,
   },
 });

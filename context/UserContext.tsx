@@ -44,6 +44,18 @@ export interface ProfileUpdateProgress {
   error?: string;
 }
 
+// Notification Preferences Types
+export type NotificationSettings = {
+  email?: boolean;
+  sms?: boolean;
+  push?: boolean;
+};
+export type NotificationPreferences = {
+  orderUpdates?: boolean;
+  promotions?: boolean;
+  newsletter?: boolean;
+};
+
 // Context interface
 interface UserContextType {
   user: User | null;
@@ -62,12 +74,16 @@ interface UserContextType {
   supabaseConnected: boolean;
   resetNavigationState: () => void;
   isProcessingOrder: boolean;
+  notificationSettings: NotificationSettings;
+  notificationPreferences: NotificationPreferences;
+  expoPushToken: string | null;
+  fetchNotificationPreferences: () => Promise<void>;
+  updateNotificationPreferences: (settings: NotificationSettings, preferences: NotificationPreferences) => Promise<void>;
+  registerForPushNotifications: () => Promise<string | null>;
 }
 
 // Create context with undefined default value
 const UserContext = createContext<UserContextType | undefined>(undefined);
-
-
 
 // Timeout wrapper for promises with AbortController support
 const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number = 8000, operationName: string = 'Operation'): Promise<T> => {
@@ -93,6 +109,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [supabaseConnected, setSupabaseConnected] = useState(false);
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({ email: true, sms: true, push: true });
+  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>({ orderUpdates: true, promotions: true, newsletter: true });
+  const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
 
   // Navigation state reset function
   const resetNavigationState = useCallback(() => {
@@ -1014,6 +1033,72 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     return orders.find(order => order.id === orderId);
   };
 
+  // Fetch notification preferences from Supabase
+  const fetchNotificationPreferences = useCallback(async () => {
+    if (!session?.user || !supabaseConnected) return;
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('notification_settings, notification_preferences, expo_push_token')
+      .eq('id', session.user.id)
+      .single();
+    if (!error && data) {
+      setNotificationSettings(data.notification_settings || { email: true, sms: true, push: true });
+      setNotificationPreferences(data.notification_preferences || { orderUpdates: true, promotions: true, newsletter: true });
+      setExpoPushToken(data.expo_push_token || null);
+    }
+  }, [session?.user, supabaseConnected]);
+
+  // Update notification preferences in Supabase
+  const updateNotificationPreferences = useCallback(async (settings: NotificationSettings, preferences: NotificationPreferences) => {
+    if (!session?.user || !supabaseConnected) return;
+    setNotificationSettings(settings);
+    setNotificationPreferences(preferences);
+    await supabase
+      .from('profiles')
+      .update({ notification_settings: settings, notification_preferences: preferences })
+      .eq('id', session.user.id);
+  }, [session?.user, supabaseConnected]);
+
+  // Register for push notifications and save token to Supabase
+  const registerForPushNotifications = useCallback(async () => {
+    try {
+      // Dynamically import to avoid web errors
+      const Notifications = await import('expo-notifications');
+      const Device = await import('expo-device');
+      let token = null;
+      if (Device.isDevice) {
+        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        let finalStatus = existingStatus;
+        if (existingStatus !== 'granted') {
+          const { status } = await Notifications.requestPermissionsAsync();
+          finalStatus = status;
+        }
+        if (finalStatus !== 'granted') {
+          Toast.show({ type: 'error', text1: 'Permission denied', text2: 'Enable push notifications in settings.' });
+          return null;
+        }
+        token = (await Notifications.getExpoPushTokenAsync()).data;
+        setExpoPushToken(token);
+        if (session?.user && supabaseConnected) {
+          await supabase.from('profiles').update({ expo_push_token: token }).eq('id', session.user.id);
+        }
+      } else {
+        Toast.show({ type: 'info', text1: 'Physical device required', text2: 'Push notifications only work on a real device.' });
+      }
+      return token;
+    } catch (e) {
+      Toast.show({ type: 'error', text1: 'Push registration failed', text2: e.message });
+      return null;
+    }
+  }, [session?.user, supabaseConnected]);
+
+  // Fetch preferences on login
+  useEffect(() => {
+    if (session?.user && supabaseConnected) {
+      fetchNotificationPreferences();
+    }
+  }, [session?.user, supabaseConnected, fetchNotificationPreferences]);
+
   // Context value
   const contextValue: UserContextType = {
     user,
@@ -1032,6 +1117,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     supabaseConnected,
     resetNavigationState,
     isProcessingOrder,
+    notificationSettings,
+    notificationPreferences,
+    expoPushToken,
+    fetchNotificationPreferences,
+    updateNotificationPreferences,
+    registerForPushNotifications,
   };
 
   return (

@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 import { COLORS } from '../../constants/colors';
 import { styles } from './settingsStyles';
+import { useRouter } from 'expo-router';
 
 type PrivacySecuritySettingsProps = {
   securitySettings?: {
@@ -27,6 +28,8 @@ export const PrivacySecuritySettings: React.FC<PrivacySecuritySettingsProps> = (
     biometricLogin: securitySettings.biometricLogin ?? false,
     twoFactorAuth: securitySettings.twoFactorAuth ?? false,
   });
+
+  const router = useRouter();
 
   const handleToggle = (key: keyof typeof settings) => {
     const newSettings = {
@@ -70,34 +73,12 @@ export const PrivacySecuritySettings: React.FC<PrivacySecuritySettingsProps> = (
     }
   };
 
-  const handleOpenPrivacyPolicy = async () => {
-    // Replace with your actual privacy policy URL
-    const privacyPolicyUrl = 'https://example.com/privacy-policy';
-    const supported = await Linking.canOpenURL(privacyPolicyUrl);
-    
-    if (supported) {
-      await Linking.openURL(privacyPolicyUrl);
-    } else {
-      Alert.alert(
-        'Cannot Open Link',
-        'Unable to open the privacy policy. Please try again later.'
-      );
-    }
+  const handleOpenPrivacyPolicy = () => {
+    router.push('/menu/privacy-policy');
   };
 
-  const handleOpenTerms = async () => {
-    // Replace with your actual terms of service URL
-    const termsUrl = 'https://example.com/terms';
-    const supported = await Linking.canOpenURL(termsUrl);
-    
-    if (supported) {
-      await Linking.openURL(termsUrl);
-    } else {
-      Alert.alert(
-        'Cannot Open Link',
-        'Unable to open the terms of service. Please try again later.'
-      );
-    }
+  const handleOpenTerms = () => {
+    router.push('/menu/terms-&-conditions');
   };
 
   return (
