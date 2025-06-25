@@ -83,12 +83,7 @@ export default function ProfileScreen() {
   });
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [settingsScreen, setSettingsScreen] = useState<SettingsScreenType>('main');
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [changingPassword, setChangingPassword] = useState(false);
-  
+
   // Ref to track if component is mounted
   const isMountedRef = useRef(true);
 
@@ -764,80 +759,7 @@ export default function ProfileScreen() {
     }
   };
 
-  // Handle change password
-  const handleChangePassword = () => {
-    setShowPasswordModal(true);
-  };
 
-  const handlePasswordChangeSubmit = async () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      Toast.show({ type: 'error', text1: 'All fields required' });
-      setChangingPassword(false);
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      Toast.show({ type: 'error', text1: 'Passwords do not match' });
-      setChangingPassword(false);
-      return;
-    }
-    setChangingPassword(true);
-    try {
-      // Re-authenticate user (Supabase requires session)
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user?.email,
-        password: currentPassword,
-      });
-      if (signInError) {
-        Toast.show({ type: 'error', text1: 'Current password incorrect' });
-        setChangingPassword(false);
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-        return;
-      }
-      // Update password
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) {
-        Toast.show({ type: 'error', text1: 'Error', text2: error.message });
-        setChangingPassword(false);
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-        return;
-      } else {
-        Toast.show({ type: 'success', text1: 'Password changed successfully' });
-        setShowPasswordModal(false);
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-        setChangingPassword(false);
-        return;
-      }
-    } catch (e) {
-      Toast.show({ type: 'error', text1: 'Error', text2: e.message });
-      setChangingPassword(false);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-    }
-  };
-
-  // Handle two-factor authentication setup
-  const handleSetUpTwoFactor = () => {
-    // TODO: Navigate to two-factor setup screen
-    Alert.alert(
-      'Two-Factor Authentication',
-      'Navigate to two-factor authentication setup',
-      [{ text: 'OK' }]
-    );
-  };
-
-  // Add this at the top level of the component, after useState/useUser declarations
-  useEffect(() => {
-    if (settingsScreen === 'notifications') {
-      fetchNotificationPreferences();
-    }
-  }, [settingsScreen, fetchNotificationPreferences]);
 
   // Render the appropriate settings screen
   const renderSettingsScreen = () => {
@@ -857,7 +779,6 @@ export default function ProfileScreen() {
             securitySettings={user?.securitySettings}
             onBack={() => setSettingsScreen('main')}
             onUpdateSettings={handleUpdateSettings}
-            onChangePassword={handleChangePassword}
             onSetUpTwoFactor={handleSetUpTwoFactor}
           />
         );
@@ -921,6 +842,23 @@ export default function ProfileScreen() {
         );
     }
   };
+
+  // Handle two-factor authentication setup
+  const handleSetUpTwoFactor = () => {
+    // TODO: Navigate to two-factor setup screen
+    Alert.alert(
+      'Two-Factor Authentication',
+      'Navigate to two-factor authentication setup',
+      [{ text: 'OK' }]
+    );
+  };
+
+  // Add this at the top level of the component, after useState/useUser declarations
+  useEffect(() => {
+    if (settingsScreen === 'notifications') {
+      fetchNotificationPreferences();
+    }
+  }, [settingsScreen, fetchNotificationPreferences]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -1021,58 +959,14 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
         
-        <View style={styles.tabContent}>
+        {/* Main Content */}
+        <View style={styles.content}>
           {renderTabContent()}
         </View>
       </View>
-
-      <Modal
-        visible={showPasswordModal}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowPasswordModal(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: '#000A', justifyContent: 'center', alignItems: 'center' }}>
-          <View style={{ backgroundColor: COLORS.card, borderRadius: 12, padding: 24, width: '85%' }}>
-            <Text style={{ color: COLORS.primary, fontWeight: 'bold', fontSize: 18, marginBottom: 16 }}>Change Password</Text>
-            <TextInput
-              placeholder="Current Password"
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-              secureTextEntry
-              style={{ backgroundColor: '#222', color: '#fff', borderRadius: 8, marginBottom: 12, padding: 10 }}
-            />
-            <TextInput
-              placeholder="New Password"
-              value={newPassword}
-              onChangeText={setNewPassword}
-              secureTextEntry
-              style={{ backgroundColor: '#222', color: '#fff', borderRadius: 8, marginBottom: 12, padding: 10 }}
-            />
-            <TextInput
-              placeholder="Confirm New Password"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-              style={{ backgroundColor: '#222', color: '#fff', borderRadius: 8, marginBottom: 16, padding: 10 }}
-            />
-            <Button
-              title={changingPassword ? 'Changing...' : 'Change Password'}
-              onPress={handlePasswordChangeSubmit}
-              disabled={changingPassword}
-            />
-            <Button
-              title="Cancel"
-              onPress={() => setShowPasswordModal(false)}
-              style={{ marginTop: 8, backgroundColor: COLORS.error + '22' }}
-              textStyle={{ color: COLORS.error }}
-            />
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -1181,11 +1075,17 @@ const styles = StyleSheet.create({
   },
   tabBadgeText: {
     color: COLORS.text.white,
-    fontSize: 12,
-    fontWeight: 'bold',
   },
   tabContent: {
     flex: 1,
+    padding: 16,
+  },
+  errorText: {
+    color: COLORS.error,
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
+    marginBottom: 8,
   },
   // Updated styles for better scroll handling
   keyboardAvoidingView: {
@@ -1441,12 +1341,43 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: COLORS.card,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   keyboardDismissText: {
     color: COLORS.text.white,
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: COLORS.card,
+    borderRadius: 12,
+    padding: 24,
+    width: '85%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    color: COLORS.text.white,
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    color: COLORS.text.gray,
+    fontSize: 15,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  modalError: {
+    color: COLORS.error,
+    textAlign: 'center',
+    marginTop: 16,
+    fontSize: 14,
   },
 });

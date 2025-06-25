@@ -80,26 +80,41 @@ interface UserContextType {
   fetchNotificationPreferences: () => Promise<void>;
   updateNotificationPreferences: (settings: NotificationSettings, preferences: NotificationPreferences) => Promise<void>;
   registerForPushNotifications: () => Promise<string | null>;
+  passwordModalInfo: {
+    isOpen: boolean;
+    step: 'password' | 'otp';
+    isLoading: boolean;
+    error: string | null;
+  };
+  setPasswordModalInfo: React.Dispatch<React.SetStateAction<{
+    isOpen: boolean;
+    step: 'password' | 'otp';
+    isLoading: boolean;
+    error: string | null;
+  }>>;
+  openPasswordModal: () => void;
+  closePasswordModal: () => void;
+  submitNewPassword: (passwordData: { currentPassword: string; newPassword: string; confirmPassword: string }) => Promise<void>;
+  submitOtp: (otp: string) => Promise<void>;
 }
 
 // Create context with undefined default value
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-// Timeout wrapper for promises with AbortController support
+// Timeout wrapper for promises with proper typing
 const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number = 8000, operationName: string = 'Operation'): Promise<T> => {
-  const controller = new AbortController();
-  
+  // Create a promise that rejects after the timeout
   const timeoutPromise = new Promise<never>((_, reject) => {
     const timeoutId = setTimeout(() => {
-      controller.abort();
       reject(new Error(`${operationName} timed out after ${timeoutMs}ms`));
     }, timeoutMs);
     
-    // Clean up timeout if the main promise resolves
+    // Clean up the timeout if the original promise resolves/rejects
     promise.finally(() => clearTimeout(timeoutId));
   });
-
-  return Promise.race([promise, timeoutPromise]);
+  
+  // Return the first promise to resolve/reject
+  return Promise.race<T>([promise, timeoutPromise]);
 };
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
@@ -112,6 +127,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({ email: true, sms: true, push: true });
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>({ orderUpdates: true, promotions: true, newsletter: true });
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
+  const [passwordModalInfo, setPasswordModalInfo] = useState<UserContextType['passwordModalInfo']>({
+    isOpen: false,
+    step: 'password',
+    isLoading: false,
+    error: null,
+  });
 
   // Navigation state reset function
   const resetNavigationState = useCallback(() => {
@@ -248,9 +269,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   // Load user orders from Supabase
   const loadUserOrders = useCallback(async () => {
     if (!session?.user) {
-      console.log('No authenticated user, skipping order load');
+      console.log('No user session, cannot load orders from Supabase.');
+      // Attempt to load from storage as a fallback
+      await loadOrdersFromStorage();
       return;
     }
+    
+    console.log('Loading orders for user:', session.user.id);
 
     // Skip if Supabase is not connected
     if (!supabaseConnected) {
@@ -260,8 +285,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      console.log('Loading orders for user:', session.user.id);
-      
       // Fetch orders with order items
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
@@ -317,9 +340,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       // Fall back to AsyncStorage
       await loadOrdersFromStorage();
     }
-  }, [session?.user, supabaseConnected]);
+  }, [session?.user?.id, supabaseConnected]);
 
-  // Fallback: Load orders from AsyncStorage
+  // Load orders from AsyncStorage
   const loadOrdersFromStorage = async () => {
     try {
       const ordersData = await AsyncStorage.getItem('@onolo_orders_data_v2');
@@ -379,20 +402,30 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session?.user?.email || 'No session');
-      setSession(session);
       
       try {
-        if (session?.user) {
-          // Ensure profile exists when user signs in
-          await ensureUserProfile(session.user);
-          // Convert to our user format
-          const convertedUser = await convertSupabaseUser(session.user);
-          setUser(convertedUser);
+        if (event === 'USER_UPDATED') {
+          // This is the critical fix. For password changes, we must NOT update the
+          // session object, as it causes a full re-render that interrupts the UI.
+          // We only update the user object with the latest details.
+          if (session?.user) {
+            const updatedUser = await convertSupabaseUser(session.user);
+            setUser(updatedUser);
+            console.log('User object updated without session change to prevent re-render.');
+          }
         } else {
-          setUser(null);
-          setOrders([]); // Clear orders when user logs out
-          // Reset navigation state when user logs out
-          resetNavigationState();
+          // For all other events (SIGNED_IN, SIGNED_OUT), we update the session,
+          // which correctly triggers the app to reload data as needed.
+          setSession(session);
+          if (session?.user) {
+            await ensureUserProfile(session.user);
+            const convertedUser = await convertSupabaseUser(session.user);
+            setUser(convertedUser);
+          } else {
+            setUser(null);
+            setOrders([]);
+            resetNavigationState();
+          }
         }
       } catch (error: any) {
         console.error('Error handling auth state change:', error.message);
@@ -404,15 +437,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, [supabaseConnected, resetNavigationState]);
 
-  // Load orders when user changes
+  // Load orders when user ID changes (stable)
   useEffect(() => {
-    if (session?.user && !isLoading) {
+    if (session?.user?.id && !isLoading) {
       loadUserOrders();
     } else if (!session?.user) {
       // If no authenticated user, try to load guest orders from AsyncStorage
       loadOrdersFromStorage();
     }
-  }, [session?.user, isLoading, loadUserOrders]);
+  }, [session?.user?.id, isLoading, loadUserOrders]);
 
   // Login function with enhanced error handling
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -687,17 +720,21 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
           console.log('Updating Supabase profile with:', profileUpdate);
 
-          // Use timeout wrapper for the Supabase operation
-          await withTimeout(
-            supabase
+          // Create a properly typed promise for the update operation
+          const updatePromise = (async () => {
+            const { error } = await supabase
               .from('profiles')
               .update(profileUpdate)
-              .eq('id', session.user.id)
-              .then(({ error }) => {
-                if (error) {
-                  throw new Error(`Profile update failed: ${error.message}`);
-                }
-              }),
+              .eq('id', session.user.id);
+              
+            if (error) {
+              throw new Error(`Profile update failed: ${error.message}`);
+            }
+          })();
+          
+          // Use timeout wrapper for the Supabase operation
+          await withTimeout(
+            updatePromise,
             5000, // 5 second timeout
             'Profile database update'
           );
@@ -1048,49 +1085,168 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   }, [session?.user, supabaseConnected]);
 
-  // Update notification preferences in Supabase
-  const updateNotificationPreferences = useCallback(async (settings: NotificationSettings, preferences: NotificationPreferences) => {
-    if (!session?.user || !supabaseConnected) return;
-    setNotificationSettings(settings);
-    setNotificationPreferences(preferences);
-    await supabase
-      .from('profiles')
-      .update({ notification_settings: settings, notification_preferences: preferences })
-      .eq('id', session.user.id);
-  }, [session?.user, supabaseConnected]);
-
   // Register for push notifications and save token to Supabase
   const registerForPushNotifications = useCallback(async () => {
     try {
       // Dynamically import to avoid web errors
       const Notifications = await import('expo-notifications');
       const Device = await import('expo-device');
-      let token = null;
-      if (Device.isDevice) {
-        const { status: existingStatus } = await Notifications.getPermissionsAsync();
-        let finalStatus = existingStatus;
-        if (existingStatus !== 'granted') {
-          const { status } = await Notifications.requestPermissionsAsync();
-          finalStatus = status;
-        }
-        if (finalStatus !== 'granted') {
-          Toast.show({ type: 'error', text1: 'Permission denied', text2: 'Enable push notifications in settings.' });
-          return null;
-        }
-        token = (await Notifications.getExpoPushTokenAsync()).data;
-        setExpoPushToken(token);
-        if (session?.user && supabaseConnected) {
-          await supabase.from('profiles').update({ expo_push_token: token }).eq('id', session.user.id);
-        }
-      } else {
-        Toast.show({ type: 'info', text1: 'Physical device required', text2: 'Push notifications only work on a real device.' });
+      const Constants = await import('expo-constants');
+      
+      // Check if running in development mode
+      const isDev = __DEV__;
+      
+      if (!Device.isDevice) {
+        console.log('Push notifications require a physical device');
+        Toast.show({ 
+          type: 'info', 
+          text1: 'Physical device required', 
+          text2: 'Push notifications only work on a real device.',
+          visibilityTime: 3000
+        });
+        return null;
       }
+      
+      // In development with Expo Go, we'll show a message that push notifications are not available
+      if (isDev) {
+        console.log('Running in development mode - push notifications are limited');
+        Toast.show({
+          type: 'info',
+          text1: 'Development Mode',
+          text2: 'Push notifications require a production build to work properly.',
+          visibilityTime: 4000
+        });
+        // Return a mock token in development
+        return 'mock-push-token-dev';
+      }
+
+      // Configure notification handler
+      Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowAlert: true,
+          shouldPlaySound: true,
+          shouldSetBadge: true,
+          shouldShowBanner: true,
+          shouldShowList: true,
+        }),
+      });
+
+      // Check current permission status
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      
+      // If no permission, request it
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      
+      // If permission denied, show error and return
+      if (finalStatus !== 'granted') {
+        console.log('Push notification permission denied');
+        Toast.show({ 
+          type: 'error', 
+          text1: 'Permission required', 
+          text2: 'Enable push notifications in your device settings.',
+          visibilityTime: 4000
+        });
+        return null;
+      }
+      
+      // Get the push token in production
+      console.log('Requesting push notification token...');
+      const tokenData = await Notifications.getExpoPushTokenAsync({
+        projectId: Constants.expoConfig?.extra?.eas?.projectId
+      });
+      
+      const token = tokenData.data;
+      console.log('Push token received:', token);
+      
+      if (!token) {
+        throw new Error('Failed to get push token');
+      }
+      
+      // Update local state
+      setExpoPushToken(token);
+      
+      // Save to Supabase if user is logged in and connected
+      if (session?.user?.id && supabaseConnected) {
+        console.log('Saving push token to Supabase...');
+        const { error } = await supabase
+          .from('profiles')
+          .update({ 
+            expo_push_token: token,
+            notification_settings: { ...notificationSettings, push: true },
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', session.user.id);
+          
+        if (error) {
+          console.error('Error saving push token to Supabase:', error);
+          throw new Error('Failed to save push token');
+        }
+        
+        console.log('Push token saved to Supabase');
+      }
+      
       return token;
-    } catch (e) {
-      Toast.show({ type: 'error', text1: 'Push registration failed', text2: e.message });
+      
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Push notification registration failed:', errorMessage, error);
+      
+      // Don't show error toast if the error is just that we're not on a device
+      if (errorMessage.includes('not available on this device')) {
+        return null;
+      }
+      
+      Toast.show({ 
+        type: 'error', 
+        text1: 'Push registration failed', 
+        text2: 'Could not enable push notifications. Please try again.',
+        visibilityTime: 4000
+      });
+      
       return null;
     }
-  }, [session?.user, supabaseConnected]);
+  }, [session?.user, supabaseConnected, notificationSettings]);
+
+  // Update notification preferences in Supabase
+  const updateNotificationPreferences = useCallback(async (settings: NotificationSettings, preferences: NotificationPreferences) => {
+    if (!session?.user) return;
+    
+    // If push notifications are being enabled, register for them
+    if (settings.push && !notificationSettings.push) {
+      try {
+        await registerForPushNotifications();
+      } catch (error) {
+        console.error('Failed to register for push notifications:', error);
+        // Revert the push setting if registration fails
+        settings = { ...settings, push: false };
+        Toast.show({
+          type: 'error',
+          text1: 'Push Notifications',
+          text2: 'Failed to enable push notifications. Please check app permissions.',
+        });
+      }
+    }
+    
+    setNotificationSettings(settings);
+    setNotificationPreferences(preferences);
+    
+    // Only update in Supabase if connected
+    if (supabaseConnected) {
+      await supabase
+        .from('profiles')
+        .update({ 
+          notification_settings: settings, 
+          notification_preferences: preferences,
+          // Only update expo_push_token if we have one and push is enabled
+          ...(settings.push && expoPushToken ? { expo_push_token: expoPushToken } : {})
+        })
+        .eq('id', session.user.id);
+    }
+  }, [session?.user, supabaseConnected, registerForPushNotifications, expoPushToken, notificationSettings.push]);
 
   // Fetch preferences on login
   useEffect(() => {
@@ -1098,6 +1254,160 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       fetchNotificationPreferences();
     }
   }, [session?.user, supabaseConnected, fetchNotificationPreferences]);
+
+  // --- PASSWORD CHANGE MODAL LOGIC ---
+  const openPasswordModal = useCallback(() => {
+    console.log('Opening password modal...');
+    setPasswordModalInfo(prev => ({
+      ...prev,
+      isOpen: true,
+      step: 'password',
+      isLoading: false,
+      error: null,
+    }));
+  }, [setPasswordModalInfo]);
+
+  const closePasswordModal = useCallback(() => {
+    console.log('Closing password modal...');
+    setPasswordModalInfo({
+      isOpen: false,
+      step: 'password',
+      isLoading: false,
+      error: null,
+    });
+  }, [setPasswordModalInfo]);
+
+  const submitNewPassword = async ({ 
+    currentPassword, 
+    newPassword, 
+    confirmPassword 
+  }: { 
+    currentPassword: string; 
+    newPassword: string; 
+    confirmPassword: string 
+  }): Promise<void> => {
+    // Basic validation
+    if (!currentPassword) {
+      setPasswordModalInfo(prev => ({ ...prev, error: 'Current password is required.' }));
+      return;
+    }
+    
+    if (!newPassword || newPassword.length < 6) {
+      setPasswordModalInfo(prev => ({ ...prev, error: 'New password must be at least 6 characters long.' }));
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      setPasswordModalInfo(prev => ({ ...prev, error: 'New passwords do not match.' }));
+      return;
+    }
+    
+    // Don't allow the same password
+    if (currentPassword === newPassword) {
+      setPasswordModalInfo(prev => ({ ...prev, error: 'New password must be different from current password.' }));
+      return;
+    }
+    
+    // Set loading state
+    setPasswordModalInfo(prev => ({ ...prev, isLoading: true, error: null }));
+    
+    try {
+      if (!user?.email) {
+        throw new Error('User email not found. Please sign in again.');
+      }
+      
+      console.log('Attempting to re-authenticate user...');
+      
+      // First, re-authenticate the user with their current password
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
+      });
+      
+      if (authError) {
+        console.error('Authentication error:', authError);
+        throw new Error('Current password is incorrect');
+      }
+      
+      console.log('Authentication successful, updating password...');
+      
+      // If authentication is successful, update the password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (updateError) {
+        console.error('Password update error:', updateError);
+        throw updateError;
+      }
+      
+      console.log('Password updated successfully');
+      
+      // Show success message
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Your password has been updated successfully!',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+      
+      // Close the modal after a short delay to show the success message
+      console.log('Closing password modal...');
+      closePasswordModal();
+      
+    } catch (error: any) {
+      console.error('Password update error:', error);
+      
+      // Only update state if the component is still mounted
+      setPasswordModalInfo(prev => ({
+        ...prev,
+        isLoading: false,
+        error: error.message || 'Failed to update password. Please try again.'
+      }));
+      
+      // Re-throw the error to be handled by the caller if needed
+      throw error;
+    }
+  };
+  
+  const submitOtp = async (otp: string) => {
+    // This function is kept for backward compatibility but won't be used in the new flow
+    setPasswordModalInfo(prev => ({ ...prev, isLoading: true, error: null }));
+    try {
+      if (!user?.email) {
+        throw new Error('User email not found');
+      }
+      
+      const { error } = await supabase.auth.verifyOtp({
+        email: user.email,
+        token: otp,
+        type: 'recovery',
+      });
+      
+      if (error) throw error;
+      
+      Toast.show({ 
+        type: 'success', 
+        text1: 'Password Reset Successfully!',
+        position: 'bottom',
+        visibilityTime: 3000,
+      });
+      
+      closePasswordModal();
+    } catch (error: any) {
+      console.error('OTP verification error:', error);
+      setPasswordModalInfo(prev => ({ 
+        ...prev, 
+        error: error.message || 'Invalid or expired code.' 
+      }));
+    } finally {
+      setPasswordModalInfo(prev => ({ 
+        ...prev, 
+        isLoading: false 
+      }));
+    }
+  };
 
   // Context value
   const contextValue: UserContextType = {
@@ -1123,6 +1433,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     fetchNotificationPreferences,
     updateNotificationPreferences,
     registerForPushNotifications,
+    passwordModalInfo,
+    setPasswordModalInfo,
+    openPasswordModal,
+    closePasswordModal,
+    submitNewPassword,
+    submitOtp,
   };
 
   return (
