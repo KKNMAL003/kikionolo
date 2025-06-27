@@ -11,8 +11,6 @@ if (typeof global.btoa === 'undefined') global.btoa = btoa;
 const PAYPAL_CLIENT_ID = process.env.EXPO_PUBLIC_PAYPAL_CLIENT_ID!;
 const PAYPAL_SECRET = process.env.EXPO_PUBLIC_PAYPAL_SECRET!;
 
-
-
 // PayPal API endpoints (sandbox)
 const PAYPAL_API_BASE = 'https://api-m.sandbox.paypal.com';
 
@@ -30,9 +28,9 @@ export const getPayPalAccessToken = async (): Promise<string> => {
     const response = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, {
       method: 'POST',
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': `Basic ${btoa(`${PAYPAL_CLIENT_ID}:${PAYPAL_SECRET}`)}`,
+        Authorization: `Basic ${btoa(`${PAYPAL_CLIENT_ID}:${PAYPAL_SECRET}`)}`,
       },
       body: 'grant_type=client_credentials',
     });
@@ -57,16 +55,19 @@ export const getPayPalAccessToken = async (): Promise<string> => {
 };
 
 // Function to create a PayPal order
-export const createPayPalOrder = async (amount: number, currency: string): Promise<string | null> => {
+export const createPayPalOrder = async (
+  amount: number,
+  currency: string,
+): Promise<string | null> => {
   try {
     const accessToken = await getPayPalAccessToken();
-    
+
     const response = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders`, {
       method: 'POST',
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
+        Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
         intent: 'CAPTURE',
@@ -84,7 +85,7 @@ export const createPayPalOrder = async (amount: number, currency: string): Promi
           cancel_url: Linking.createURL('paypal-cancel'),
           brand_name: 'Onolo Group',
           user_action: 'PAY_NOW',
-          landing_page: 'BILLING'
+          landing_page: 'BILLING',
         },
       }),
     });
@@ -108,13 +109,13 @@ export const createPayPalOrder = async (amount: number, currency: string): Promi
 export const capturePayPalPayment = async (orderId: string): Promise<any> => {
   try {
     const accessToken = await getPayPalAccessToken();
-    
+
     const response = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders/${orderId}/capture`, {
       method: 'POST',
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
+        Authorization: `Bearer ${accessToken}`,
       },
     });
 

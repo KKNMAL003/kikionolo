@@ -7,7 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useEffect } from 'react';
 import { useRouter, useSegments } from 'expo-router';
-import { useUser } from '../context/UserContext'
+import { useUser } from '../context/UserContext';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 
 // Enhanced Auth guard component with better navigation management
@@ -27,7 +27,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       isGuest: user?.isGuest,
       inAuthGroup,
       inTabsGroup,
-      segments: segments.join('/')
+      segments: segments.join('/'),
     });
 
     try {
@@ -56,81 +56,81 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout() {
   useFrameworkReady();
-  
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <UserProvider>
           <CartProvider>
-          <StatusBar style="light" />
-          <AuthGuard>
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: COLORS.background },
-                animation: 'slide_from_right',
-                // Enhanced gesture handling
-                gestureEnabled: true,
-                gestureDirection: 'horizontal',
-              }}
-              initialRouteName="(tabs)"
-            >
-              <Stack.Screen 
-                name="(tabs)" 
-                options={{ 
+            <StatusBar style="light" />
+            <AuthGuard>
+              <Stack
+                screenOptions={{
                   headerShown: false,
-                  // Reset stack when navigating to tabs
-                  animationTypeForReplace: 'push',
-                }} 
-              />
-              <Stack.Screen 
-                name="checkout" 
-                options={{ 
-                  presentation: 'card',
+                  contentStyle: { backgroundColor: COLORS.background },
+                  animation: 'slide_from_right',
+                  // Enhanced gesture handling
                   gestureEnabled: true,
-                }} 
-              />
-              <Stack.Screen 
-                name="profile" 
-                options={{ 
-                  presentation: 'card',
-                  gestureEnabled: true,
-                  // Ensure profile screen doesn't stack - use replace navigation
-                  animationTypeForReplace: 'push',
-                }} 
-              />
-              <Stack.Screen 
-                name="order/[id]" 
-                options={{ 
-                  presentation: 'card',
-                  gestureEnabled: true,
-                }} 
-              />
-              <Stack.Screen 
-                name="auth/login" 
-                options={{ 
-                  presentation: 'modal',
-                  gestureEnabled: false,
-                  // Prevent going back from login
-                  headerLeft: () => null,
-                }} 
-              />
-              <Stack.Screen 
-                name="auth/register" 
-                options={{ 
-                  presentation: 'modal',
-                  gestureEnabled: true,
-                }} 
-              />
-              <Stack.Screen
-                name="+not-found"
-                options={{
-                  title: 'Not Found',
-                  gestureEnabled: true,
+                  gestureDirection: 'horizontal',
                 }}
-              />
-            </Stack>
-          </AuthGuard>
+                initialRouteName="(tabs)"
+              >
+                <Stack.Screen
+                  name="(tabs)"
+                  options={{
+                    headerShown: false,
+                    // Reset stack when navigating to tabs
+                    animationTypeForReplace: 'push',
+                  }}
+                />
+                <Stack.Screen
+                  name="checkout"
+                  options={{
+                    presentation: 'card',
+                    gestureEnabled: true,
+                  }}
+                />
+                <Stack.Screen
+                  name="profile"
+                  options={{
+                    presentation: 'card',
+                    gestureEnabled: true,
+                    // Ensure profile screen doesn't stack - use replace navigation
+                    animationTypeForReplace: 'push',
+                  }}
+                />
+                <Stack.Screen
+                  name="order/[id]"
+                  options={{
+                    presentation: 'card',
+                    gestureEnabled: true,
+                  }}
+                />
+                <Stack.Screen
+                  name="auth/login"
+                  options={{
+                    presentation: 'modal',
+                    gestureEnabled: false,
+                    // Prevent going back from login
+                    headerLeft: () => null,
+                  }}
+                />
+                <Stack.Screen
+                  name="auth/register"
+                  options={{
+                    presentation: 'modal',
+                    gestureEnabled: true,
+                  }}
+                />
+                <Stack.Screen
+                  name="+not-found"
+                  options={{
+                    title: 'Not Found',
+                    gestureEnabled: true,
+                  }}
+                />
+              </Stack>
+            </AuthGuard>
           </CartProvider>
         </UserProvider>
       </SafeAreaProvider>

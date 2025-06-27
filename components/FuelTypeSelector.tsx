@@ -12,18 +12,16 @@ export default function FuelTypeSelector() {
 
   const handleFuelSelect = (fuelType: FuelType) => {
     setSelectedFuel(fuelType);
-    
+
     if (fuelType === 'petrol' || fuelType === 'diesel') {
       Alert.alert(
         `${fuelType.charAt(0).toUpperCase() + fuelType.slice(1)} Information`,
         `For more information about our ${fuelType} products and services, please contact us directly at +27 11 464 5073 or email us at info@onologroup.com.`,
-        [
-          { text: 'OK', onPress: () => setSelectedFuel('gas') }
-        ]
+        [{ text: 'OK', onPress: () => setSelectedFuel('gas') }],
       );
       return;
     }
-    
+
     // Navigate to main order tab instead of gas-refill
     router.push('/(tabs)/order');
   };
@@ -31,60 +29,48 @@ export default function FuelTypeSelector() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Select Fuel Type</Text>
-      
+
       <View style={styles.fuelTypes}>
         <TouchableOpacity
-          style={[
-            styles.fuelOption,
-            selectedFuel === 'diesel' && styles.selectedFuelOption,
-          ]}
+          style={[styles.fuelOption, selectedFuel === 'diesel' && styles.selectedFuelOption]}
           onPress={() => handleFuelSelect('diesel')}
         >
-          <Ionicons 
-            name="speedometer-outline" 
-            size={32} 
-            color={selectedFuel === 'diesel' ? COLORS.text.white : COLORS.text.gray} 
+          <Ionicons
+            name="speedometer-outline"
+            size={32}
+            color={selectedFuel === 'diesel' ? COLORS.text.white : COLORS.text.gray}
           />
-          <Text style={[
-            styles.fuelName,
-            selectedFuel === 'diesel' && styles.selectedFuelText
-          ]}>Diesel</Text>
+          <Text style={[styles.fuelName, selectedFuel === 'diesel' && styles.selectedFuelText]}>
+            Diesel
+          </Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
-          style={[
-            styles.fuelOption,
-            selectedFuel === 'gas' && styles.selectedFuelOption,
-          ]}
+          style={[styles.fuelOption, selectedFuel === 'gas' && styles.selectedFuelOption]}
           onPress={() => handleFuelSelect('gas')}
         >
-          <Ionicons 
-            name="flame-outline" 
-            size={32} 
-            color={selectedFuel === 'gas' ? COLORS.text.white : COLORS.text.gray} 
+          <Ionicons
+            name="flame-outline"
+            size={32}
+            color={selectedFuel === 'gas' ? COLORS.text.white : COLORS.text.gray}
           />
-          <Text style={[
-            styles.fuelName,
-            selectedFuel === 'gas' && styles.selectedFuelText
-          ]}>Gas</Text>
+          <Text style={[styles.fuelName, selectedFuel === 'gas' && styles.selectedFuelText]}>
+            Gas
+          </Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
-          style={[
-            styles.fuelOption,
-            selectedFuel === 'petrol' && styles.selectedFuelOption,
-          ]}
+          style={[styles.fuelOption, selectedFuel === 'petrol' && styles.selectedFuelOption]}
           onPress={() => handleFuelSelect('petrol')}
         >
-          <Ionicons 
-            name="car-outline" 
-            size={32} 
-            color={selectedFuel === 'petrol' ? COLORS.text.white : COLORS.text.gray} 
+          <Ionicons
+            name="car-outline"
+            size={32}
+            color={selectedFuel === 'petrol' ? COLORS.text.white : COLORS.text.gray}
           />
-          <Text style={[
-            styles.fuelName,
-            selectedFuel === 'petrol' && styles.selectedFuelText
-          ]}>Petrol</Text>
+          <Text style={[styles.fuelName, selectedFuel === 'petrol' && styles.selectedFuelText]}>
+            Petrol
+          </Text>
         </TouchableOpacity>
       </View>
     </View>

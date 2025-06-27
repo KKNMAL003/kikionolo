@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Image, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
   Keyboard,
-  TouchableWithoutFeedback
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../../constants/colors';
@@ -23,14 +23,14 @@ import Toast from 'react-native-toast-message';
 export default function RegisterScreen() {
   const router = useRouter();
   const { register, isLoading } = useUser();
-  
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+
   const handleRegister = async () => {
     // Validate inputs
     if (!name || !email || !password || !confirmPassword) {
@@ -42,7 +42,7 @@ export default function RegisterScreen() {
       });
       return;
     }
-    
+
     if (password !== confirmPassword) {
       Toast.show({
         type: 'error',
@@ -52,7 +52,7 @@ export default function RegisterScreen() {
       });
       return;
     }
-    
+
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
@@ -64,7 +64,7 @@ export default function RegisterScreen() {
       });
       return;
     }
-    
+
     // Validate password strength
     if (password.length < 6) {
       Toast.show({
@@ -75,7 +75,7 @@ export default function RegisterScreen() {
       });
       return;
     }
-    
+
     const success = await register(name, email, password);
     if (success) {
       router.replace('/(tabs)');
@@ -88,43 +88,43 @@ export default function RegisterScreen() {
       });
     }
   };
-  
+
   const handleLogin = () => {
     router.push('/auth/login');
   };
-  
+
   const handleBack = () => {
     router.back();
   };
-  
+
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
-          <ScrollView 
+          <ScrollView
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
           >
             <TouchableOpacity style={styles.backButton} onPress={handleBack}>
               <Ionicons name="arrow-back" size={24} color={COLORS.text.white} />
             </TouchableOpacity>
-            
+
             <View style={styles.logoContainer}>
-              <Image 
-                source={require('../../assets/images/onolo-logo-new.png')} 
+              <Image
+                source={require('../../assets/images/onolo-logo-new.png')}
                 style={styles.logo}
                 resizeMode="contain"
               />
               <Text style={styles.appName}>Onolo Gas</Text>
             </View>
-            
+
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>Sign up to get started with Onolo Gas.</Text>
-            
+
             <View style={styles.form}>
               <CustomTextInput
                 label="Full Name"
@@ -134,7 +134,7 @@ export default function RegisterScreen() {
                 leftIcon="person-outline"
                 returnKeyType="next"
               />
-              
+
               <CustomTextInput
                 label="Email"
                 value={email}
@@ -145,7 +145,7 @@ export default function RegisterScreen() {
                 leftIcon="mail-outline"
                 returnKeyType="next"
               />
-              
+
               <CustomTextInput
                 label="Password"
                 value={password}
@@ -153,11 +153,11 @@ export default function RegisterScreen() {
                 placeholder="Create a password"
                 secureTextEntry={!showPassword}
                 leftIcon="lock-closed-outline"
-                rightIcon={showPassword ? "eye-off-outline" : "eye-outline"}
+                rightIcon={showPassword ? 'eye-off-outline' : 'eye-outline'}
                 onRightIconPress={() => setShowPassword(!showPassword)}
                 returnKeyType="next"
               />
-              
+
               <CustomTextInput
                 label="Confirm Password"
                 value={confirmPassword}
@@ -165,19 +165,19 @@ export default function RegisterScreen() {
                 placeholder="Confirm your password"
                 secureTextEntry={!showConfirmPassword}
                 leftIcon="lock-closed-outline"
-                rightIcon={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
+                rightIcon={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
                 onRightIconPress={() => setShowConfirmPassword(!showConfirmPassword)}
                 returnKeyType="done"
                 onSubmitEditing={handleRegister}
               />
-              
-              <Button 
-                title="Register" 
+
+              <Button
+                title="Register"
                 onPress={handleRegister}
                 loading={isLoading}
                 style={styles.registerButton}
               />
-              
+
               <View style={styles.loginContainer}>
                 <Text style={styles.loginText}>Already have an account? </Text>
                 <TouchableOpacity onPress={handleLogin}>

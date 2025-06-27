@@ -26,7 +26,16 @@ interface Order {
     price: number;
   }>;
   totalAmount: number;
-  status: 'pending' | 'order_received' | 'order_confirmed' | 'preparing' | 'scheduled_for_delivery' | 'driver_dispatched' | 'out_for_delivery' | 'delivered' | 'cancelled';
+  status:
+    | 'pending'
+    | 'order_received'
+    | 'order_confirmed'
+    | 'preparing'
+    | 'scheduled_for_delivery'
+    | 'driver_dispatched'
+    | 'out_for_delivery'
+    | 'delivered'
+    | 'cancelled';
   paymentMethod: string;
   deliveryAddress: string;
   deliverySchedule?: string;
@@ -38,7 +47,13 @@ interface Order {
 
 // Profile update progress tracking
 export interface ProfileUpdateProgress {
-  step: 'validation' | 'sanitization' | 'auth_update' | 'profile_update' | 'local_update' | 'completed';
+  step:
+    | 'validation'
+    | 'sanitization'
+    | 'auth_update'
+    | 'profile_update'
+    | 'local_update'
+    | 'completed';
   status: 'pending' | 'inProgress' | 'completed' | 'error';
   message?: string;
   error?: string;
@@ -63,7 +78,9 @@ interface UserContextType {
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
-  updateUserProfile: (userData: Partial<User>) => Promise<{ success: boolean; progress: ProfileUpdateProgress[]; error?: string }>;
+  updateUserProfile: (
+    userData: Partial<User>,
+  ) => Promise<{ success: boolean; progress: ProfileUpdateProgress[]; error?: string }>;
   loginAsGuest: () => Promise<void>;
   isAuthenticated: boolean;
   orders: Order[];
@@ -78,7 +95,10 @@ interface UserContextType {
   notificationPreferences: NotificationPreferences;
   expoPushToken: string | null;
   fetchNotificationPreferences: () => Promise<void>;
-  updateNotificationPreferences: (settings: NotificationSettings, preferences: NotificationPreferences) => Promise<void>;
+  updateNotificationPreferences: (
+    settings: NotificationSettings,
+    preferences: NotificationPreferences,
+  ) => Promise<void>;
   registerForPushNotifications: () => Promise<string | null>;
   passwordModalInfo: {
     isOpen: boolean;
@@ -86,15 +106,21 @@ interface UserContextType {
     isLoading: boolean;
     error: string | null;
   };
-  setPasswordModalInfo: React.Dispatch<React.SetStateAction<{
-    isOpen: boolean;
-    step: 'password' | 'otp';
-    isLoading: boolean;
-    error: string | null;
-  }>>;
+  setPasswordModalInfo: React.Dispatch<
+    React.SetStateAction<{
+      isOpen: boolean;
+      step: 'password' | 'otp';
+      isLoading: boolean;
+      error: string | null;
+    }>
+  >;
   openPasswordModal: () => void;
   closePasswordModal: () => void;
-  submitNewPassword: (passwordData: { currentPassword: string; newPassword: string; confirmPassword: string }) => Promise<void>;
+  submitNewPassword: (passwordData: {
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+  }) => Promise<void>;
   submitOtp: (otp: string) => Promise<void>;
 }
 
@@ -102,17 +128,21 @@ interface UserContextType {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 // Timeout wrapper for promises with proper typing
-const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number = 8000, operationName: string = 'Operation'): Promise<T> => {
+const withTimeout = <T,>(
+  promise: Promise<T>,
+  timeoutMs: number = 8000,
+  operationName: string = 'Operation',
+): Promise<T> => {
   // Create a promise that rejects after the timeout
   const timeoutPromise = new Promise<never>((_, reject) => {
     const timeoutId = setTimeout(() => {
       reject(new Error(`${operationName} timed out after ${timeoutMs}ms`));
     }, timeoutMs);
-    
+
     // Clean up the timeout if the original promise resolves/rejects
     promise.finally(() => clearTimeout(timeoutId));
   });
-  
+
   // Return the first promise to resolve/reject
   return Promise.race<T>([promise, timeoutPromise]);
 };
@@ -124,8 +154,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [supabaseConnected, setSupabaseConnected] = useState(false);
-  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({ email: true, sms: true, push: true });
-  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>({ orderUpdates: true, promotions: true, newsletter: true });
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
+    email: true,
+    sms: true,
+    push: true,
+  });
+  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>({
+    orderUpdates: true,
+    promotions: true,
+    newsletter: true,
+  });
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
   const [passwordModalInfo, setPasswordModalInfo] = useState<UserContextType['passwordModalInfo']>({
     isOpen: false,
@@ -145,23 +183,23 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const checkConnection = async () => {
       console.log('Testing Supabase connection...');
-      
+
       // Test both methods to get better diagnostics
       const [basicConnection, rawConnection] = await Promise.all([
         testSupabaseConnection(),
-        testRawConnection()
+        testRawConnection(),
       ]);
-      
+
       const connected = basicConnection || rawConnection;
       setSupabaseConnected(connected);
-      
+
       if (!connected) {
         console.warn('Supabase connection failed, app will work in offline mode');
         console.warn('To fix this issue:');
         console.warn('1. Check your internet connection');
         console.warn('2. Verify Supabase project settings');
         console.warn('3. Add http://localhost:8081 to CORS allowed origins in Supabase dashboard');
-        
+
         Toast.show({
           type: 'info',
           text1: 'Offline Mode',
@@ -180,7 +218,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         });
       }
     };
-    
+
     checkConnection();
   }, []);
 
@@ -195,7 +233,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           .select('*')
           .eq('id', supabaseUser.id)
           .single();
-        
+
         if (error) {
           console.log('Could not fetch profile data:', error.message);
         } else {
@@ -206,9 +244,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    const name = profileData?.first_name && profileData?.last_name 
-      ? `${profileData.first_name} ${profileData.last_name}`.trim()
-      : supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User';
+    const name =
+      profileData?.first_name && profileData?.last_name
+        ? `${profileData.first_name} ${profileData.last_name}`.trim()
+        : supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User';
 
     return {
       id: supabaseUser.id,
@@ -238,20 +277,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
       if (!existingProfile) {
         // Create profile if it doesn't exist
-        const name = supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User';
+        const name =
+          supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User';
         const nameParts = name.split(' ');
-        
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([
-            {
-              id: supabaseUser.id,
-              first_name: nameParts[0] || name,
-              last_name: nameParts.slice(1).join(' ') || '',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-          ]);
+
+        const { error: profileError } = await supabase.from('profiles').insert([
+          {
+            id: supabaseUser.id,
+            first_name: nameParts[0] || name,
+            last_name: nameParts.slice(1).join(' ') || '',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ]);
 
         if (profileError) {
           console.warn('Could not create profile automatically:', profileError.message);
@@ -274,7 +312,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       await loadOrdersFromStorage();
       return;
     }
-    
+
     console.log('Loading orders for user:', session.user.id);
 
     // Skip if Supabase is not connected
@@ -288,7 +326,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       // Fetch orders with order items
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
-        .select(`
+        .select(
+          `
           *,
           order_items (
             product_id,
@@ -296,7 +335,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             quantity,
             unit_price
           )
-        `)
+        `,
+        )
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false });
 
@@ -308,7 +348,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (ordersData) {
-        const formattedOrders: Order[] = ordersData.map(order => ({
+        const formattedOrders: Order[] = ordersData.map((order) => ({
           id: order.id,
           date: order.created_at,
           items: order.order_items.map((item: any) => ({
@@ -321,8 +361,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           status: order.status,
           paymentMethod: order.payment_method,
           deliveryAddress: order.delivery_address,
-          deliverySchedule: order.preferred_delivery_window ? 
-            `${order.delivery_date || 'TBD'} - ${order.preferred_delivery_window}` : undefined,
+          deliverySchedule: order.preferred_delivery_window
+            ? `${order.delivery_date || 'TBD'} - ${order.preferred_delivery_window}`
+            : undefined,
           customerName: order.customer_name,
           customerPhone: order.delivery_phone,
           customerEmail: order.customer_email,
@@ -331,7 +372,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
         console.log('Loaded orders from Supabase:', formattedOrders.length);
         setOrders(formattedOrders);
-        
+
         // Also save to AsyncStorage as backup
         await AsyncStorage.setItem('@onolo_orders_data_v2', JSON.stringify(formattedOrders));
       }
@@ -370,8 +411,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     // Get initial session with timeout handling
     const initializeAuth = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
+
         if (error) {
           console.error('Error getting initial session:', error.message);
           setIsLoading(false);
@@ -380,7 +424,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
         console.log('Initial session:', session?.user?.email || 'No session');
         setSession(session);
-        
+
         if (session?.user) {
           // Ensure profile exists
           await ensureUserProfile(session.user);
@@ -402,7 +446,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session?.user?.email || 'No session');
-      
+
       try {
         if (event === 'USER_UPDATED') {
           // This is the critical fix. For password changes, we must NOT update the
@@ -430,7 +474,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       } catch (error: any) {
         console.error('Error handling auth state change:', error.message);
       }
-      
+
       setIsLoading(false);
     });
 
@@ -450,7 +494,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   // Login function with enhanced error handling
   const login = async (email: string, password: string): Promise<boolean> => {
     console.log('Attempting login with email:', email);
-    
+
     // Check if Supabase is connected
     if (!supabaseConnected) {
       console.error('Cannot login: Supabase not connected');
@@ -465,7 +509,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
 
     setIsLoading(true);
-    
+
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
@@ -479,7 +523,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         } else {
           console.error('Login error:', error.message);
         }
-        
+
         // Provide specific error messages
         let errorMessage = error.message;
         if (error.message.includes('Invalid login credentials')) {
@@ -487,7 +531,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         } else if (error.message.includes('Failed to fetch')) {
           errorMessage = 'Connection failed. Please check your internet connection.';
         }
-        
+
         Toast.show({
           type: 'error',
           text1: 'Login Failed',
@@ -500,10 +544,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
       if (data.user) {
         console.log('Login successful for user:', data.user.email);
-        
+
         // Reset navigation state on successful login
         resetNavigationState();
-        
+
         // Show success toast
         Toast.show({
           type: 'success',
@@ -511,10 +555,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           text2: `Welcome back!`,
           position: 'bottom',
         });
-        
+
         return true;
       }
-      
+
       return false;
     } catch (error: any) {
       console.error('Login error:', error.message);
@@ -532,13 +576,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Register function with enhanced error handling
-  const register = async (
-    name: string,
-    email: string,
-    password: string
-  ): Promise<boolean> => {
+  const register = async (name: string, email: string, password: string): Promise<boolean> => {
     console.log('Attempting registration for:', name, email);
-    
+
     // Check if Supabase is connected
     if (!supabaseConnected) {
       console.error('Cannot register: Supabase not connected');
@@ -553,7 +593,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
 
     setIsLoading(true);
-    
+
     try {
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
@@ -567,15 +607,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error('Registration error:', error.message);
-        
+
         // Provide specific error messages
         let errorMessage = error.message;
         if (error.message.includes('User already registered')) {
-          errorMessage = 'An account with this email already exists. Please try logging in instead.';
+          errorMessage =
+            'An account with this email already exists. Please try logging in instead.';
         } else if (error.message.includes('Failed to fetch')) {
           errorMessage = 'Connection failed. Please check your internet connection.';
         }
-        
+
         Toast.show({
           type: 'error',
           text1: 'Registration Failed',
@@ -588,13 +629,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
       if (data.user) {
         console.log('Registration successful for:', name);
-        
+
         // Reset navigation state on successful registration
         resetNavigationState();
-        
+
         // Note: Profile creation will be handled by the auth state change listener
         // when the user is confirmed and authenticated, not immediately here
-        
+
         // Show success toast
         Toast.show({
           type: 'success',
@@ -602,10 +643,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           text2: `Welcome, ${name}!`,
           position: 'bottom',
         });
-        
+
         return true;
       }
-      
+
       return false;
     } catch (error: any) {
       console.error('Registration error:', error.message);
@@ -628,24 +669,24 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     try {
       if (supabaseConnected) {
         const { error } = await supabase.auth.signOut();
-        
+
         if (error) {
           console.error('Logout error:', error.message);
           return;
         }
       }
-      
+
       // Clear local state
       setUser(null);
       setSession(null);
       setOrders([]);
-      
+
       // Clear AsyncStorage
       await AsyncStorage.removeItem('@onolo_orders_data_v2');
-      
+
       // Reset navigation state on logout
       resetNavigationState();
-      
+
       // Show success toast
       Toast.show({
         type: 'success',
@@ -653,7 +694,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         text2: 'You have been successfully logged out.',
         position: 'bottom',
       });
-      
+
       console.log('Logout successful');
     } catch (error: any) {
       console.error('Logout error:', error.message);
@@ -661,14 +702,20 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Simplified and more robust update user profile function
-  const updateUserProfile = async (userData: Partial<User>): Promise<{ success: boolean; progress: ProfileUpdateProgress[]; error?: string }> => {
+  const updateUserProfile = async (
+    userData: Partial<User>,
+  ): Promise<{ success: boolean; progress: ProfileUpdateProgress[]; error?: string }> => {
     console.log('Starting simplified profile update with data:', userData);
-    
+
     const progress: ProfileUpdateProgress[] = [];
-    
+
     // Step 1: Validation
-    progress.push({ step: 'validation', status: 'inProgress', message: 'Validating profile data...' });
-    
+    progress.push({
+      step: 'validation',
+      status: 'inProgress',
+      message: 'Validating profile data...',
+    });
+
     try {
       // Quick validation
       const validationResult = validateProfileData(userData);
@@ -676,23 +723,31 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         const errorMessages = Object.entries(validationResult.errors)
           .map(([field, errors]) => `${field}: ${errors.join(', ')}`)
           .join('; ');
-        
+
         progress[0] = { step: 'validation', status: 'error', error: errorMessages };
-        
+
         console.error('Profile validation failed:', validationResult.errors);
         return { success: false, progress, error: errorMessages };
       }
-      
-      progress[0] = { step: 'validation', status: 'completed', message: 'Profile data validated successfully' };
-      
+
+      progress[0] = {
+        step: 'validation',
+        status: 'completed',
+        message: 'Profile data validated successfully',
+      };
+
       // Step 2: Sanitization
-      progress.push({ step: 'sanitization', status: 'inProgress', message: 'Sanitizing input data...' });
-      
+      progress.push({
+        step: 'sanitization',
+        status: 'inProgress',
+        message: 'Sanitizing input data...',
+      });
+
       const sanitizedData = sanitizeProfileData(userData);
       console.log('Sanitized profile data:', sanitizedData);
-      
+
       progress[1] = { step: 'sanitization', status: 'completed', message: 'Input data sanitized' };
-      
+
       // Check if user is authenticated
       if (!session?.user) {
         const error = 'No authenticated user found';
@@ -700,13 +755,17 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         console.error('Profile update failed:', error);
         return { success: false, progress, error };
       }
-      
+
       let supabaseSuccess = false;
-      
+
       // Step 3: Update Supabase (with simplified error handling and timeouts)
       if (supabaseConnected) {
-        progress.push({ step: 'profile_update', status: 'inProgress', message: 'Updating profile database...' });
-        
+        progress.push({
+          step: 'profile_update',
+          status: 'inProgress',
+          message: 'Updating profile database...',
+        });
+
         try {
           // Prepare profile update with proper field mapping
           const nameParts = sanitizedData.name?.trim().split(' ') || [''];
@@ -726,64 +785,76 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
               .from('profiles')
               .update(profileUpdate)
               .eq('id', session.user.id);
-              
+
             if (error) {
               throw new Error(`Profile update failed: ${error.message}`);
             }
           })();
-          
+
           // Use timeout wrapper for the Supabase operation
           await withTimeout(
             updatePromise,
             5000, // 5 second timeout
-            'Profile database update'
+            'Profile database update',
           );
-          
-          progress[2] = { step: 'profile_update', status: 'completed', message: 'Profile database updated successfully' };
+
+          progress[2] = {
+            step: 'profile_update',
+            status: 'completed',
+            message: 'Profile database updated successfully',
+          };
           supabaseSuccess = true;
-          
         } catch (error: any) {
           console.error('Supabase profile update failed:', error.message);
-          
+
           // Check if it's a timeout or network error
-          const isNetworkError = error.message?.toLowerCase().includes('timeout') || 
-                                 error.message?.toLowerCase().includes('network') ||
-                                 error.message?.toLowerCase().includes('connection');
-          
+          const isNetworkError =
+            error.message?.toLowerCase().includes('timeout') ||
+            error.message?.toLowerCase().includes('network') ||
+            error.message?.toLowerCase().includes('connection');
+
           if (isNetworkError) {
-            progress[2] = { 
-              step: 'profile_update', 
-              status: 'error', 
-              error: 'Network timeout - continuing with local update' 
+            progress[2] = {
+              step: 'profile_update',
+              status: 'error',
+              error: 'Network timeout - continuing with local update',
             };
           } else {
-            progress[2] = { 
-              step: 'profile_update', 
-              status: 'error', 
-              error: error.message 
+            progress[2] = {
+              step: 'profile_update',
+              status: 'error',
+              error: error.message,
             };
-            
+
             // For non-network errors, still continue with local update
             console.log('Non-network error, continuing with local update...');
           }
         }
       } else {
-        progress.push({ step: 'profile_update', status: 'completed', message: 'Skipped (offline mode)' });
+        progress.push({
+          step: 'profile_update',
+          status: 'completed',
+          message: 'Skipped (offline mode)',
+        });
       }
-      
+
       // Step 4: Update local state (always do this)
-      progress.push({ step: 'local_update', status: 'inProgress', message: 'Updating local profile...' });
-      
+      progress.push({
+        step: 'local_update',
+        status: 'inProgress',
+        message: 'Updating local profile...',
+      });
+
       if (user) {
-        const updatedUser = { 
-          ...user, 
+        const updatedUser = {
+          ...user,
           name: sanitizedData.name?.trim() || user.name,
           email: sanitizedData.email?.trim() || user.email,
           phone: sanitizedData.phone?.trim() || user.phone,
           address: sanitizedData.address?.trim() || user.address,
         };
         setUser(updatedUser);
-        
+
         // Save to local storage as backup
         try {
           await AsyncStorage.setItem('@onolo_user_data_v2', JSON.stringify(updatedUser));
@@ -791,14 +862,22 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           console.warn('Failed to save to local storage:', storageError.message);
         }
       }
-      
-      progress[progress.length - 1] = { step: 'local_update', status: 'completed', message: 'Local profile updated' };
-      
+
+      progress[progress.length - 1] = {
+        step: 'local_update',
+        status: 'completed',
+        message: 'Local profile updated',
+      };
+
       // Step 5: Completion
-      progress.push({ step: 'completed', status: 'completed', message: 'Profile update completed successfully' });
-      
+      progress.push({
+        step: 'completed',
+        status: 'completed',
+        message: 'Profile update completed successfully',
+      });
+
       console.log('Profile update completed successfully');
-      
+
       // Show appropriate success message
       if (supabaseSuccess) {
         Toast.show({
@@ -817,21 +896,20 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           visibilityTime: 4000,
         });
       }
-      
+
       return { success: true, progress };
-      
     } catch (error: any) {
       console.error('Unexpected error in profile update:', error.message);
-      
+
       // Update the last progress item with error
       if (progress.length > 0) {
-        progress[progress.length - 1] = { 
-          ...progress[progress.length - 1], 
-          status: 'error', 
-          error: error.message 
+        progress[progress.length - 1] = {
+          ...progress[progress.length - 1],
+          status: 'error',
+          error: error.message,
         };
       }
-      
+
       Toast.show({
         type: 'error',
         text1: 'Update Failed',
@@ -839,7 +917,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         position: 'bottom',
         visibilityTime: 6000,
       });
-      
+
       return { success: false, progress, error: error.message };
     }
   };
@@ -853,15 +931,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       email: '',
       phone: '',
       address: '',
-      isGuest: true
+      isGuest: true,
     };
-    
+
     // Update state
     setUser(guestUser);
-    
+
     // Reset navigation state for guest login
     resetNavigationState();
-    
+
     // Show info toast
     Toast.show({
       type: 'info',
@@ -869,7 +947,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       text2: 'You are now browsing as a guest.',
       position: 'bottom',
     });
-    
+
     console.log('Guest login successful');
   };
 
@@ -877,7 +955,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const addOrder = async (orderData: Omit<Order, 'id' | 'date'>): Promise<Order> => {
     console.log('Adding new order:', orderData);
     setIsProcessingOrder(true);
-    
+
     // Input validation
     if (!orderData.items || orderData.items.length === 0) {
       throw new Error('Order must contain at least one item');
@@ -898,7 +976,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     if (!orderData.totalAmount || orderData.totalAmount <= 0) {
       throw new Error('Invalid order total amount');
     }
-    
+
     try {
       if (session?.user && supabaseConnected) {
         // Save to Supabase for authenticated users
@@ -913,9 +991,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           customer_email: orderData.customerEmail || '',
           notes: orderData.notes || '',
           delivery_date: orderData.deliverySchedule ? new Date().toISOString().split('T')[0] : null,
-          preferred_delivery_window: orderData.deliverySchedule?.includes('morning') ? 'morning' :
-                                   orderData.deliverySchedule?.includes('afternoon') ? 'afternoon' :
-                                   orderData.deliverySchedule?.includes('evening') ? 'evening' : null,
+          preferred_delivery_window: orderData.deliverySchedule?.includes('morning')
+            ? 'morning'
+            : orderData.deliverySchedule?.includes('afternoon')
+              ? 'afternoon'
+              : orderData.deliverySchedule?.includes('evening')
+                ? 'evening'
+                : null,
         };
 
         console.log('Creating order in Supabase:', orderInsert);
@@ -933,7 +1015,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Insert order items
-        const orderItems = orderData.items.map(item => ({
+        const orderItems = orderData.items.map((item) => ({
           order_id: order.id,
           product_id: item.productId,
           product_name: item.productName,
@@ -944,9 +1026,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
         console.log('Creating order items:', orderItems);
 
-        const { error: itemsError } = await supabase
-          .from('order_items')
-          .insert(orderItems);
+        const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
 
         if (itemsError) {
           console.error('Error creating order items:', itemsError);
@@ -971,7 +1051,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         // Update local state
         const updatedOrders = [newOrder, ...orders];
         setOrders(updatedOrders);
-        
+
         // Also save to AsyncStorage as backup
         try {
           await AsyncStorage.setItem('@onolo_orders_data_v2', JSON.stringify(updatedOrders));
@@ -1005,14 +1085,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     const updatedOrders = [newOrder, ...orders];
     setOrders(updatedOrders);
-    
+
     // Save to AsyncStorage
     try {
       await AsyncStorage.setItem('@onolo_orders_data_v2', JSON.stringify(updatedOrders));
     } catch (error: any) {
       console.error('Failed to save order to AsyncStorage:', error.message);
     }
-    
+
     console.log('Order added locally:', newOrder.id);
     return newOrder;
   };
@@ -1036,7 +1116,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Update local state
-      const orderIndex = orders.findIndex(order => order.id === orderId);
+      const orderIndex = orders.findIndex((order) => order.id === orderId);
       if (orderIndex === -1) {
         console.log('Cancel order failed: Order not found');
         return false;
@@ -1045,18 +1125,18 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const updatedOrders = [...orders];
       updatedOrders[orderIndex] = {
         ...updatedOrders[orderIndex],
-        status: 'cancelled'
+        status: 'cancelled',
       };
 
       setOrders(updatedOrders);
-      
+
       // Save to AsyncStorage
       try {
         await AsyncStorage.setItem('@onolo_orders_data_v2', JSON.stringify(updatedOrders));
       } catch (error: any) {
         console.error('Failed to save cancelled order to AsyncStorage:', error.message);
       }
-      
+
       console.log('Order cancelled successfully');
       return true;
     } catch (error: any) {
@@ -1067,7 +1147,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   // Get order by ID
   const getOrderById = (orderId: string): Order | undefined => {
-    return orders.find(order => order.id === orderId);
+    return orders.find((order) => order.id === orderId);
   };
 
   // Fetch notification preferences from Supabase
@@ -1080,7 +1160,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       .single();
     if (!error && data) {
       setNotificationSettings(data.notification_settings || { email: true, sms: true, push: true });
-      setNotificationPreferences(data.notification_preferences || { orderUpdates: true, promotions: true, newsletter: true });
+      setNotificationPreferences(
+        data.notification_preferences || { orderUpdates: true, promotions: true, newsletter: true },
+      );
       setExpoPushToken(data.expo_push_token || null);
     }
   }, [session?.user, supabaseConnected]);
@@ -1092,21 +1174,21 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const Notifications = await import('expo-notifications');
       const Device = await import('expo-device');
       const Constants = await import('expo-constants');
-      
+
       // Check if running in development mode
       const isDev = __DEV__;
-      
+
       if (!Device.isDevice) {
         console.log('Push notifications require a physical device');
-        Toast.show({ 
-          type: 'info', 
-          text1: 'Physical device required', 
+        Toast.show({
+          type: 'info',
+          text1: 'Physical device required',
           text2: 'Push notifications only work on a real device.',
-          visibilityTime: 3000
+          visibilityTime: 3000,
         });
         return null;
       }
-      
+
       // In development with Expo Go, we'll show a message that push notifications are not available
       if (isDev) {
         console.log('Running in development mode - push notifications are limited');
@@ -1114,7 +1196,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           type: 'info',
           text1: 'Development Mode',
           text2: 'Push notifications require a production build to work properly.',
-          visibilityTime: 4000
+          visibilityTime: 4000,
         });
         // Return a mock token in development
         return 'mock-push-token-dev';
@@ -1134,119 +1216,127 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       // Check current permission status
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
-      
+
       // If no permission, request it
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
       }
-      
+
       // If permission denied, show error and return
       if (finalStatus !== 'granted') {
         console.log('Push notification permission denied');
-        Toast.show({ 
-          type: 'error', 
-          text1: 'Permission required', 
+        Toast.show({
+          type: 'error',
+          text1: 'Permission required',
           text2: 'Enable push notifications in your device settings.',
-          visibilityTime: 4000
+          visibilityTime: 4000,
         });
         return null;
       }
-      
+
       // Get the push token in production
       console.log('Requesting push notification token...');
       const tokenData = await Notifications.getExpoPushTokenAsync({
-        projectId: Constants.expoConfig?.extra?.eas?.projectId
+        projectId: Constants.expoConfig?.extra?.eas?.projectId,
       });
-      
+
       const token = tokenData.data;
       console.log('Push token received:', token);
-      
+
       if (!token) {
         throw new Error('Failed to get push token');
       }
-      
+
       // Update local state
       setExpoPushToken(token);
-      
+
       // Save to Supabase if user is logged in and connected
       if (session?.user?.id && supabaseConnected) {
         console.log('Saving push token to Supabase...');
         const { error } = await supabase
           .from('profiles')
-          .update({ 
+          .update({
             expo_push_token: token,
             notification_settings: { ...notificationSettings, push: true },
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
           })
           .eq('id', session.user.id);
-          
+
         if (error) {
           console.error('Error saving push token to Supabase:', error);
           throw new Error('Failed to save push token');
         }
-        
+
         console.log('Push token saved to Supabase');
       }
-      
+
       return token;
-      
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       console.error('Push notification registration failed:', errorMessage, error);
-      
+
       // Don't show error toast if the error is just that we're not on a device
       if (errorMessage.includes('not available on this device')) {
         return null;
       }
-      
-      Toast.show({ 
-        type: 'error', 
-        text1: 'Push registration failed', 
+
+      Toast.show({
+        type: 'error',
+        text1: 'Push registration failed',
         text2: 'Could not enable push notifications. Please try again.',
-        visibilityTime: 4000
+        visibilityTime: 4000,
       });
-      
+
       return null;
     }
   }, [session?.user, supabaseConnected, notificationSettings]);
 
   // Update notification preferences in Supabase
-  const updateNotificationPreferences = useCallback(async (settings: NotificationSettings, preferences: NotificationPreferences) => {
-    if (!session?.user) return;
-    
-    // If push notifications are being enabled, register for them
-    if (settings.push && !notificationSettings.push) {
-      try {
-        await registerForPushNotifications();
-      } catch (error) {
-        console.error('Failed to register for push notifications:', error);
-        // Revert the push setting if registration fails
-        settings = { ...settings, push: false };
-        Toast.show({
-          type: 'error',
-          text1: 'Push Notifications',
-          text2: 'Failed to enable push notifications. Please check app permissions.',
-        });
+  const updateNotificationPreferences = useCallback(
+    async (settings: NotificationSettings, preferences: NotificationPreferences) => {
+      if (!session?.user) return;
+
+      // If push notifications are being enabled, register for them
+      if (settings.push && !notificationSettings.push) {
+        try {
+          await registerForPushNotifications();
+        } catch (error) {
+          console.error('Failed to register for push notifications:', error);
+          // Revert the push setting if registration fails
+          settings = { ...settings, push: false };
+          Toast.show({
+            type: 'error',
+            text1: 'Push Notifications',
+            text2: 'Failed to enable push notifications. Please check app permissions.',
+          });
+        }
       }
-    }
-    
-    setNotificationSettings(settings);
-    setNotificationPreferences(preferences);
-    
-    // Only update in Supabase if connected
-    if (supabaseConnected) {
-      await supabase
-        .from('profiles')
-        .update({ 
-          notification_settings: settings, 
-          notification_preferences: preferences,
-          // Only update expo_push_token if we have one and push is enabled
-          ...(settings.push && expoPushToken ? { expo_push_token: expoPushToken } : {})
-        })
-        .eq('id', session.user.id);
-    }
-  }, [session?.user, supabaseConnected, registerForPushNotifications, expoPushToken, notificationSettings.push]);
+
+      setNotificationSettings(settings);
+      setNotificationPreferences(preferences);
+
+      // Only update in Supabase if connected
+      if (supabaseConnected) {
+        await supabase
+          .from('profiles')
+          .update({
+            notification_settings: settings,
+            notification_preferences: preferences,
+            // Only update expo_push_token if we have one and push is enabled
+            ...(settings.push && expoPushToken ? { expo_push_token: expoPushToken } : {}),
+          })
+          .eq('id', session.user.id);
+      }
+    },
+    [
+      session?.user,
+      supabaseConnected,
+      registerForPushNotifications,
+      expoPushToken,
+      notificationSettings.push,
+    ],
+  );
 
   // Fetch preferences on login
   useEffect(() => {
@@ -1258,7 +1348,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   // --- PASSWORD CHANGE MODAL LOGIC ---
   const openPasswordModal = useCallback(() => {
     console.log('Opening password modal...');
-    setPasswordModalInfo(prev => ({
+    setPasswordModalInfo((prev) => ({
       ...prev,
       isOpen: true,
       step: 'password',
@@ -1277,72 +1367,78 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     });
   }, [setPasswordModalInfo]);
 
-  const submitNewPassword = async ({ 
-    currentPassword, 
-    newPassword, 
-    confirmPassword 
-  }: { 
-    currentPassword: string; 
-    newPassword: string; 
-    confirmPassword: string 
+  const submitNewPassword = async ({
+    currentPassword,
+    newPassword,
+    confirmPassword,
+  }: {
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
   }): Promise<void> => {
     // Basic validation
     if (!currentPassword) {
-      setPasswordModalInfo(prev => ({ ...prev, error: 'Current password is required.' }));
+      setPasswordModalInfo((prev) => ({ ...prev, error: 'Current password is required.' }));
       return;
     }
-    
+
     if (!newPassword || newPassword.length < 6) {
-      setPasswordModalInfo(prev => ({ ...prev, error: 'New password must be at least 6 characters long.' }));
+      setPasswordModalInfo((prev) => ({
+        ...prev,
+        error: 'New password must be at least 6 characters long.',
+      }));
       return;
     }
-    
+
     if (newPassword !== confirmPassword) {
-      setPasswordModalInfo(prev => ({ ...prev, error: 'New passwords do not match.' }));
+      setPasswordModalInfo((prev) => ({ ...prev, error: 'New passwords do not match.' }));
       return;
     }
-    
+
     // Don't allow the same password
     if (currentPassword === newPassword) {
-      setPasswordModalInfo(prev => ({ ...prev, error: 'New password must be different from current password.' }));
+      setPasswordModalInfo((prev) => ({
+        ...prev,
+        error: 'New password must be different from current password.',
+      }));
       return;
     }
-    
+
     // Set loading state
-    setPasswordModalInfo(prev => ({ ...prev, isLoading: true, error: null }));
-    
+    setPasswordModalInfo((prev) => ({ ...prev, isLoading: true, error: null }));
+
     try {
       if (!user?.email) {
         throw new Error('User email not found. Please sign in again.');
       }
-      
+
       console.log('Attempting to re-authenticate user...');
-      
+
       // First, re-authenticate the user with their current password
       const { error: authError } = await supabase.auth.signInWithPassword({
         email: user.email,
         password: currentPassword,
       });
-      
+
       if (authError) {
         console.error('Authentication error:', authError);
         throw new Error('Current password is incorrect');
       }
-      
+
       console.log('Authentication successful, updating password...');
-      
+
       // If authentication is successful, update the password
       const { error: updateError } = await supabase.auth.updateUser({
-        password: newPassword
+        password: newPassword,
       });
-      
+
       if (updateError) {
         console.error('Password update error:', updateError);
         throw updateError;
       }
-      
+
       console.log('Password updated successfully');
-      
+
       // Show success message
       Toast.show({
         type: 'success',
@@ -1351,60 +1447,59 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         position: 'top',
         visibilityTime: 3000,
       });
-      
+
       // Close the modal after a short delay to show the success message
       console.log('Closing password modal...');
       closePasswordModal();
-      
     } catch (error: any) {
       console.error('Password update error:', error);
-      
+
       // Only update state if the component is still mounted
-      setPasswordModalInfo(prev => ({
+      setPasswordModalInfo((prev) => ({
         ...prev,
         isLoading: false,
-        error: error.message || 'Failed to update password. Please try again.'
+        error: error.message || 'Failed to update password. Please try again.',
       }));
-      
+
       // Re-throw the error to be handled by the caller if needed
       throw error;
     }
   };
-  
+
   const submitOtp = async (otp: string) => {
     // This function is kept for backward compatibility but won't be used in the new flow
-    setPasswordModalInfo(prev => ({ ...prev, isLoading: true, error: null }));
+    setPasswordModalInfo((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
       if (!user?.email) {
         throw new Error('User email not found');
       }
-      
+
       const { error } = await supabase.auth.verifyOtp({
         email: user.email,
         token: otp,
         type: 'recovery',
       });
-      
+
       if (error) throw error;
-      
-      Toast.show({ 
-        type: 'success', 
+
+      Toast.show({
+        type: 'success',
         text1: 'Password Reset Successfully!',
         position: 'bottom',
         visibilityTime: 3000,
       });
-      
+
       closePasswordModal();
     } catch (error: any) {
       console.error('OTP verification error:', error);
-      setPasswordModalInfo(prev => ({ 
-        ...prev, 
-        error: error.message || 'Invalid or expired code.' 
+      setPasswordModalInfo((prev) => ({
+        ...prev,
+        error: error.message || 'Invalid or expired code.',
       }));
     } finally {
-      setPasswordModalInfo(prev => ({ 
-        ...prev, 
-        isLoading: false 
+      setPasswordModalInfo((prev) => ({
+        ...prev,
+        isLoading: false,
       }));
     }
   };
@@ -1441,11 +1536,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     submitOtp,
   };
 
-  return (
-    <UserContext.Provider value={contextValue}>
-      {children}
-    </UserContext.Provider>
-  );
+  return <UserContext.Provider value={contextValue}>{children}</UserContext.Provider>;
 }
 
 // Custom hook to use the context

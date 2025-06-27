@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Alert, 
-  FlatList, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  FlatList,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
@@ -13,7 +13,7 @@ import {
   TouchableWithoutFeedback,
   Modal,
   TextInput,
-  ActivityIndicator
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../constants/colors';
@@ -21,7 +21,10 @@ import Header from '../components/Header';
 import { Ionicons } from '@expo/vector-icons';
 import Button from '../components/Button';
 import { useRouter } from 'expo-router';
-import { useUser, ProfileUpdateProgress as UserProfileUpdateProgress } from '../context/UserContext';
+import {
+  useUser,
+  ProfileUpdateProgress as UserProfileUpdateProgress,
+} from '../context/UserContext';
 import { NotificationsSettings } from '../components/settings/NotificationsSettings';
 import { PrivacySecuritySettings } from '../components/settings/PrivacySecuritySettings';
 import Toast from 'react-native-toast-message';
@@ -100,7 +103,7 @@ export default function ProfileScreen() {
       // Parse existing address or use empty values
       const existingAddress = user.address || '';
       const addressParts = parseAddress(existingAddress);
-      
+
       setFormData({
         name: user.name || '',
         email: user.email || '',
@@ -124,19 +127,19 @@ export default function ProfileScreen() {
         city: '',
         state: '',
         postalCode: '',
-        country: 'South Africa'
+        country: 'South Africa',
       };
     }
 
     // Simple parsing - in a real app, you'd want more sophisticated parsing
-    const parts = address.split(',').map(part => part.trim());
+    const parts = address.split(',').map((part) => part.trim());
     return {
       streetAddress: parts[0] || '',
       apartment: '',
       city: parts[1] || '',
       state: parts[2] || '',
       postalCode: parts[3] || '',
-      country: parts[4] || 'South Africa'
+      country: parts[4] || 'South Africa',
     };
   }, []);
 
@@ -148,9 +151,9 @@ export default function ProfileScreen() {
       formData.city,
       formData.state,
       formData.postalCode,
-      formData.country
-    ].filter(part => part && part.trim() !== '');
-    
+      formData.country,
+    ].filter((part) => part && part.trim() !== '');
+
     return addressParts.join(', ');
   }, []);
 
@@ -158,27 +161,30 @@ export default function ProfileScreen() {
     Keyboard.dismiss();
   }, []);
 
-  const handleChange = useCallback((field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    
-    // Clear existing error for this field
-    if (formErrors[field]) {
-      setFormErrors(prev => ({ ...prev, [field]: '' }));
-    }
-    
-    // Real-time validation
-    const validation = validateField(field, value);
-    if (!validation.isValid && validation.error) {
-      setFormErrors(prev => ({ ...prev, [field]: validation.error || '' }));
-    }
-  }, [formErrors]);
+  const handleChange = useCallback(
+    (field: string, value: string) => {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+
+      // Clear existing error for this field
+      if (formErrors[field]) {
+        setFormErrors((prev) => ({ ...prev, [field]: '' }));
+      }
+
+      // Real-time validation
+      const validation = validateField(field, value);
+      if (!validation.isValid && validation.error) {
+        setFormErrors((prev) => ({ ...prev, [field]: validation.error || '' }));
+      }
+    },
+    [formErrors],
+  );
 
   const validateForm = useCallback((): boolean => {
     const errors: FormErrors = {};
-    
+
     // Validate the complete form data including individual address fields
     const validationResult = validateProfileData(formData);
-    
+
     if (!validationResult.isValid) {
       // Map validation errors to form errors
       Object.entries(validationResult.errors).forEach(([field, fieldErrors]) => {
@@ -187,9 +193,9 @@ export default function ProfileScreen() {
         }
       });
     }
-    
+
     setFormErrors(errors);
-    
+
     if (Object.keys(errors).length > 0) {
       const firstError = Object.values(errors)[0];
       Toast.show({
@@ -201,14 +207,14 @@ export default function ProfileScreen() {
       });
       return false;
     }
-    
+
     return true;
   }, [formData]);
 
   // Simplified and more robust handleSaveProfile
   const handleSaveProfile = useCallback(async () => {
     console.log('handleSaveProfile: Starting profile update');
-    
+
     // Prevent multiple simultaneous save attempts
     if (isSaving) {
       console.log('handleSaveProfile: Save already in progress, ignoring duplicate request');
@@ -218,10 +224,10 @@ export default function ProfileScreen() {
     setIsSaving(true);
     setShowProgress(true);
     setUpdateProgress([]);
-    
+
     try {
       dismissKeyboard();
-      
+
       // Validate form first
       console.log('handleSaveProfile: Starting form validation...');
       if (!validateForm()) {
@@ -254,10 +260,10 @@ export default function ProfileScreen() {
 
       // Call the simplified update function with better timeout handling
       const result = await updateUserProfile(cleanedData);
-      
+
       // Update progress state
       setUpdateProgress(result.progress);
-      
+
       // Check if component is still mounted before updating state
       if (!isMountedRef.current) {
         console.log('handleSaveProfile: Component unmounted after update, not updating UI.');
@@ -270,7 +276,7 @@ export default function ProfileScreen() {
         setShowProgress(false);
       } else {
         console.log('handleSaveProfile: Profile update failed:', result.error);
-        
+
         // Keep progress visible for user to see what went wrong
         setTimeout(() => {
           if (isMountedRef.current) {
@@ -280,12 +286,12 @@ export default function ProfileScreen() {
       }
     } catch (error: any) {
       console.error('handleSaveProfile: Error caught in outer catch block:', error.message);
-      
+
       if (isMountedRef.current) {
         setShowProgress(false);
-        
+
         let errorMessage = 'An unexpected error occurred. Please try again.';
-        
+
         if (error.message?.includes('timeout')) {
           errorMessage = 'Request timed out. Please check your connection and try again.';
         } else if (error.message?.includes('network')) {
@@ -323,12 +329,12 @@ export default function ProfileScreen() {
     setIsEditing(false);
     setShowProgress(false);
     setFormErrors({});
-    
+
     // Reset form data to original user data
     if (user) {
       const existingAddress = user.address || '';
       const addressParts = parseAddress(existingAddress);
-      
+
       setFormData({
         name: user.name || '',
         email: user.email || '',
@@ -361,38 +367,34 @@ export default function ProfileScreen() {
   };
 
   const handleCancelOrder = async (orderId: string) => {
-    Alert.alert(
-      'Cancel Order',
-      'Are you sure you want to cancel this order?',
-      [
-        {
-          text: 'No',
-          style: 'cancel',
+    Alert.alert('Cancel Order', 'Are you sure you want to cancel this order?', [
+      {
+        text: 'No',
+        style: 'cancel',
+      },
+      {
+        text: 'Yes',
+        style: 'destructive',
+        onPress: async () => {
+          const success = await cancelOrder(orderId);
+          if (success) {
+            Toast.show({
+              type: 'success',
+              text1: 'Order Cancelled',
+              text2: 'Your order has been cancelled successfully.',
+              position: 'bottom',
+            });
+          } else {
+            Toast.show({
+              type: 'error',
+              text1: 'Cancellation Failed',
+              text2: 'Failed to cancel your order. Please try again.',
+              position: 'bottom',
+            });
+          }
         },
-        {
-          text: 'Yes',
-          style: 'destructive',
-          onPress: async () => {
-            const success = await cancelOrder(orderId);
-            if (success) {
-              Toast.show({
-                type: 'success',
-                text1: 'Order Cancelled',
-                text2: 'Your order has been cancelled successfully.',
-                position: 'bottom',
-              });
-            } else {
-              Toast.show({
-                type: 'error',
-                text1: 'Cancellation Failed',
-                text2: 'Failed to cancel your order. Please try again.',
-                position: 'bottom',
-              });
-            }
-          },
-        },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleViewOrderDetails = (orderId: string) => {
@@ -425,10 +427,7 @@ export default function ProfileScreen() {
   };
 
   const renderOrderItem = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.orderCard}
-      onPress={() => handleViewOrderDetails(item.id)}
-    >
+    <TouchableOpacity style={styles.orderCard} onPress={() => handleViewOrderDetails(item.id)}>
       <View style={styles.orderHeader}>
         <View>
           <Text style={styles.orderNumber}>Order #{item.id.slice(-6)}</Text>
@@ -440,36 +439,40 @@ export default function ProfileScreen() {
           </Text>
         </View>
       </View>
-      
+
       <View style={styles.orderItems}>
         {item.items.slice(0, 2).map((orderItem, index) => (
           <View key={index} style={styles.orderItemRow}>
-            <Text style={styles.orderItemName}>{orderItem.productName} x{orderItem.quantity}</Text>
-            <Text style={styles.orderItemPrice}>R {(orderItem.price * orderItem.quantity).toFixed(2)}</Text>
+            <Text style={styles.orderItemName}>
+              {orderItem.productName} x{orderItem.quantity}
+            </Text>
+            <Text style={styles.orderItemPrice}>
+              R {(orderItem.price * orderItem.quantity).toFixed(2)}
+            </Text>
           </View>
         ))}
         {item.items.length > 2 && (
           <Text style={styles.moreItemsText}>+{item.items.length - 2} more items</Text>
         )}
       </View>
-      
+
       <View style={styles.orderFooter}>
         <View>
           <Text style={styles.orderTotal}>Total: R {item.totalAmount.toFixed(2)}</Text>
           <Text style={styles.orderPayment}>{item.paymentMethod.toUpperCase()}</Text>
         </View>
-        
+
         <View style={styles.orderActions}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.viewDetailsButton}
             onPress={() => handleViewOrderDetails(item.id)}
           >
             <Text style={styles.viewDetailsText}>View Details</Text>
             <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
           </TouchableOpacity>
-          
+
           {item.status === 'pending' && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.cancelButton}
               onPress={() => handleCancelOrder(item.id)}
             >
@@ -486,8 +489,8 @@ export default function ProfileScreen() {
     <View style={styles.emptyStateContainer}>
       <Ionicons name="document-text-outline" size={64} color={COLORS.text.gray} />
       <Text style={styles.emptyStateText}>You have no orders yet.</Text>
-      <Button 
-        title="Browse Products" 
+      <Button
+        title="Browse Products"
         onPress={() => router.replace('/(tabs)/order')}
         style={styles.browseButton}
       />
@@ -495,7 +498,8 @@ export default function ProfileScreen() {
   );
 
   // Orders list data preparation
-  const sortedOrders = orders?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
+  const sortedOrders =
+    orders?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
 
   // Render different tab content without nesting ScrollViews
   const renderTabContent = () => {
@@ -506,13 +510,11 @@ export default function ProfileScreen() {
           <FlatList
             data={sortedOrders}
             renderItem={renderOrderItem}
-            keyExtractor={item => item.id}
+            keyExtractor={(item) => item.id}
             contentContainerStyle={styles.ordersList}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            ListHeaderComponent={
-              <Text style={styles.sectionTitle}>Your Orders</Text>
-            }
+            ListHeaderComponent={<Text style={styles.sectionTitle}>Your Orders</Text>}
             ListEmptyComponent={renderOrdersEmptyState}
             style={styles.ordersListContainer}
           />
@@ -520,30 +522,32 @@ export default function ProfileScreen() {
 
       case 'profile':
         return (
-          <KeyboardAvoidingView 
+          <KeyboardAvoidingView
             style={styles.keyboardAvoidingView}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
           >
             <TouchableWithoutFeedback onPress={dismissKeyboard}>
-              <ScrollView 
+              <ScrollView
                 style={styles.profileScrollView}
                 contentContainerStyle={styles.profileScrollContent}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
               >
                 <Text style={styles.sectionTitle}>Profile Information</Text>
-                
+
                 {/* Show progress during update */}
                 {showProgress && updateProgress.length > 0 && (
-                  <ProfileUpdateProgress steps={updateProgress.map(p => ({
-                    id: p.step,
-                    title: p.step.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
-                    status: p.status,
-                    description: p.message || p.error
-                  }))} />
+                  <ProfileUpdateProgress
+                    steps={updateProgress.map((p) => ({
+                      id: p.step,
+                      title: p.step.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+                      status: p.status,
+                      description: p.message || p.error,
+                    }))}
+                  />
                 )}
-                
+
                 {isEditing ? (
                   <View style={styles.profileSection}>
                     <View style={styles.inputGroup}>
@@ -558,7 +562,7 @@ export default function ProfileScreen() {
                         error={formErrors.name}
                       />
                     </View>
-                    
+
                     <View style={styles.inputGroup}>
                       <CustomTextInput
                         label="Email"
@@ -577,7 +581,7 @@ export default function ProfileScreen() {
                         </Text>
                       )}
                     </View>
-                    
+
                     <View style={styles.inputGroup}>
                       <CustomTextInput
                         label="Phone Number *"
@@ -589,9 +593,7 @@ export default function ProfileScreen() {
                         editable={!isSaving}
                         error={formErrors.phone}
                       />
-                      <Text style={styles.helperText}>
-                        📞 Used for delivery coordination
-                      </Text>
+                      <Text style={styles.helperText}>📞 Used for delivery coordination</Text>
                     </View>
 
                     {/* Enhanced Address Section */}
@@ -601,13 +603,14 @@ export default function ProfileScreen() {
                         value={formData.streetAddress}
                         onAddressSelect={(feature) => {
                           if (typeof feature === 'string') {
-                            setFormData(prev => ({ ...prev, streetAddress: feature }));
+                            setFormData((prev) => ({ ...prev, streetAddress: feature }));
                             return;
                           }
                           // Parse Mapbox feature context for structured address fields
                           const context = feature.context || [];
-                          const getContext = (type) => context.find((c) => c.id.startsWith(type + '.'))?.text || '';
-                          setFormData(prev => ({
+                          const getContext = (type) =>
+                            context.find((c) => c.id.startsWith(type + '.'))?.text || '';
+                          setFormData((prev) => ({
                             ...prev,
                             streetAddress: feature.place_name || '',
                             city: getContext('place') || getContext('locality') || '',
@@ -620,7 +623,7 @@ export default function ProfileScreen() {
                         style={{ zIndex: 10 }}
                       />
                     </View>
-                    
+
                     <View style={styles.inputGroup}>
                       <CustomTextInput
                         label="Apartment, Suite, Unit (Optional)"
@@ -687,17 +690,17 @@ export default function ProfileScreen() {
                     <Text style={styles.helperText}>
                       🚚 This will be your primary delivery address for orders
                     </Text>
-                    
+
                     <View style={styles.buttonRow}>
-                      <Button 
-                        title="Cancel" 
+                      <Button
+                        title="Cancel"
                         onPress={handleCancelEdit}
                         style={[styles.button, styles.cancelButtonStyle]}
                         variant="outline"
                         disabled={isSaving}
                       />
-                      <Button 
-                        title={isSaving ? "Saving..." : "Save Changes"} 
+                      <Button
+                        title={isSaving ? 'Saving...' : 'Save Changes'}
                         onPress={handleSaveProfile}
                         style={[styles.button, styles.saveButton]}
                         loading={isSaving}
@@ -723,9 +726,9 @@ export default function ProfileScreen() {
                       <Text style={styles.profileLabel}>Delivery Address</Text>
                       <Text style={styles.profileValue}>{user?.address || 'Not set'}</Text>
                     </View>
-                    
-                    <Button 
-                      title="Edit Profile" 
+
+                    <Button
+                      title="Edit Profile"
                       onPress={() => setIsEditing(true)}
                       style={styles.editButton}
                       disabled={isSaving}
@@ -746,7 +749,7 @@ export default function ProfileScreen() {
   };
 
   // Count pending orders for badge
-  const pendingOrdersCount = orders?.filter(order => order.status === 'pending').length || 0;
+  const pendingOrdersCount = orders?.filter((order) => order.status === 'pending').length || 0;
 
   // Handle settings updates
   const handleUpdateSettings = async (updates: any) => {
@@ -758,8 +761,6 @@ export default function ProfileScreen() {
       await registerForPushNotifications();
     }
   };
-
-
 
   // Render the appropriate settings screen
   const renderSettingsScreen = () => {
@@ -785,7 +786,7 @@ export default function ProfileScreen() {
       case 'main':
       default:
         return (
-          <ScrollView 
+          <ScrollView
             style={styles.scrollView}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
@@ -793,46 +794,55 @@ export default function ProfileScreen() {
           >
             <Text style={styles.sectionTitle}>Settings</Text>
             <View style={styles.settingsSection}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.settingItem}
                 onPress={() => setSettingsScreen('notifications')}
               >
                 <Ionicons name="notifications-outline" size={24} color={COLORS.text.white} />
                 <Text style={styles.settingText}>Notifications</Text>
-                <Ionicons name="chevron-forward" size={20} color={COLORS.text.gray} style={styles.settingArrow} />
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={COLORS.text.gray}
+                  style={styles.settingArrow}
+                />
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={styles.settingItem}
                 onPress={() => setSettingsScreen('privacy')}
               >
                 <Ionicons name="lock-closed-outline" size={24} color={COLORS.text.white} />
                 <Text style={styles.settingText}>Privacy & Security</Text>
-                <Ionicons name="chevron-forward" size={20} color={COLORS.text.gray} style={styles.settingArrow} />
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={COLORS.text.gray}
+                  style={styles.settingArrow}
+                />
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={styles.settingItem}
                 onPress={() => router.replace('/(tabs)/chat')}
               >
                 <Ionicons name="help-circle-outline" size={24} color={COLORS.text.white} />
                 <Text style={styles.settingText}>Help & Support</Text>
-                <Ionicons name="chevron-forward" size={20} color={COLORS.text.gray} style={styles.settingArrow} />
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={COLORS.text.gray}
+                  style={styles.settingArrow}
+                />
               </TouchableOpacity>
-              
+
               {user ? (
-                <TouchableOpacity 
-                  style={styles.settingItem}
-                  onPress={handleLogout}
-                >
+                <TouchableOpacity style={styles.settingItem} onPress={handleLogout}>
                   <Ionicons name="log-out-outline" size={24} color={COLORS.error} />
                   <Text style={[styles.settingText, { color: COLORS.error }]}>Sign Out</Text>
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity 
-                  style={styles.settingItem}
-                  onPress={handleLogin}
-                >
+                <TouchableOpacity style={styles.settingItem} onPress={handleLogin}>
                   <Ionicons name="log-in-outline" size={24} color={COLORS.primary} />
                   <Text style={[styles.settingText, { color: COLORS.primary }]}>Sign In</Text>
                 </TouchableOpacity>
@@ -846,11 +856,9 @@ export default function ProfileScreen() {
   // Handle two-factor authentication setup
   const handleSetUpTwoFactor = () => {
     // TODO: Navigate to two-factor setup screen
-    Alert.alert(
-      'Two-Factor Authentication',
-      'Navigate to two-factor authentication setup',
-      [{ text: 'OK' }]
-    );
+    Alert.alert('Two-Factor Authentication', 'Navigate to two-factor authentication setup', [
+      { text: 'OK' },
+    ]);
   };
 
   // Add this at the top level of the component, after useState/useUser declarations
@@ -864,56 +872,44 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.headerWrapper}>
         <Header showBackButton />
-        <TouchableOpacity 
-          style={styles.closeButton} 
-          onPress={handleClose}
-        >
+        <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
           <Ionicons name="close" size={24} color={COLORS.text.white} />
         </TouchableOpacity>
       </View>
-      
+
       {/* Global Keyboard Dismiss Button - Only show when editing */}
       {isEditing && (
-        <TouchableOpacity 
-          style={styles.keyboardDismissButton}
-          onPress={dismissKeyboard}
-        >
+        <TouchableOpacity style={styles.keyboardDismissButton} onPress={dismissKeyboard}>
           <Ionicons name="close-circle" size={20} color={COLORS.text.white} />
           <Text style={styles.keyboardDismissText}>Done</Text>
         </TouchableOpacity>
       )}
-      
+
       <View style={styles.content}>
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
             <Ionicons name="person" size={40} color={COLORS.text.white} />
           </View>
           <Text style={styles.userName}>{user?.name || 'Guest User'}</Text>
-          
+
           {pendingOrdersCount > 0 && (
-            <TouchableOpacity 
-              style={styles.orderBadge}
-              onPress={() => setActiveTab('orders')}
-            >
+            <TouchableOpacity style={styles.orderBadge} onPress={() => setActiveTab('orders')}>
               <Text style={styles.orderBadgeText}>
                 {pendingOrdersCount} Pending Order{pendingOrdersCount > 1 ? 's' : ''}
               </Text>
             </TouchableOpacity>
           )}
-          
+
           {!isAuthenticated && (
-            <TouchableOpacity 
-              style={styles.loginButton}
-              onPress={handleLogin}
-            >
+            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
               <Text style={styles.loginButtonText}>Sign In</Text>
             </TouchableOpacity>
           )}
         </View>
-        
+
         <View style={styles.tabsContainer}>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'orders' && styles.activeTab]} 
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'orders' && styles.activeTab]}
             onPress={() => {
               setActiveTab('orders');
               setSettingsScreen('main');
@@ -931,9 +927,9 @@ export default function ProfileScreen() {
               )}
             </View>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'profile' && styles.activeTab]} 
+
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'profile' && styles.activeTab]}
             onPress={() => {
               setActiveTab('profile');
               setSettingsScreen('main');
@@ -944,9 +940,9 @@ export default function ProfileScreen() {
               Profile
             </Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'settings' && styles.activeTab]} 
+
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'settings' && styles.activeTab]}
             onPress={() => {
               setActiveTab('settings');
               setSettingsScreen('main');
@@ -958,15 +954,13 @@ export default function ProfileScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-        
+
         {/* Main Content */}
-        <View style={styles.content}>
-          {renderTabContent()}
-        </View>
+        <View style={styles.content}>{renderTabContent()}</View>
       </View>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {

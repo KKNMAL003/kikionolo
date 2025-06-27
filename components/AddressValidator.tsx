@@ -28,14 +28,17 @@ const validateSouthAfricanPostalCode = (postalCode: string): boolean => {
 // Basic address validation for South Africa
 const validateAddress = async (address: string): Promise<AddressValidationResult> => {
   // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  const addressParts = address.split(',').map(part => part.trim()).filter(Boolean);
-  
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+
+  const addressParts = address
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+
   if (addressParts.length < 2) {
     return {
       isValid: false,
-      suggestions: ['Please provide a complete address with street and city']
+      suggestions: ['Please provide a complete address with street and city'],
     };
   }
 
@@ -45,23 +48,39 @@ const validateAddress = async (address: string): Promise<AddressValidationResult
 
   // Common SA cities for validation
   const saCities = [
-    'johannesburg', 'cape town', 'durban', 'pretoria', 'port elizabeth',
-    'bloemfontein', 'east london', 'pietermaritzburg', 'witbank', 'vanderbijlpark',
-    'centurion', 'sandton', 'roodepoort', 'benoni', 'boksburg', 'germiston',
-    'randburg', 'midrand', 'kempton park', 'springs', 'alberton'
+    'johannesburg',
+    'cape town',
+    'durban',
+    'pretoria',
+    'port elizabeth',
+    'bloemfontein',
+    'east london',
+    'pietermaritzburg',
+    'witbank',
+    'vanderbijlpark',
+    'centurion',
+    'sandton',
+    'roodepoort',
+    'benoni',
+    'boksburg',
+    'germiston',
+    'randburg',
+    'midrand',
+    'kempton park',
+    'springs',
+    'alberton',
   ];
 
-  const hasRecognizedCity = saCities.some(city => 
-    address.toLowerCase().includes(city)
-  );
+  const hasRecognizedCity = saCities.some((city) => address.toLowerCase().includes(city));
 
   // Basic validation checks
-  const isValid = addressParts.length >= 2 && 
-                  addressParts[0].length > 5 && // Street address should be substantial
-                  (hasValidPostalCode || hasRecognizedCity);
+  const isValid =
+    addressParts.length >= 2 &&
+    addressParts[0].length > 5 && // Street address should be substantial
+    (hasValidPostalCode || hasRecognizedCity);
 
   let suggestions: string[] = [];
-  
+
   if (!isValid) {
     if (addressParts.length < 2) {
       suggestions.push('Please include both street address and city');
@@ -70,7 +89,9 @@ const validateAddress = async (address: string): Promise<AddressValidationResult
       suggestions.push('Please provide a more complete street address');
     }
     if (!hasValidPostalCode && !hasRecognizedCity) {
-      suggestions.push('Please include a valid South African postal code (4 digits) or recognized city');
+      suggestions.push(
+        'Please include a valid South African postal code (4 digits) or recognized city',
+      );
     }
   }
 
@@ -78,14 +99,14 @@ const validateAddress = async (address: string): Promise<AddressValidationResult
     isValid,
     suggestions: suggestions.length > 0 ? suggestions : undefined,
     formattedAddress: isValid ? address : undefined,
-    postalCode: postalCodeMatch ? postalCodeMatch[0] : undefined
+    postalCode: postalCodeMatch ? postalCodeMatch[0] : undefined,
   };
 };
 
-export default function AddressValidator({ 
-  address, 
-  onValidationComplete, 
-  enabled = true 
+export default function AddressValidator({
+  address,
+  onValidationComplete,
+  enabled = true,
 }: AddressValidatorProps) {
   const [isValidating, setIsValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<AddressValidationResult | null>(null);
@@ -98,11 +119,11 @@ export default function AddressValidator({
 
     const validateAddressWithDelay = async () => {
       setIsValidating(true);
-      
+
       try {
         // Debounce validation
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
         const result = await validateAddress(address);
         setValidationResult(result);
         onValidationComplete(result);
@@ -110,7 +131,7 @@ export default function AddressValidator({
         console.error('Address validation error:', error);
         const fallbackResult: AddressValidationResult = {
           isValid: false,
-          suggestions: ['Address validation service temporarily unavailable']
+          suggestions: ['Address validation service temporarily unavailable'],
         };
         setValidationResult(fallbackResult);
         onValidationComplete(fallbackResult);
@@ -134,16 +155,14 @@ export default function AddressValidator({
           <Text style={styles.validatingText}>Validating address...</Text>
         </View>
       )}
-      
+
       {!isValidating && validationResult && (
         <View style={styles.resultContainer}>
           {validationResult.isValid ? (
             <View style={styles.validContainer}>
               <Text style={styles.validText}>✅ Address validated</Text>
               {validationResult.formattedAddress && (
-                <Text style={styles.formattedAddress}>
-                  {validationResult.formattedAddress}
-                </Text>
+                <Text style={styles.formattedAddress}>{validationResult.formattedAddress}</Text>
               )}
             </View>
           ) : (

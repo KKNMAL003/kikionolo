@@ -9,9 +9,9 @@ import { useCart } from '../../context/CartContext';
 
 export default function OrderScreen() {
   const { addToCart } = useCart();
-  
+
   // Filter products to show only gas products
-  const gasProducts = PRODUCTS.filter(product => product.type === 'gas');
+  const gasProducts = PRODUCTS.filter((product) => product.type === 'gas');
 
   const handleAddToCart = (product, quantity) => {
     addToCart(product, quantity);
@@ -25,9 +25,7 @@ export default function OrderScreen() {
         <FlatList
           data={gasProducts}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <ProductCard product={item} onAddToCart={handleAddToCart} />
-          )}
+          renderItem={({ item }) => <ProductCard product={item} onAddToCart={handleAddToCart} />}
           contentContainerStyle={styles.productsList}
           showsVerticalScrollIndicator={false}
         />

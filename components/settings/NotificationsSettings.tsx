@@ -62,7 +62,7 @@ export const NotificationsSettings: React.FC<NotificationSettingsProps> = ({
       <ScrollView style={styles.scrollView}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Notification Methods</Text>
-          
+
           <View style={styles.settingItem}>
             <View style={styles.settingIcon}>
               <Ionicons name="mail-outline" size={22} color={COLORS.primary} />
@@ -71,14 +71,14 @@ export const NotificationsSettings: React.FC<NotificationSettingsProps> = ({
               <Text style={styles.settingText}>Email Notifications</Text>
               <Text style={styles.settingDescription}>Order updates, promotions, and more</Text>
             </View>
-            <Switch 
+            <Switch
               value={settings.email}
               onValueChange={() => handleToggle('email')}
               trackColor={{ false: COLORS.border, true: COLORS.primary }}
               thumbColor={COLORS.text.white}
             />
           </View>
-          
+
           <View style={styles.settingItem}>
             <View style={styles.settingIcon}>
               <Ionicons name="chatbubbles-outline" size={22} color={COLORS.primary} />
@@ -87,14 +87,14 @@ export const NotificationsSettings: React.FC<NotificationSettingsProps> = ({
               <Text style={styles.settingText}>SMS Notifications</Text>
               <Text style={styles.settingDescription}>Order status and delivery updates</Text>
             </View>
-            <Switch 
+            <Switch
               value={settings.sms}
               onValueChange={() => handleToggle('sms')}
               trackColor={{ false: COLORS.border, true: COLORS.primary }}
               thumbColor={COLORS.text.white}
             />
           </View>
-          
+
           <View style={styles.settingItem}>
             <View style={styles.settingIcon}>
               <Ionicons name="notifications-outline" size={22} color={COLORS.primary} />
@@ -103,7 +103,7 @@ export const NotificationsSettings: React.FC<NotificationSettingsProps> = ({
               <Text style={styles.settingText}>Push Notifications</Text>
               <Text style={styles.settingDescription}>App updates and promotions</Text>
             </View>
-            <Switch 
+            <Switch
               value={settings.push}
               onValueChange={() => handleToggle('push')}
               trackColor={{ false: COLORS.border, true: COLORS.primary }}
@@ -111,42 +111,42 @@ export const NotificationsSettings: React.FC<NotificationSettingsProps> = ({
             />
           </View>
         </View>
-        
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Notification Preferences</Text>
-          
+
           <View style={styles.settingItem}>
             <View style={styles.settingTextContainer}>
               <Text style={styles.settingText}>Order Updates</Text>
               <Text style={styles.settingDescription}>Order confirmations and status changes</Text>
             </View>
-            <Switch 
+            <Switch
               value={settings.orderUpdates}
               onValueChange={() => handleToggle('orderUpdates')}
               trackColor={{ false: COLORS.border, true: COLORS.primary }}
               thumbColor={COLORS.text.white}
             />
           </View>
-          
+
           <View style={styles.settingItem}>
             <View style={styles.settingTextContainer}>
               <Text style={styles.settingText}>Promotions & Offers</Text>
               <Text style={styles.settingDescription}>Special offers and discounts</Text>
             </View>
-            <Switch 
+            <Switch
               value={settings.promotions}
               onValueChange={() => handleToggle('promotions')}
               trackColor={{ false: COLORS.border, true: COLORS.primary }}
               thumbColor={COLORS.text.white}
             />
           </View>
-          
+
           <View style={styles.settingItem}>
             <View style={styles.settingTextContainer}>
               <Text style={styles.settingText}>Newsletter</Text>
               <Text style={styles.settingDescription}>Weekly updates and news</Text>
             </View>
-            <Switch 
+            <Switch
               value={settings.newsletter}
               onValueChange={() => handleToggle('newsletter')}
               trackColor={{ false: COLORS.border, true: COLORS.primary }}

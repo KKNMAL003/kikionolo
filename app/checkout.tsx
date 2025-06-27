@@ -1,5 +1,16 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity, Keyboard, KeyboardAvoidingView, Platform, TouchableWithoutFeedback } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  TouchableOpacity,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+} from 'react-native';
 import * as Linking from 'expo-linking';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,7 +31,13 @@ import { sendOrderConfirmationEmail } from '../utils/email';
 import { createPayPalOrder, capturePayPalPayment } from '../utils/paypal';
 import { convertZARtoUSD } from '../utils/currency';
 
-type PaymentMethod = 'cash_on_delivery' | 'card_on_delivery' | 'card' | 'payfast' | 'paypal' | 'eft';
+type PaymentMethod =
+  | 'cash_on_delivery'
+  | 'card_on_delivery'
+  | 'card'
+  | 'payfast'
+  | 'paypal'
+  | 'eft';
 type TimeSlot = 'morning' | 'afternoon' | 'evening';
 
 export default function CheckoutScreen() {
@@ -74,7 +91,7 @@ export default function CheckoutScreen() {
   const completeOrder = async (paymentMethodUsed: PaymentMethod) => {
     try {
       setLoading(true);
-      const orderItems = items.map(item => ({
+      const orderItems = items.map((item) => ({
         productId: item.product.id,
         productName: item.product.name,
         quantity: item.quantity,
@@ -116,7 +133,7 @@ export default function CheckoutScreen() {
           deliveryAddress: newOrder.deliveryAddress,
           deliverySchedule,
         };
-        sendOrderConfirmationEmail(emailData).catch(error => {
+        sendOrderConfirmationEmail(emailData).catch((error) => {
           console.error('Error sending order confirmation email:', error);
         });
       }
@@ -139,7 +156,7 @@ export default function CheckoutScreen() {
 
   useEffect(() => {
     if (user && !user.isGuest) {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         name: user.name || '',
         phone: user.phone || '',
@@ -150,10 +167,11 @@ export default function CheckoutScreen() {
   }, [user]);
 
   const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const isFormValid = () => formData.name.trim() && formData.phone.trim() && formData.address.trim();
+  const isFormValid = () =>
+    formData.name.trim() && formData.phone.trim() && formData.address.trim();
 
   const completeOrderRef = useRef(completeOrder);
   useEffect(() => {
@@ -181,7 +199,8 @@ export default function CheckoutScreen() {
       if (url.includes('paypal-success')) {
         setLoading(true);
         const parsedUrl = Linking.parse(url);
-        const orderId = (parsedUrl.queryParams?.token as string) || (await AsyncStorage.getItem('paypalOrderId'));
+        const orderId =
+          (parsedUrl.queryParams?.token as string) || (await AsyncStorage.getItem('paypalOrderId'));
         if (orderId) {
           try {
             await capturePayPalPayment(orderId);
@@ -201,7 +220,7 @@ export default function CheckoutScreen() {
     };
 
     const subscription = Linking.addEventListener('url', handleDeepLink);
-    Linking.getInitialURL().then(url => {
+    Linking.getInitialURL().then((url) => {
       if (url) {
         handleDeepLink({ url });
       }
@@ -269,19 +288,42 @@ export default function CheckoutScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Header title="Checkout" />
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView style={styles.scrollView}>
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Contact Information</Text>
-              <CustomTextInput leftIcon="person-outline" placeholder="Full Name" value={formData.name} onChangeText={text => handleChange('name', text)} />
-              <CustomTextInput leftIcon="call-outline" placeholder="Phone Number" value={formData.phone} onChangeText={text => handleChange('phone', text)} keyboardType="phone-pad" />
-              <CustomTextInput leftIcon="mail-outline" placeholder="Email Address" value={formData.email} onChangeText={text => handleChange('email', text)} keyboardType="email-address" />
+              <CustomTextInput
+                leftIcon="person-outline"
+                placeholder="Full Name"
+                value={formData.name}
+                onChangeText={(text) => handleChange('name', text)}
+              />
+              <CustomTextInput
+                leftIcon="call-outline"
+                placeholder="Phone Number"
+                value={formData.phone}
+                onChangeText={(text) => handleChange('phone', text)}
+                keyboardType="phone-pad"
+              />
+              <CustomTextInput
+                leftIcon="mail-outline"
+                placeholder="Email Address"
+                value={formData.email}
+                onChangeText={(text) => handleChange('email', text)}
+                keyboardType="email-address"
+              />
             </View>
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Delivery Address</Text>
-              <AddressAutocomplete onAddressSelect={address => handleChange('address', address)} value={formData.address} />
+              <AddressAutocomplete
+                onAddressSelect={(address) => handleChange('address', address)}
+                value={formData.address}
+              />
             </View>
 
             <View style={styles.section}>
@@ -298,33 +340,47 @@ export default function CheckoutScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Payment Method</Text>
               <View style={styles.paymentOptions}>
-                {(['cash_on_delivery', 'card_on_delivery', 'paypal', 'eft'] as PaymentMethod[]).map(method => (
-                  <TouchableOpacity
-                    key={method}
-                    style={[
-                      styles.paymentCard,
-                      paymentMethod === method && styles.paymentCardSelected
-                    ]}
-                    onPress={() => setPaymentMethod(method)}
-                    activeOpacity={0.85}
-                  >
-                    <View style={styles.paymentCardIconRow}>
-                      <Ionicons
-                        name={method === 'paypal' ? 'logo-paypal' : method === 'eft' ? 'newspaper-outline' : method === 'card_on_delivery' ? 'card-outline' : 'cash-outline'}
-                        size={28}
-                        color={paymentMethod === method ? COLORS.primary : COLORS.text.gray}
-                        style={styles.paymentCardIcon}
-                      />
-                      <Text style={[
-                        styles.paymentCardTitle,
-                        paymentMethod === method && styles.paymentCardTitleSelected
-                      ]}>
-                        {getPaymentMethodDisplayName(method)}
+                {(['cash_on_delivery', 'card_on_delivery', 'paypal', 'eft'] as PaymentMethod[]).map(
+                  (method) => (
+                    <TouchableOpacity
+                      key={method}
+                      style={[
+                        styles.paymentCard,
+                        paymentMethod === method && styles.paymentCardSelected,
+                      ]}
+                      onPress={() => setPaymentMethod(method)}
+                      activeOpacity={0.85}
+                    >
+                      <View style={styles.paymentCardIconRow}>
+                        <Ionicons
+                          name={
+                            method === 'paypal'
+                              ? 'logo-paypal'
+                              : method === 'eft'
+                                ? 'newspaper-outline'
+                                : method === 'card_on_delivery'
+                                  ? 'card-outline'
+                                  : 'cash-outline'
+                          }
+                          size={28}
+                          color={paymentMethod === method ? COLORS.primary : COLORS.text.gray}
+                          style={styles.paymentCardIcon}
+                        />
+                        <Text
+                          style={[
+                            styles.paymentCardTitle,
+                            paymentMethod === method && styles.paymentCardTitleSelected,
+                          ]}
+                        >
+                          {getPaymentMethodDisplayName(method)}
+                        </Text>
+                      </View>
+                      <Text style={styles.paymentCardDescription}>
+                        {paymentMethodDescriptions[method]}
                       </Text>
-                    </View>
-                    <Text style={styles.paymentCardDescription}>{paymentMethodDescriptions[method]}</Text>
-                  </TouchableOpacity>
-                ))}
+                    </TouchableOpacity>
+                  ),
+                )}
               </View>
 
               {paymentMethod === 'eft' && (
@@ -332,7 +388,11 @@ export default function CheckoutScreen() {
                   <Text style={styles.eftTitle}>EFT / Bank Transfer Details</Text>
                   <Text style={styles.eftText}>Please use your Order ID as a reference.</Text>
                   <Text style={styles.eftText}>{COMPANY.business.bankingDetails}</Text>
-                  <TouchableOpacity onPress={() => Linking.openURL(`mailto:${COMPANY.contact.email}?subject=Proof of Payment`)}>
+                  <TouchableOpacity
+                    onPress={() =>
+                      Linking.openURL(`mailto:${COMPANY.contact.email}?subject=Proof of Payment`)
+                    }
+                  >
                     <Text style={styles.eftContactLink}>
                       Email proof of payment to {COMPANY.contact.email}
                     </Text>
@@ -343,28 +403,42 @@ export default function CheckoutScreen() {
               {paymentMethod === 'card_on_delivery' && (
                 <View style={styles.eftDetailsContainer}>
                   <Text style={styles.eftTitle}>Card on Delivery</Text>
-                  <Text style={styles.eftText}>Please have your card ready. Our driver will have a mobile POS machine for payment upon arrival.</Text>
+                  <Text style={styles.eftText}>
+                    Please have your card ready. Our driver will have a mobile POS machine for
+                    payment upon arrival.
+                  </Text>
                 </View>
               )}
 
               {paymentMethod === 'paypal' && (
                 <View style={styles.eftDetailsContainer}>
                   <Text style={styles.eftTitle}>PayPal Payment</Text>
-                  <Text style={styles.eftText}>You will be redirected to PayPal to complete your payment securely online.</Text>
+                  <Text style={styles.eftText}>
+                    You will be redirected to PayPal to complete your payment securely online.
+                  </Text>
                 </View>
               )}
 
               {paymentMethod === 'cash_on_delivery' && (
                 <View style={styles.eftDetailsContainer}>
                   <Text style={styles.eftTitle}>Cash on Delivery</Text>
-                  <Text style={styles.eftText}>Please have the exact amount ready. Our driver will collect payment upon delivery.</Text>
+                  <Text style={styles.eftText}>
+                    Please have the exact amount ready. Our driver will collect payment upon
+                    delivery.
+                  </Text>
                 </View>
               )}
             </View>
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Order Notes</Text>
-              <CustomTextInput leftIcon="document-text-outline" placeholder="Any special instructions?" value={formData.notes} onChangeText={text => handleChange('notes', text)} isTextArea />
+              <CustomTextInput
+                leftIcon="document-text-outline"
+                placeholder="Any special instructions?"
+                value={formData.notes}
+                onChangeText={(text) => handleChange('notes', text)}
+                isTextArea
+              />
             </View>
 
             <View style={styles.summaryContainer}>

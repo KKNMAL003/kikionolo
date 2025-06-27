@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Image, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
   Keyboard,
-  TouchableWithoutFeedback
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../../constants/colors';
@@ -24,11 +24,11 @@ import Toast from 'react-native-toast-message';
 export default function LoginScreen() {
   const router = useRouter();
   const { login, loginAsGuest, isLoading } = useUser();
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  
+
   const handleLogin = async () => {
     if (!email || !password) {
       Toast.show({
@@ -39,7 +39,7 @@ export default function LoginScreen() {
       });
       return;
     }
-    
+
     const success = await login(email, password);
     if (success) {
       router.replace('/(tabs)');
@@ -52,50 +52,50 @@ export default function LoginScreen() {
       });
     }
   };
-  
+
   const handleGuestLogin = async () => {
     await loginAsGuest();
     router.replace('/(tabs)');
   };
-  
+
   const handleRegister = () => {
     router.push('/auth/register');
   };
-  
+
   const handleBack = () => {
     router.back();
   };
-  
+
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
-          <ScrollView 
+          <ScrollView
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
           >
             <TouchableOpacity style={styles.backButton} onPress={handleBack}>
               <Ionicons name="arrow-back" size={24} color={COLORS.text.white} />
             </TouchableOpacity>
-            
+
             <View style={styles.logoContainer}>
               <View style={styles.logoWrapper}>
-                <Image 
-                  source={require('../../assets/images/onolo-logo-new.png')} 
+                <Image
+                  source={require('../../assets/images/onolo-logo-new.png')}
                   style={styles.logo}
                   resizeMode="contain"
                 />
               </View>
               <Text style={styles.appName}>Onolo Gas</Text>
             </View>
-            
+
             <Text style={styles.title}>Login</Text>
             <Text style={styles.subtitle}>Welcome back! Please sign in to continue.</Text>
-            
+
             <View style={styles.form}>
               <CustomTextInput
                 label="Email"
@@ -107,7 +107,7 @@ export default function LoginScreen() {
                 leftIcon="mail-outline"
                 returnKeyType="next"
               />
-              
+
               <CustomTextInput
                 label="Password"
                 value={password}
@@ -115,36 +115,36 @@ export default function LoginScreen() {
                 placeholder="Enter your password"
                 secureTextEntry={!showPassword}
                 leftIcon="lock-closed-outline"
-                rightIcon={showPassword ? "eye-off-outline" : "eye-outline"}
+                rightIcon={showPassword ? 'eye-off-outline' : 'eye-outline'}
                 onRightIconPress={() => setShowPassword(!showPassword)}
                 returnKeyType="done"
                 onSubmitEditing={handleLogin}
               />
-              
-              <Button 
-                title="Login" 
+
+              <Button
+                title="Login"
                 onPress={handleLogin}
                 loading={isLoading}
                 style={styles.loginButton}
               />
-              
+
               <TouchableOpacity style={styles.forgotPasswordButton}>
                 <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
               </TouchableOpacity>
-              
+
               <View style={styles.divider}>
                 <View style={styles.dividerLine} />
                 <Text style={styles.dividerText}>OR</Text>
                 <View style={styles.dividerLine} />
               </View>
-              
-              <Button 
-                title="Continue as Guest" 
+
+              <Button
+                title="Continue as Guest"
                 onPress={handleGuestLogin}
                 variant="outline"
                 style={styles.guestButton}
               />
-              
+
               <View style={styles.registerContainer}>
                 <Text style={styles.registerText}>Don't have an account? </Text>
                 <TouchableOpacity onPress={handleRegister}>

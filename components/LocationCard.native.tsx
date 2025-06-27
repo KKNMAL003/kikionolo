@@ -55,11 +55,7 @@ export default function LocationCard({ onDeliveryRequest }: LocationCardProps) {
           <View style={styles.dot} />
           <Text style={styles.hours}>{COMPANY.location.hours}</Text>
         </View>
-        <Button
-          title="Ask for a delivery"
-          onPress={handleDeliveryRequest}
-          style={styles.button}
-        />
+        <Button title="Ask for a delivery" onPress={handleDeliveryRequest} style={styles.button} />
       </View>
     </View>
   );

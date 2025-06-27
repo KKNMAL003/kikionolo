@@ -23,9 +23,9 @@ export default function CartScreen() {
         <View style={styles.emptyContainer}>
           <Ionicons name="cart-outline" size={80} color={COLORS.text.gray} />
           <Text style={styles.emptyText}>Your cart is empty</Text>
-          <Button 
-            title="Browse Products" 
-            onPress={() => router.push('/order')} 
+          <Button
+            title="Browse Products"
+            onPress={() => router.push('/order')}
             style={styles.browseButton}
           />
         </View>
@@ -45,20 +45,18 @@ export default function CartScreen() {
             <View style={styles.cartItem}>
               <View style={styles.productInfo}>
                 <View style={styles.iconContainer}>
-                  <Ionicons 
-                    name={item.product.type === 'gas' ? 'cube-outline' : 'water-outline'} 
-                    size={24} 
-                    color={COLORS.primary} 
+                  <Ionicons
+                    name={item.product.type === 'gas' ? 'cube-outline' : 'water-outline'}
+                    size={24}
+                    color={COLORS.primary}
                   />
                 </View>
                 <View style={styles.productDetails}>
                   <Text style={styles.productName}>{item.product.name}</Text>
-                  <Text style={styles.productPrice}>
-                    R {item.product.price.toFixed(2)}
-                  </Text>
+                  <Text style={styles.productPrice}>R {item.product.price.toFixed(2)}</Text>
                 </View>
               </View>
-              
+
               <View style={styles.quantityContainer}>
                 <TouchableOpacity
                   style={styles.quantityButton}
@@ -74,7 +72,7 @@ export default function CartScreen() {
                   <Ionicons name="add" size={20} color={COLORS.text.white} />
                 </TouchableOpacity>
               </View>
-              
+
               <TouchableOpacity
                 style={styles.removeButton}
                 onPress={() => removeFromCart(item.product.id)}
@@ -85,7 +83,7 @@ export default function CartScreen() {
           )}
           contentContainerStyle={styles.cartList}
         />
-        
+
         <View style={styles.summaryContainer}>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Subtotal</Text>
@@ -98,17 +96,15 @@ export default function CartScreen() {
           <View style={styles.divider} />
           <View style={styles.summaryRow}>
             <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>
-              R {(totalPrice + 50).toFixed(2)}
-            </Text>
+            <Text style={styles.totalValue}>R {(totalPrice + 50).toFixed(2)}</Text>
           </View>
-          
-          <Button 
-            title="Proceed to Checkout" 
-            onPress={handleCheckout} 
+
+          <Button
+            title="Proceed to Checkout"
+            onPress={handleCheckout}
             style={styles.checkoutButton}
           />
-          
+
           <TouchableOpacity style={styles.clearButton} onPress={clearCart}>
             <Text style={styles.clearButtonText}>Clear Cart</Text>
           </TouchableOpacity>

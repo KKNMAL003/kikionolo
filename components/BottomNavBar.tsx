@@ -23,7 +23,13 @@ export default function BottomNavBar() {
   const tabs: Tab[] = [
     { name: 'Home', path: '/(tabs)', icon: 'home-outline', activeIcon: 'home' },
     { name: 'Order', path: '/(tabs)/order', icon: 'flame-outline', activeIcon: 'flame' },
-    { name: 'Cart', path: '/(tabs)/cart', icon: 'cart-outline', activeIcon: 'cart', badge: totalItems > 0 ? totalItems : undefined },
+    {
+      name: 'Cart',
+      path: '/(tabs)/cart',
+      icon: 'cart-outline',
+      activeIcon: 'cart',
+      badge: totalItems > 0 ? totalItems : undefined,
+    },
     { name: 'Chat', path: '/(tabs)/chat', icon: 'chatbubble-outline', activeIcon: 'chatbubble' },
     { name: 'Menu', path: '/(tabs)/menu', icon: 'menu-outline', activeIcon: 'menu' },
   ];
@@ -31,7 +37,8 @@ export default function BottomNavBar() {
   const isActive = (path: string) => {
     const cleanedTarget = path.replace('/(tabs)', '') || '/';
     const cleanedCurrent = pathname.replace('/(tabs)', '') || '/';
-    if (cleanedTarget === '/' && (cleanedCurrent === '/' || cleanedCurrent === '/index')) return true;
+    if (cleanedTarget === '/' && (cleanedCurrent === '/' || cleanedCurrent === '/index'))
+      return true;
     return cleanedCurrent === cleanedTarget;
   };
 
@@ -43,7 +50,7 @@ export default function BottomNavBar() {
   return (
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
       <View style={styles.container}>
-        {tabs.map(tab => {
+        {tabs.map((tab) => {
           const active = isActive(tab.path);
           return (
             <TouchableOpacity
@@ -54,7 +61,11 @@ export default function BottomNavBar() {
             >
               <View style={[styles.tabInner, active && styles.activeTab]}>
                 {/* @ts-ignore  – Ionicons typings don\'t include all names */}
-                <Ionicons name={active ? tab.activeIcon : tab.icon} size={24} color={active ? COLORS.primary : COLORS.text.gray} />
+                <Ionicons
+                  name={active ? tab.activeIcon : tab.icon}
+                  size={24}
+                  color={active ? COLORS.primary : COLORS.text.gray}
+                />
                 <Text style={[styles.tabText, active && styles.activeTabText]}>{tab.name}</Text>
               </View>
               {tab.badge && (

@@ -8,14 +8,13 @@ import Header from '../../components/Header';
 import Button from '../../components/Button';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
-
 export default function MenuDetailScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
 
   // Find the matching menu item from COMPANY.customerInfo
   const menuItem = COMPANY.customerInfo.find(
-    (item) => item.title.toLowerCase().replace(/\s+/g, '-') === slug
+    (item) => item.title.toLowerCase().replace(/\s+/g, '-') === slug,
   );
 
   // Fallback if page doesn't exist
@@ -25,9 +24,7 @@ export default function MenuDetailScreen() {
         <Header showBackButton />
         <View style={styles.content}>
           <Text style={styles.title}>Page Not Found</Text>
-          <Text style={styles.description}>
-            Sorry, the page you're looking for doesn't exist.
-          </Text>
+          <Text style={styles.description}>Sorry, the page you're looking for doesn't exist.</Text>
         </View>
       </SafeAreaView>
     );
@@ -55,10 +52,14 @@ export default function MenuDetailScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Our Story</Text>
             {COMPANY.description.split('\n').map((p, idx) => (
-              <Text key={idx} style={styles.description}>{p}</Text>
+              <Text key={idx} style={styles.description}>
+                {p}
+              </Text>
             ))}
             {menuItem.content.split('\n').map((p, idx) => (
-              <Text key={`story-${idx}`} style={styles.description}>{p}</Text>
+              <Text key={`story-${idx}`} style={styles.description}>
+                {p}
+              </Text>
             ))}
           </View>
 
@@ -122,7 +123,11 @@ export default function MenuDetailScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <Header showBackButton />
-        <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={{ paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+        >
           <Text style={styles.title}>Gas Safety Tips</Text>
 
           {sections.map((section) => (
@@ -133,7 +138,12 @@ export default function MenuDetailScreen() {
               </View>
               {section.items.map((line) => (
                 <View key={line} style={styles.safetyItem}>
-                  <Ionicons name="checkmark" size={18} color={COLORS.primary} style={styles.checkIcon} />
+                  <Ionicons
+                    name="checkmark"
+                    size={18}
+                    color={COLORS.primary}
+                    style={styles.checkIcon}
+                  />
                   <Text style={styles.safetyText}>{line}</Text>
                 </View>
               ))}
@@ -144,7 +154,8 @@ export default function MenuDetailScreen() {
           <View style={styles.rememberCard}>
             <Text style={styles.rememberTitle}>Remember</Text>
             <Text style={styles.rememberText}>
-              Regular maintenance of your gas equipment is essential for safety. Have your gas installations checked by a qualified technician at least once a year.
+              Regular maintenance of your gas equipment is essential for safety. Have your gas
+              installations checked by a qualified technician at least once a year.
             </Text>
           </View>
         </ScrollView>
@@ -158,7 +169,11 @@ export default function MenuDetailScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <Header showBackButton />
-        <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={{ paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+        >
           <Text style={styles.title}>Gas Safety Tips</Text>
 
           <View style={styles.card}>
@@ -168,7 +183,12 @@ export default function MenuDetailScreen() {
             </View>
             {safetyLines.map((line) => (
               <View key={line} style={styles.safetyItem}>
-                <Ionicons name="checkmark-outline" size={20} color={COLORS.primary} style={styles.checkIcon} />
+                <Ionicons
+                  name="checkmark-outline"
+                  size={20}
+                  color={COLORS.primary}
+                  style={styles.checkIcon}
+                />
                 <Text style={styles.safetyText}>{line.replace(/^\d+\.\s*/, '')}</Text>
               </View>
             ))}
@@ -197,7 +217,8 @@ export default function MenuDetailScreen() {
               <Text style={styles.cardTitle}>Delivery Areas</Text>
             </View>
             <Text style={styles.description}>
-              We currently deliver to all areas within Johannesburg and surrounding suburbs. Our service area includes:
+              We currently deliver to all areas within Johannesburg and surrounding suburbs. Our
+              service area includes:
             </Text>
             {['Sandton', 'Randburg', 'Midrand', 'Roodepoort', 'Soweto'].map((area) => (
               <View key={area} style={styles.bulletPoint}>
@@ -217,7 +238,8 @@ export default function MenuDetailScreen() {
               <Text style={styles.cardTitle}>Delivery Times</Text>
             </View>
             <Text style={styles.description}>
-              Standard delivery is within 48 hours of placing your order. Same-day delivery is available for orders placed before 10 AM in select areas.
+              Standard delivery is within 48 hours of placing your order. Same-day delivery is
+              available for orders placed before 10 AM in select areas.
             </Text>
             <Text style={styles.description}>
               Our delivery hours are from 7 AM to 8 PM, 7 days a week.
@@ -236,7 +258,9 @@ export default function MenuDetailScreen() {
               'Our delivery personnel will inspect your gas bottle for safety before refilling',
               'Payment can be made via cash, card, or EFT upon delivery',
             ].map((info) => (
-              <Text key={info} style={styles.description}>• {info}</Text>
+              <Text key={info} style={styles.description}>
+                • {info}
+              </Text>
             ))}
           </View>
 
@@ -256,13 +280,19 @@ export default function MenuDetailScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <Header showBackButton />
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 40 }}
+        >
           <Text style={styles.title}>{menuItem.title}</Text>
-          {paragraphs.map((p, idx) => (
+          {paragraphs.map((p, idx) =>
             p.trim().length ? (
-              <Text key={idx} style={styles.description}>• {p}</Text>
-            ) : null
-          ))}
+              <Text key={idx} style={styles.description}>
+                • {p}
+              </Text>
+            ) : null,
+          )}
         </ScrollView>
       </SafeAreaView>
     );

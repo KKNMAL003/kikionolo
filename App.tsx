@@ -1,4 +1,5 @@
-import React from 'react';
+import 'react-native-get-random-values';
+import React, { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { COLORS } from './constants/colors';
@@ -39,7 +40,7 @@ export default function App() {
 
   // Set up the router with the app directory
   const ctx = require.context('./app');
-  
+
   return (
     <SafeAreaProvider>
       <UserProvider>

@@ -1,4 +1,8 @@
 module.exports = {
+  presets: [
+    'babel-preset-expo',
+    '@babel/preset-flow',
+  ],
   plugins: [
     [
       'module-resolver',
@@ -11,4 +15,4 @@ module.exports = {
     ],
     'react-native-reanimated/plugin',
   ],
-};
+}; 

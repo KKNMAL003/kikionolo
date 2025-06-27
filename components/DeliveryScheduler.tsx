@@ -33,7 +33,7 @@ export default function DeliveryScheduler({
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   tomorrow.setHours(0, 0, 0, 0); // Reset time to start of day
-  
+
   const maxDate = new Date();
   maxDate.setDate(tomorrow.getDate() + 6); // 7 days from tomorrow
 
@@ -41,7 +41,7 @@ export default function DeliveryScheduler({
     if (Platform.OS === 'android') {
       setShowDatePicker(false);
     }
-    
+
     if (date) {
       // Ensure the selected date is not before tomorrow
       if (date < tomorrow) {
@@ -106,9 +106,7 @@ export default function DeliveryScheduler({
                 </TouchableOpacity>
               </View>
               <View style={styles.datePickerNote}>
-                <Text style={styles.noteText}>
-                  📅 Delivery available from tomorrow onwards
-                </Text>
+                <Text style={styles.noteText}>📅 Delivery available from tomorrow onwards</Text>
               </View>
               <DateTimePicker
                 value={selectedDate < tomorrow ? tomorrow : selectedDate}
@@ -144,17 +142,15 @@ export default function DeliveryScheduler({
   return (
     <View style={styles.container}>
       <Text style={styles.sectionTitle}>Delivery Schedule</Text>
-      
+
       {/* Date Selection */}
       <View style={styles.dateSection}>
         <Text style={styles.label}>Delivery Date</Text>
         <View style={styles.dateNotice}>
           <Ionicons name="information-circle-outline" size={16} color={COLORS.primary} />
-          <Text style={styles.dateNoticeText}>
-            Deliveries available from tomorrow onwards
-          </Text>
+          <Text style={styles.dateNoticeText}>Deliveries available from tomorrow onwards</Text>
         </View>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.dateButton}
           onPress={() => setShowDatePicker(true)}
           activeOpacity={0.7}
@@ -178,26 +174,25 @@ export default function DeliveryScheduler({
         {TIME_SLOTS.map((slot) => (
           <TouchableOpacity
             key={slot.id}
-            style={[
-              styles.timeSlot,
-              selectedTimeSlot === slot.value && styles.selectedTimeSlot,
-            ]}
+            style={[styles.timeSlot, selectedTimeSlot === slot.value && styles.selectedTimeSlot]}
             onPress={() => onTimeSlotChange(slot.value)}
             activeOpacity={0.7}
           >
             <View style={styles.timeSlotContent}>
-              <View style={[
-                styles.radioButton,
-                selectedTimeSlot === slot.value && styles.selectedRadioButton,
-              ]}>
-                {selectedTimeSlot === slot.value && (
-                  <View style={styles.radioButtonInner} />
-                )}
+              <View
+                style={[
+                  styles.radioButton,
+                  selectedTimeSlot === slot.value && styles.selectedRadioButton,
+                ]}
+              >
+                {selectedTimeSlot === slot.value && <View style={styles.radioButtonInner} />}
               </View>
-              <Text style={[
-                styles.timeSlotText,
-                selectedTimeSlot === slot.value && styles.selectedTimeSlotText,
-              ]}>
+              <Text
+                style={[
+                  styles.timeSlotText,
+                  selectedTimeSlot === slot.value && styles.selectedTimeSlotText,
+                ]}
+              >
                 {slot.label}
               </Text>
             </View>

@@ -31,11 +31,11 @@ export default function MenuScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Menu</Text>
       </View>
-      
+
       <ScrollView style={styles.content}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Customer Info</Text>
-          
+
           {COMPANY.customerInfo.map((info, index) => (
             <MenuOption
               key={index}
@@ -44,55 +44,79 @@ export default function MenuScreen() {
             />
           ))}
         </View>
-        
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Contact</Text>
-          
+
           <View style={styles.contactInfo}>
             <Text style={styles.contactText}>{COMPANY.location.fullAddress.company}</Text>
             <Text style={styles.contactText}>{COMPANY.location.fullAddress.street}</Text>
             <Text style={styles.contactText}>{COMPANY.location.fullAddress.unit}</Text>
             <Text style={styles.contactText}>{COMPANY.location.fullAddress.area}</Text>
-            
+
             <View style={styles.contactItem}>
-              <Ionicons name="mail-outline" size={20} color={COLORS.primary} style={styles.contactIcon} />
+              <Ionicons
+                name="mail-outline"
+                size={20}
+                color={COLORS.primary}
+                style={styles.contactIcon}
+              />
               <TouchableOpacity onPress={handleEmailPress}>
                 <Text style={styles.contactEmail}>{COMPANY.contact.email}</Text>
               </TouchableOpacity>
             </View>
-            
+
             <View style={styles.contactItem}>
-              <Ionicons name="globe-outline" size={20} color={COLORS.primary} style={styles.contactIcon} />
+              <Ionicons
+                name="globe-outline"
+                size={20}
+                color={COLORS.primary}
+                style={styles.contactIcon}
+              />
               <TouchableOpacity onPress={handleWebsitePress}>
                 <Text style={styles.contactEmail}>{COMPANY.contact.website}</Text>
               </TouchableOpacity>
             </View>
-            
+
             <View style={styles.contactItem}>
-              <Ionicons name="call-outline" size={20} color={COLORS.primary} style={styles.contactIcon} />
+              <Ionicons
+                name="call-outline"
+                size={20}
+                color={COLORS.primary}
+                style={styles.contactIcon}
+              />
               <TouchableOpacity onPress={handlePhonePress}>
                 <Text style={styles.contactEmail}>{COMPANY.contact.phone}</Text>
               </TouchableOpacity>
             </View>
-            
+
             <View style={styles.contactItem}>
-              <Ionicons name="document-outline" size={20} color={COLORS.primary} style={styles.contactIcon} />
+              <Ionicons
+                name="document-outline"
+                size={20}
+                color={COLORS.primary}
+                style={styles.contactIcon}
+              />
               <Text style={styles.contactText}>Fax: {COMPANY.contact.fax}</Text>
             </View>
-            
+
             <View style={styles.divider} />
-            
+
             <Text style={styles.contactSubtitle}>Secondary Address</Text>
             <Text style={styles.contactText}>{COMPANY.location.secondaryAddress.street}</Text>
             <Text style={styles.contactText}>{COMPANY.location.secondaryAddress.unit}</Text>
             <Text style={styles.contactText}>{COMPANY.location.secondaryAddress.area}</Text>
-            
+
             <View style={styles.divider} />
-            
+
             <Text style={styles.contactSubtitle}>Business Information</Text>
-            <Text style={styles.contactText}>Registration Number: {COMPANY.business.registrationNumber}</Text>
+            <Text style={styles.contactText}>
+              Registration Number: {COMPANY.business.registrationNumber}
+            </Text>
             <Text style={styles.contactText}>Tax Number: {COMPANY.business.taxNumber}</Text>
-            <Text style={styles.contactText}>Banking Details: {COMPANY.business.bankingDetails}</Text>
+            <Text style={styles.contactText}>
+              Banking Details: {COMPANY.business.bankingDetails}
+            </Text>
           </View>
         </View>
       </ScrollView>

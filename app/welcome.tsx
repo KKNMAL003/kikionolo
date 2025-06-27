@@ -8,11 +8,10 @@ export default function Welcome() {
   return (
     <View style={styles.container}>
       <Text style={styles.headline}>
-        Fuel <Text style={styles.white}>On</Text>{'\n'}Demand
+        Fuel <Text style={styles.white}>On</Text>
+        {'\n'}Demand
       </Text>
-      <Text style={styles.subtitle}>
-        Order LPG gas refills in seconds – we’ll handle the rest
-      </Text>
+      <Text style={styles.subtitle}>Order LPG gas refills in seconds – we’ll handle the rest</Text>
 
       {['Fast Delivery', '24/7 Support', 'Secure Payment'].map((item) => (
         <View key={item} style={styles.bullet}>

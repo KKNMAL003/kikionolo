@@ -18,45 +18,35 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="home" size={24} color={color} />
-          ),
+          tabBarIcon: ({ color }) => <Ionicons name="home" size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="order"
         options={{
           title: 'Order',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="cube" size={24} color={color} />
-          ),
+          tabBarIcon: ({ color }) => <Ionicons name="cube" size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="chat"
         options={{
           title: 'Chat',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="chatbubble" size={24} color={color} />
-          ),
+          tabBarIcon: ({ color }) => <Ionicons name="chatbubble" size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="cart"
         options={{
           title: 'Cart',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="cart" size={24} color={color} />
-          ),
+          tabBarIcon: ({ color }) => <Ionicons name="cart" size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="menu"
         options={{
           title: 'Menu',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="menu" size={24} color={color} />
-          ),
+          tabBarIcon: ({ color }) => <Ionicons name="menu" size={24} color={color} />,
         }}
       />
     </Tabs>

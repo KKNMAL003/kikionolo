@@ -47,22 +47,13 @@ export default function ProfileUpdateProgress({ steps, currentStep }: ProfileUpd
       {steps.map((step, index) => (
         <View key={step.id} style={styles.stepContainer}>
           <View style={styles.stepHeader}>
-            <Text style={styles.stepIcon}>
-              {getStepStatusIcon(step.status)}
-            </Text>
-            <Text style={[
-              styles.stepTitle,
-              { color: getStepStatusColor(step.status) }
-            ]}>
+            <Text style={styles.stepIcon}>{getStepStatusIcon(step.status)}</Text>
+            <Text style={[styles.stepTitle, { color: getStepStatusColor(step.status) }]}>
               {step.title}
             </Text>
           </View>
-          {step.description && (
-            <Text style={styles.stepDescription}>{step.description}</Text>
-          )}
-          {index < steps.length - 1 && (
-            <View style={styles.stepConnector} />
-          )}
+          {step.description && <Text style={styles.stepDescription}>{step.description}</Text>}
+          {index < steps.length - 1 && <View style={styles.stepConnector} />}
         </View>
       ))}
     </View>

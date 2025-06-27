@@ -8,7 +8,10 @@ export interface RetryOptions {
 }
 
 export class RetryableError extends Error {
-  constructor(message: string, public isRetryable: boolean = true) {
+  constructor(
+    message: string,
+    public isRetryable: boolean = true,
+  ) {
     super(message);
     this.name = 'RetryableError';
   }
@@ -16,7 +19,7 @@ export class RetryableError extends Error {
 
 export const withRetry = async <T>(
   operation: () => Promise<T>,
-  options: RetryOptions = {}
+  options: RetryOptions = {},
 ): Promise<T> => {
   const {
     maxAttempts = 3,
@@ -28,7 +31,7 @@ export const withRetry = async <T>(
       if (error instanceof RetryableError) {
         return error.isRetryable;
       }
-      
+
       const message = error.message?.toLowerCase() || '';
       const retryableErrors = [
         'network',
@@ -41,13 +44,11 @@ export const withRetry = async <T>(
         'internal server error',
         'service unavailable',
         'too many requests',
-        'rate limit'
+        'rate limit',
       ];
-      
-      return retryableErrors.some(retryableError => 
-        message.includes(retryableError)
-      );
-    }
+
+      return retryableErrors.some((retryableError) => message.includes(retryableError));
+    },
   } = options;
 
   let lastError: any;
@@ -68,8 +69,8 @@ export const withRetry = async <T>(
 
       // Wait before retrying
       console.log(`Retrying in ${delay}ms...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-      
+      await new Promise((resolve) => setTimeout(resolve, delay));
+
       // Increase delay for next attempt (exponential backoff)
       delay = Math.min(delay * backoffFactor, maxDelay);
     }
@@ -81,7 +82,7 @@ export const withRetry = async <T>(
 // Specific retry wrapper for Supabase operations
 export const withSupabaseRetry = async <T>(
   operation: () => Promise<T>,
-  operationName: string = 'Supabase operation'
+  operationName: string = 'Supabase operation',
 ): Promise<T> => {
   return withRetry(operation, {
     maxAttempts: 3,
@@ -89,7 +90,7 @@ export const withSupabaseRetry = async <T>(
     maxDelay: 5000,
     retryCondition: (error) => {
       const message = error.message?.toLowerCase() || '';
-      
+
       // Don't retry on validation errors or permission errors
       const nonRetryableErrors = [
         'invalid',
@@ -99,10 +100,10 @@ export const withSupabaseRetry = async <T>(
         'permission denied',
         'duplicate',
         'constraint',
-        'unique'
+        'unique',
       ];
 
-      if (nonRetryableErrors.some(nonRetryable => message.includes(nonRetryable))) {
+      if (nonRetryableErrors.some((nonRetryable) => message.includes(nonRetryable))) {
         console.log(`${operationName}: Non-retryable error detected:`, error.message);
         return false;
       }
@@ -115,13 +116,16 @@ export const withSupabaseRetry = async <T>(
         'fetch',
         'server error',
         'service unavailable',
-        'too many requests'
+        'too many requests',
       ];
 
-      const shouldRetry = retryableErrors.some(retryable => message.includes(retryable));
-      console.log(`${operationName}: Error is ${shouldRetry ? 'retryable' : 'non-retryable'}:`, error.message);
-      
+      const shouldRetry = retryableErrors.some((retryable) => message.includes(retryable));
+      console.log(
+        `${operationName}: Error is ${shouldRetry ? 'retryable' : 'non-retryable'}:`,
+        error.message,
+      );
+
       return shouldRetry;
-    }
+    },
   });
 };

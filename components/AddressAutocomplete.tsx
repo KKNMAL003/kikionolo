@@ -21,7 +21,8 @@ interface AddressAutocompleteProps {
   style?: StyleProp<ViewStyle>;
 }
 
-const MAPBOX_TOKEN = 'pk.eyJ1Ijoia2tubWFsMDAzIiwiYSI6ImNtOWI2NGF1MjBjdWwya3M1Mmxua3hqaXgifQ._PMbFD1tTIq4zmjGCwnAHg';
+const MAPBOX_TOKEN =
+  'pk.eyJ1Ijoia2tubWFsMDAzIiwiYSI6ImNtOWI2NGF1MjBjdWwya3M1Mmxua3hqaXgifQ._PMbFD1tTIq4zmjGCwnAHg';
 
 export default function AddressAutocomplete({
   label,
@@ -97,7 +98,7 @@ export default function AddressAutocomplete({
       />
       {showSuggestions && suggestions.length > 0 && (
         <View style={styles.suggestionsContainer}>
-          {suggestions.map(item => (
+          {suggestions.map((item) => (
             <TouchableOpacity
               key={item.id}
               style={styles.suggestionItem}

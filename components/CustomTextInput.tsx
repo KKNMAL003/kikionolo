@@ -1,15 +1,15 @@
 import React from 'react';
-import { 
-  TextInput, 
-  StyleSheet, 
-  TextInputProps, 
-  View, 
-  Text, 
-  StyleProp, 
+import {
+  TextInput,
+  StyleSheet,
+  TextInputProps,
+  View,
+  Text,
+  StyleProp,
   ViewStyle,
   Keyboard,
   Platform,
-  TouchableOpacity
+  TouchableOpacity,
 } from 'react-native';
 import { COLORS } from '../constants/colors';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,7 +43,7 @@ export default function CustomTextInput({
     if (returnKeyType === 'done' || isTextArea) {
       Keyboard.dismiss();
     }
-    
+
     // Call the original onSubmitEditing if provided
     if (onSubmitEditing) {
       onSubmitEditing(e);
@@ -86,10 +86,7 @@ export default function CustomTextInput({
           {...rest}
         />
         {rightIcon && (
-          <TouchableOpacity 
-            style={styles.rightIconContainer}
-            onPress={onRightIconPress}
-          >
+          <TouchableOpacity style={styles.rightIconContainer} onPress={onRightIconPress}>
             <Ionicons name={rightIcon} size={20} color={COLORS.text.gray} />
           </TouchableOpacity>
         )}

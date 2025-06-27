@@ -36,7 +36,7 @@ export const PrivacySecuritySettings: React.FC<PrivacySecuritySettingsProps> = (
       ...settings,
       [key]: !settings[key],
     };
-    
+
     if (key === 'biometricLogin' && !settings[key]) {
       // Show confirmation for enabling biometric login
       Alert.alert(
@@ -46,12 +46,12 @@ export const PrivacySecuritySettings: React.FC<PrivacySecuritySettingsProps> = (
           {
             text: 'Cancel',
             style: 'cancel',
-            onPress: () => {}
+            onPress: () => {},
           },
           {
             text: 'Enable',
             onPress: () => {
-              setSettings(prev => ({
+              setSettings((prev) => ({
                 ...prev,
                 [key]: true,
               }));
@@ -61,9 +61,9 @@ export const PrivacySecuritySettings: React.FC<PrivacySecuritySettingsProps> = (
                   [key]: true,
                 },
               });
-            }
-          }
-        ]
+            },
+          },
+        ],
       );
     } else {
       setSettings(newSettings);
@@ -94,11 +94,8 @@ export const PrivacySecuritySettings: React.FC<PrivacySecuritySettingsProps> = (
       <ScrollView style={styles.scrollView}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account Security</Text>
-          
-          <TouchableOpacity 
-            style={styles.settingItem}
-            onPress={onChangePassword}
-          >
+
+          <TouchableOpacity style={styles.settingItem} onPress={onChangePassword}>
             <View style={styles.settingIcon}>
               <Ionicons name="key-outline" size={22} color={COLORS.primary} />
             </View>
@@ -108,7 +105,7 @@ export const PrivacySecuritySettings: React.FC<PrivacySecuritySettingsProps> = (
             </View>
             <Ionicons name="chevron-forward" size={20} color={COLORS.text.gray} />
           </TouchableOpacity>
-          
+
           <View style={styles.settingItem}>
             <View style={styles.settingIcon}>
               <Ionicons name="shield-checkmark-outline" size={22} color={COLORS.primary} />
@@ -117,14 +114,14 @@ export const PrivacySecuritySettings: React.FC<PrivacySecuritySettingsProps> = (
               <Text style={styles.settingText}>Two-Factor Authentication</Text>
               <Text style={styles.settingDescription}>Add an extra layer of security</Text>
             </View>
-            <Switch 
+            <Switch
               value={settings.twoFactorAuth}
               onValueChange={() => handleToggle('twoFactorAuth')}
               trackColor={{ false: COLORS.border, true: COLORS.primary }}
               thumbColor={COLORS.text.white}
             />
           </View>
-          
+
           <View style={styles.settingItem}>
             <View style={styles.settingIcon}>
               <Ionicons name="finger-print-outline" size={22} color={COLORS.primary} />
@@ -133,7 +130,7 @@ export const PrivacySecuritySettings: React.FC<PrivacySecuritySettingsProps> = (
               <Text style={styles.settingText}>Biometric Login</Text>
               <Text style={styles.settingDescription}>Use fingerprint or face recognition</Text>
             </View>
-            <Switch 
+            <Switch
               value={settings.biometricLogin}
               onValueChange={() => handleToggle('biometricLogin')}
               trackColor={{ false: COLORS.border, true: COLORS.primary }}
@@ -141,14 +138,11 @@ export const PrivacySecuritySettings: React.FC<PrivacySecuritySettingsProps> = (
             />
           </View>
         </View>
-        
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Privacy</Text>
-          
-          <TouchableOpacity 
-            style={styles.settingItem}
-            onPress={handleOpenPrivacyPolicy}
-          >
+
+          <TouchableOpacity style={styles.settingItem} onPress={handleOpenPrivacyPolicy}>
             <View style={styles.settingIcon}>
               <Ionicons name="document-text-outline" size={22} color={COLORS.primary} />
             </View>
@@ -158,11 +152,8 @@ export const PrivacySecuritySettings: React.FC<PrivacySecuritySettingsProps> = (
             </View>
             <Ionicons name="chevron-forward" size={20} color={COLORS.text.gray} />
           </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.settingItem}
-            onPress={handleOpenTerms}
-          >
+
+          <TouchableOpacity style={styles.settingItem} onPress={handleOpenTerms}>
             <View style={styles.settingIcon}>
               <Ionicons name="document-lock-outline" size={22} color={COLORS.primary} />
             </View>
@@ -173,11 +164,11 @@ export const PrivacySecuritySettings: React.FC<PrivacySecuritySettingsProps> = (
             <Ionicons name="chevron-forward" size={20} color={COLORS.text.gray} />
           </TouchableOpacity>
         </View>
-        
+
         <View style={[styles.section, { marginBottom: 24 }]}>
           <Text style={styles.sectionTitle}>Data</Text>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.settingItem}
             onPress={() => {
               Alert.alert(
@@ -194,12 +185,12 @@ export const PrivacySecuritySettings: React.FC<PrivacySecuritySettingsProps> = (
                       // TODO: Implement data export
                       Alert.alert(
                         'Request Received',
-                        'Your data export has been started. You will receive an email when it\'s ready to download.',
-                        [{ text: 'OK' }]
+                        "Your data export has been started. You will receive an email when it's ready to download.",
+                        [{ text: 'OK' }],
                       );
                     },
                   },
-                ]
+                ],
               );
             }}
           >
@@ -212,8 +203,8 @@ export const PrivacySecuritySettings: React.FC<PrivacySecuritySettingsProps> = (
             </View>
             <Ionicons name="chevron-forward" size={20} color={COLORS.text.gray} />
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={[styles.settingItem, { borderBottomWidth: 0 }]}
             onPress={() => {
               Alert.alert(
@@ -232,11 +223,11 @@ export const PrivacySecuritySettings: React.FC<PrivacySecuritySettingsProps> = (
                       Alert.alert(
                         'Account Deletion',
                         'Your account has been scheduled for deletion. You will receive a confirmation email shortly.',
-                        [{ text: 'OK' }]
+                        [{ text: 'OK' }],
                       );
                     },
                   },
-                ]
+                ],
               );
             }}
           >
@@ -245,7 +236,9 @@ export const PrivacySecuritySettings: React.FC<PrivacySecuritySettingsProps> = (
             </View>
             <View style={styles.settingTextContainer}>
               <Text style={[styles.settingText, { color: COLORS.error }]}>Delete Account</Text>
-              <Text style={[styles.settingDescription, { color: COLORS.error + 'CC' }]}>Permanently delete your account and data</Text>
+              <Text style={[styles.settingDescription, { color: COLORS.error + 'CC' }]}>
+                Permanently delete your account and data
+              </Text>
             </View>
           </TouchableOpacity>
         </View>

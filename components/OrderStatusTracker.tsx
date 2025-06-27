@@ -40,7 +40,7 @@ export default function OrderStatusTracker({
   const getStatusIndex = (currentStatus: string) => {
     if (currentStatus === 'cancelled') return -1;
     if (currentStatus === 'pending') return -1;
-    return STATUS_STEPS.findIndex(step => step.key === currentStatus);
+    return STATUS_STEPS.findIndex((step) => step.key === currentStatus);
   };
 
   const currentStatusIndex = getStatusIndex(status);
@@ -86,13 +86,11 @@ export default function OrderStatusTracker({
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Order Status</Text>
-      
+
       <View style={styles.statusHeader}>
         <Text style={styles.statusMessage}>{getStatusMessage()}</Text>
         {estimatedDelivery && status !== 'delivered' && (
-          <Text style={styles.estimatedDelivery}>
-            Estimated delivery: {estimatedDelivery}
-          </Text>
+          <Text style={styles.estimatedDelivery}>Estimated delivery: {estimatedDelivery}</Text>
         )}
       </View>
 
@@ -100,45 +98,37 @@ export default function OrderStatusTracker({
         {STATUS_STEPS.map((step, index) => {
           const isCompleted = index <= currentStatusIndex;
           const isActive = index === currentStatusIndex;
-          
+
           return (
             <View key={step.key} style={styles.timelineStep}>
               <View style={styles.timelineRow}>
-                <View style={[
-                  styles.stepIcon,
-                  { backgroundColor: getStatusColor(index) }
-                ]}>
-                  <Ionicons 
-                    name={step.icon as any} 
-                    size={16} 
-                    color={COLORS.text.white} 
-                  />
+                <View style={[styles.stepIcon, { backgroundColor: getStatusColor(index) }]}>
+                  <Ionicons name={step.icon as any} size={16} color={COLORS.text.white} />
                 </View>
-                
+
                 <View style={styles.stepContent}>
-                  <Text style={[
-                    styles.stepLabel,
-                    isActive && styles.activeStepLabel,
-                    isCompleted && styles.completedStepLabel,
-                  ]}>
+                  <Text
+                    style={[
+                      styles.stepLabel,
+                      isActive && styles.activeStepLabel,
+                      isCompleted && styles.completedStepLabel,
+                    ]}
+                  >
                     {step.label}
                   </Text>
-                  
-                  {isActive && (
-                    <Text style={styles.activeStepSubtext}>In Progress</Text>
-                  )}
-                  
+
+                  {isActive && <Text style={styles.activeStepSubtext}>In Progress</Text>}
+
                   {isCompleted && index < currentStatusIndex && (
                     <Text style={styles.completedStepSubtext}>Completed</Text>
                   )}
                 </View>
               </View>
-              
+
               {index < STATUS_STEPS.length - 1 && (
-                <View style={[
-                  styles.timelineLine,
-                  { backgroundColor: getStatusColor(index + 1) }
-                ]} />
+                <View
+                  style={[styles.timelineLine, { backgroundColor: getStatusColor(index + 1) }]}
+                />
               )}
             </View>
           );

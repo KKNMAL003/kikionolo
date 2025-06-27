@@ -23,23 +23,29 @@ export const sendOrderConfirmationEmail = async (orderData: OrderEmailData): Pro
   try {
     // Check if email is the verified testing email
     const isTestingEmail = orderData.customerEmail.includes('info19music@gmail.com');
-    
+
     // For demo purposes, if not testing email, return true but don't actually send
     if (!isTestingEmail) {
-      console.log(`Email would be sent to: ${orderData.customerEmail} (Demo mode - not actually sent)`);
+      console.log(
+        `Email would be sent to: ${orderData.customerEmail} (Demo mode - not actually sent)`,
+      );
       // Simulate successful email send for demo
       return true;
     }
 
     // Generate HTML for order items
-    const orderItemsHtml = orderData.orderItems.map(item => `
+    const orderItemsHtml = orderData.orderItems
+      .map(
+        (item) => `
       <tr>
         <td style="padding: 12px 8px; border-bottom: 1px solid #eee; color: #333;">${item.productName}</td>
         <td style="padding: 12px 8px; border-bottom: 1px solid #eee; text-align: center; color: #333;">${item.quantity}</td>
         <td style="padding: 12px 8px; border-bottom: 1px solid #eee; text-align: right; color: #333;">R ${item.price.toFixed(2)}</td>
         <td style="padding: 12px 8px; border-bottom: 1px solid #eee; text-align: right; color: #333; font-weight: bold;">R ${(item.price * item.quantity).toFixed(2)}</td>
       </tr>
-    `).join('');
+    `,
+      )
+      .join('');
 
     // Create email HTML with improved styling
     const emailHtml = `
@@ -227,12 +233,16 @@ export const sendOrderConfirmationEmail = async (orderData: OrderEmailData): Pro
                 <span class="info-label">Payment Method:</span>
                 <span class="info-value">${orderData.paymentMethod}</span>
               </div>
-              ${orderData.deliverySchedule ? `
+              ${
+                orderData.deliverySchedule
+                  ? `
               <div class="info-row">
                 <span class="info-label">Delivery Schedule:</span>
                 <span class="info-value">${orderData.deliverySchedule}</span>
               </div>
-              ` : ''}
+              `
+                  : ''
+              }
             </div>
             
             <div class="divider"></div>
@@ -330,7 +340,7 @@ export const sendOrderConfirmationEmail = async (orderData: OrderEmailData): Pro
 };
 
 export const sendOrderStatusUpdateEmail = async (
-  orderData: OrderEmailData & { status: string }
+  orderData: OrderEmailData & { status: string },
 ): Promise<boolean> => {
   try {
     // For demo purposes, only send to verified testing email

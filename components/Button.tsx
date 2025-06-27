@@ -1,13 +1,13 @@
 import React from 'react';
-import { 
-  TouchableOpacity, 
-  Text, 
-  StyleSheet, 
-  ActivityIndicator, 
-  StyleProp, 
+import {
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  StyleProp,
   ViewStyle,
   Keyboard,
-  Pressable
+  Pressable,
 } from 'react-native';
 import { COLORS } from '../constants/colors';
 
@@ -33,7 +33,7 @@ export default function Button({
   const handlePress = () => {
     // Dismiss keyboard first
     Keyboard.dismiss();
-    
+
     // Call the onPress handler immediately
     onPress();
   };
@@ -58,7 +58,7 @@ export default function Button({
 
   return (
     <Pressable
-      style={({pressed}) => [
+      style={({ pressed }) => [
         styles.button,
         getButtonStyle(),
         disabled && styles.disabledButton,
@@ -67,10 +67,15 @@ export default function Button({
       ]}
       onPress={handlePress}
       disabled={disabled || loading}
-      android_ripple={{color: variant === 'outline' ? 'rgba(255, 107, 0, 0.1)' : 'rgba(255, 255, 255, 0.2)'}}
+      android_ripple={{
+        color: variant === 'outline' ? 'rgba(255, 107, 0, 0.1)' : 'rgba(255, 255, 255, 0.2)',
+      }}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'outline' ? COLORS.primary : COLORS.text.white} size="small" />
+        <ActivityIndicator
+          color={variant === 'outline' ? COLORS.primary : COLORS.text.white}
+          size="small"
+        />
       ) : (
         <Text style={[styles.buttonText, getTextStyle(), textStyle]}>{title}</Text>
       )}

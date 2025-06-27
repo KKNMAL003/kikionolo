@@ -28,11 +28,7 @@ export default function OrderDetailsScreen() {
             <Text style={styles.notFoundText}>
               The order you're looking for doesn't exist or has been removed.
             </Text>
-            <Button 
-              title="Go Back" 
-              onPress={() => router.back()}
-              style={styles.goBackButton}
-            />
+            <Button title="Go Back" onPress={() => router.back()} style={styles.goBackButton} />
           </View>
         </View>
       </SafeAreaView>
@@ -81,7 +77,7 @@ export default function OrderDetailsScreen() {
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -138,7 +134,9 @@ export default function OrderDetailsScreen() {
       <ScrollView style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.title}>Order Details</Text>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) + '20' }]}>
+          <View
+            style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) + '20' }]}
+          >
             <Text style={[styles.statusText, { color: getStatusColor(order.status) }]}>
               {getStatusText(order.status)}
             </Text>
@@ -164,7 +162,7 @@ export default function OrderDetailsScreen() {
           </View>
         </View>
 
-        <OrderStatusTracker 
+        <OrderStatusTracker
           status={order.status as any}
           orderDate={order.date}
           estimatedDelivery="1-2 working days"
@@ -181,9 +179,9 @@ export default function OrderDetailsScreen() {
               <Text style={styles.itemPrice}>R {(item.price * item.quantity).toFixed(2)}</Text>
             </View>
           ))}
-          
+
           <View style={styles.divider} />
-          
+
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total Amount</Text>
             <Text style={styles.totalValue}>R {order.totalAmount.toFixed(2)}</Text>
@@ -193,7 +191,7 @@ export default function OrderDetailsScreen() {
         {order.status === 'pending' && (
           <View style={styles.actionsCard}>
             <Text style={styles.cardTitle}>Order Actions</Text>
-            <Button 
+            <Button
               title="Cancel Order"
               onPress={handleCancelOrder}
               style={styles.cancelButton}
@@ -207,14 +205,14 @@ export default function OrderDetailsScreen() {
           <Text style={styles.supportText}>
             If you have any questions about your order, please contact our customer support.
           </Text>
-          
+
           <View style={styles.supportButtons}>
             <TouchableOpacity style={styles.supportButton}>
               <Ionicons name="call-outline" size={20} color={COLORS.primary} />
               <Text style={styles.supportButtonText}>Call Support</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.supportButton}
               onPress={() => router.push('/(tabs)/chat')}
             >

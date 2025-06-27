@@ -15,20 +15,22 @@ export default function Header({ showBackButton = false, title }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, orders } = useUser();
-  
+
   // Calculate pending orders count
-  const pendingOrdersCount = orders?.filter(order => 
-    order.status === 'pending' || 
-    order.status === 'order_received' || 
-    order.status === 'order_confirmed'
-  ).length || 0;
+  const pendingOrdersCount =
+    orders?.filter(
+      (order) =>
+        order.status === 'pending' ||
+        order.status === 'order_received' ||
+        order.status === 'order_confirmed',
+    ).length || 0;
 
   const handleProfilePress = () => {
     // Prevent navigation if already on profile page
     if (pathname === '/profile') {
       return;
     }
-    
+
     // Use replace to prevent stacking multiple profile screens
     router.replace('/profile');
   };
@@ -38,7 +40,7 @@ export default function Header({ showBackButton = false, title }: HeaderProps) {
     if (pathname === '/profile') {
       return;
     }
-    
+
     // Navigate directly to profile page using replace to prevent stacking
     router.replace('/profile');
   };
@@ -52,7 +54,7 @@ export default function Header({ showBackButton = false, title }: HeaderProps) {
         // If we can't go back, navigate to appropriate fallback
         const isInTabsGroup = pathname.startsWith('/(tabs)');
         const isInAuthGroup = pathname.startsWith('/auth');
-        
+
         if (isInAuthGroup) {
           // From auth screens, go to home
           router.replace('/(tabs)');
@@ -81,19 +83,15 @@ export default function Header({ showBackButton = false, title }: HeaderProps) {
     <View style={styles.container}>
       <View style={styles.logoContainer}>
         {showBackButton ? (
-          <TouchableOpacity 
-            onPress={handleBackPress} 
-            style={styles.backButton}
-            activeOpacity={0.7}
-          >
+          <TouchableOpacity onPress={handleBackPress} style={styles.backButton} activeOpacity={0.7}>
             <Ionicons name="arrow-back" size={24} color={COLORS.text.white} />
           </TouchableOpacity>
         ) : (
           <TouchableOpacity onPress={() => router.push('/welcome' as any)} activeOpacity={0.7}>
             <View style={styles.logoWrapper}>
-              <Image 
-                source={require('../assets/images/onolo-logo-new.png')} 
-                style={styles.logoImage} 
+              <Image
+                source={require('../assets/images/onolo-logo-new.png')}
+                style={styles.logoImage}
                 resizeMode="contain"
               />
             </View>
@@ -105,7 +103,7 @@ export default function Header({ showBackButton = false, title }: HeaderProps) {
       <View style={styles.rightSection}>
         {/* Pending Orders Badge - Make it more prominent and clickable */}
         {pendingOrdersCount > 0 && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.ordersBadgeContainer}
             onPress={handleOrdersBadgePress}
             activeOpacity={0.7}
@@ -118,7 +116,7 @@ export default function Header({ showBackButton = false, title }: HeaderProps) {
         )}
 
         {/* Profile Button */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.profileButton}
           onPress={handleProfilePress}
           activeOpacity={0.7}
@@ -148,7 +146,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     padding: 0, // Remove any padding around the logo container
-    margin: 0,  // Remove any margin around the logo container
+    margin: 0, // Remove any margin around the logo container
   },
   logoWrapper: {
     width: 60,

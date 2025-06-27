@@ -24,7 +24,7 @@ export default function BottomNavigation() {
       name: 'Order',
       path: '/(tabs)/order',
       icon: 'flame-outline',
-      activeIcon: 'flame'
+      activeIcon: 'flame',
     },
     {
       name: 'Cart',
@@ -69,13 +69,11 @@ export default function BottomNavigation() {
                 >
                   <View style={[styles.tabInner, active && styles.activeTab]}>
                     <Ionicons
-                      name={active ? tab.activeIcon as any : tab.icon as any}
+                      name={active ? (tab.activeIcon as any) : (tab.icon as any)}
                       size={24}
                       color={active ? COLORS.primary : COLORS.text.gray}
                     />
-                    <Text style={[styles.tabText, active && styles.activeTabText]}>
-                      {tab.name}
-                    </Text>
+                    <Text style={[styles.tabText, active && styles.activeTabText]}>{tab.name}</Text>
                   </View>
                   {tab.badge && (
                     <View style={styles.badge}>
@@ -98,7 +96,7 @@ export default function BottomNavigation() {
     if (pathname === path) {
       return;
     }
-    
+
     // Use replace for main tabs to prevent stacking
     router.replace(path);
   };
@@ -121,36 +119,18 @@ export default function BottomNavigation() {
                   size={24}
                   color={active ? COLORS.primary : COLORS.text.gray}
                 />
-                <Text
-                  style={[
-                    styles.tabText,
-                    active && styles.activeTabText,
-                  ]}
-                >
-                  {tab.name}
-                </Text>
+                <Text style={[styles.tabText, active && styles.activeTabText]}>{tab.name}</Text>
                 {tab.badge && (
                   <View style={styles.badge}>
                     <Text style={styles.badgeText}>{tab.badge}</Text>
                   </View>
                 )}
-                style={[
-                  styles.tabText,
-                  active && styles.activeTabText,
-                ]}
-              >
-                {tab.name}
-              </Text>
-            </View>
-            {tab.badge && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{tab.badge}</Text>
               </View>
-            )}
-          </TouchableOpacity>
-        );
-      })}
-    </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </SafeAreaView>
   );
 }
 

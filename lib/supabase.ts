@@ -10,21 +10,24 @@ console.log('Supabase Environment Variables:', {
   url: supabaseUrl ? 'Set' : 'Missing',
   key: supabaseAnonKey ? 'Set' : 'Missing',
   urlValue: supabaseUrl,
-  keyValue: supabaseAnonKey ? `${supabaseAnonKey.substring(0, 10)}...` : 'undefined'
+  keyValue: supabaseAnonKey ? `${supabaseAnonKey.substring(0, 10)}...` : 'undefined',
 });
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Missing Supabase environment variables:', {
     EXPO_PUBLIC_SUPABASE_URL: !!supabaseUrl,
-    EXPO_PUBLIC_SUPABASE_ANON_KEY: !!supabaseAnonKey
+    EXPO_PUBLIC_SUPABASE_ANON_KEY: !!supabaseAnonKey,
   });
-  
+
   // Provide more helpful error message
   throw new Error(
-    'Supabase configuration is missing. Please ensure EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY are set in your .env file.'
+    'Supabase configuration is missing. Please ensure EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY are set in your .env file.',
   );
 }
 
+// Supabase client setup for React Native/Expo app.
+// Handles environment variable loading, error handling, and connection testing.
+// Usage: Import and use the exported supabase client throughout the app.
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: AsyncStorage,
@@ -43,22 +46,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 export const testSupabaseConnection = async () => {
   try {
     console.log('Testing Supabase connection to:', supabaseUrl);
-    
+
     // First, test basic connectivity with a simple query
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('count')
-      .limit(1)
-      .single();
-    
+    const { data, error } = await supabase.from('profiles').select('count').limit(1).single();
+
     if (error) {
       console.error('Supabase connection test failed with error:', {
         message: error.message,
         details: error.details,
         hint: error.hint,
-        code: error.code
+        code: error.code,
       });
-      
+
       // Check for specific error types
       if (error.message.includes('Failed to fetch') || error.message.includes('network')) {
         console.error('Network connectivity issue detected. Please check:');
@@ -66,23 +65,25 @@ export const testSupabaseConnection = async () => {
         console.error('2. Supabase CORS settings (add http://localhost:8081 to allowed origins)');
         console.error('3. Firewall or proxy settings');
       } else if (error.message.includes('permission denied') || error.code === 'PGRST116') {
-        console.error('Database permission issue. This might be expected if RLS policies are strict.');
+        console.error(
+          'Database permission issue. This might be expected if RLS policies are strict.',
+        );
         console.log('Connection to Supabase appears to be working despite the permission error.');
         return true; // Connection is working, just a permission issue
       }
-      
+
       return false;
     }
-    
+
     console.log('Supabase connection test successful');
     return true;
   } catch (error: any) {
     console.error('Supabase connection test error:', {
       message: error.message,
       name: error.name,
-      stack: error.stack
+      stack: error.stack,
     });
-    
+
     // Provide specific guidance based on error type
     if (error.message?.includes('Failed to fetch')) {
       console.error('CORS or network issue detected. Please:');
@@ -92,7 +93,7 @@ export const testSupabaseConnection = async () => {
     } else if (error.message?.includes('Invalid API key')) {
       console.error('Authentication issue: Check your EXPO_PUBLIC_SUPABASE_ANON_KEY');
     }
-    
+
     return false;
   }
 };
@@ -104,17 +105,17 @@ export const testRawConnection = async () => {
     const response = await fetch(`${supabaseUrl}/rest/v1/`, {
       method: 'GET',
       headers: {
-        'apikey': supabaseAnonKey,
-        'Authorization': `Bearer ${supabaseAnonKey}`,
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`,
       },
     });
-    
+
     console.log('Raw connection response:', {
       status: response.status,
       statusText: response.statusText,
       ok: response.ok,
     });
-    
+
     return response.ok;
   } catch (error: any) {
     console.error('Raw connection test failed:', error.message);

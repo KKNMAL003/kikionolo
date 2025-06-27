@@ -1,6 +1,4 @@
-const {
-  wrapWithReanimatedMetroConfig,
-} = require('react-native-reanimated/metro-config');
+const { wrapWithReanimatedMetroConfig } = require('react-native-reanimated/metro-config');
 const { getDefaultConfig } = require('@expo/metro-config');
 const path = require('path');
 
@@ -26,9 +24,7 @@ config.resolver.disableHierarchicalLookup = true;
 
 // 4. Exclude react-native-maps from web bundle
 if (process.env.EXPO_PLATFORM === 'web') {
-  config.resolver.blockList = [
-    /node_modules\/react-native-maps\/.*$/,
-  ];
+  config.resolver.blockList = [/node_modules\/react-native-maps\/.*$/];
 }
 
 module.exports = wrapWithReanimatedMetroConfig(config);

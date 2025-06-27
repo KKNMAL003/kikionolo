@@ -13,7 +13,7 @@ interface LocationCardProps {
 
 export default function LocationCard({ onDeliveryRequest }: LocationCardProps) {
   const router = useRouter();
-  
+
   // Mapbox coordinates
   const latitude = COMPANY.location.coordinates.latitude;
   const longitude = COMPANY.location.coordinates.longitude;
@@ -82,11 +82,7 @@ export default function LocationCard({ onDeliveryRequest }: LocationCardProps) {
           <View style={styles.dot} />
           <Text style={styles.hours}>{COMPANY.location.hours}</Text>
         </View>
-        <Button
-          title="Ask for a delivery"
-          onPress={handleDeliveryRequest}
-          style={styles.button}
-        />
+        <Button title="Ask for a delivery" onPress={handleDeliveryRequest} style={styles.button} />
       </View>
     </View>
   );

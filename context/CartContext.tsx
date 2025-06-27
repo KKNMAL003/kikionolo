@@ -26,11 +26,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Calculate totals whenever items change
     const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
-    const price = items.reduce(
-      (sum, item) => sum + item.product.price * item.quantity,
-      0
-    );
-    
+    const price = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+
     setTotalItems(itemCount);
     setTotalPrice(price);
   }, [items]);
@@ -38,9 +35,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const addToCart = (product: Product, quantity: number = 1) => {
     setItems((prevItems) => {
       // Check if product already exists in cart
-      const existingItemIndex = prevItems.findIndex(
-        (item) => item.product.id === product.id
-      );
+      const existingItemIndex = prevItems.findIndex((item) => item.product.id === product.id);
 
       if (existingItemIndex >= 0) {
         // Product exists, increase quantity by the specified amount
@@ -55,9 +50,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const removeFromCart = (productId: string) => {
-    setItems((prevItems) => 
-      prevItems.filter((item) => item.product.id !== productId)
-    );
+    setItems((prevItems) => prevItems.filter((item) => item.product.id !== productId));
   };
 
   const updateQuantity = (productId: string, quantity: number) => {
@@ -66,12 +59,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    setItems((prevItems) => 
-      prevItems.map((item) => 
-        item.product.id === productId 
-          ? { ...item, quantity } 
-          : item
-      )
+    setItems((prevItems) =>
+      prevItems.map((item) => (item.product.id === productId ? { ...item, quantity } : item)),
     );
   };
 
