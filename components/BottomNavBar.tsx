@@ -73,6 +73,7 @@ export default function BottomNavBar() {
 const styles = StyleSheet.create({
   safeArea: {
     backgroundColor: COLORS.background,
+    marginBottom: 10,
   },
   container: {
     flexDirection: 'row',
