@@ -104,3 +104,62 @@ Pull requests welcome! Please lint and format your code before submitting.
 ## License
 
 MIT
+
+## PayFast Integration Notes
+
+### Development Testing
+
+PayFast requires publicly accessible URLs for return/cancel/notify URLs. During development with Expo Go, this creates challenges because:
+
+1. `Linking.createURL()` creates `exp://` URLs that PayFast doesn't recognize
+2. PayFast validates URL formats and requires HTTP/HTTPS URLs
+
+### Solutions for Development:
+
+1. **Use Development Simulation** (Current Implementation):
+   - Simulates PayFast flow without external URLs
+   - Shows development warnings
+   - Allows testing the UI flow
+
+2. **Use ngrok for Testing**:
+   ```bash
+   # Install ngrok
+   npm install -g ngrok
+   
+   # Create tunnel to your local server
+   ngrok http 3000
+   
+   # Use the ngrok URL in PayFast configuration
+   ```
+
+3. **Use a Staging Server**:
+   - Deploy a simple redirect service
+   - Configure PayFast URLs to point to staging
+   - Staging server redirects back to app using deep links
+
+4. **Testing Services**:
+   - Use webhook.site for temporary URLs
+   - Use httpbin.org for testing endpoints
+
+### Production Setup:
+
+1. Configure proper domain in `app.json`:
+   ```json
+   {
+     "expo": {
+       "scheme": "onolo",
+       "web": {
+         "bundler": "metro"
+       }
+     }
+   }
+   ```
+
+2. Set up proper return URLs:
+   ```typescript
+   return_url: 'https://yourdomain.com/payfast-success'
+   cancel_url: 'https://yourdomain.com/payfast-cancel'
+   notify_url: 'https://yourdomain.com/api/payfast-notify'
+   ```
+
+3. Implement deep linking to redirect back to app from web URLs.

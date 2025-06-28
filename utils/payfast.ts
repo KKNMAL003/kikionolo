@@ -89,15 +89,26 @@ function generateSignature(data: Record<string, string | number>, passphrase?: s
 
 // Get proper return URLs for PayFast
 function getPayFastReturnUrls() {
-  // For development, use ngrok or a public URL that can redirect back
-  // PayFast requires accessible URLs for validation
-  const baseUrl = 'https://httpbin.org';
+  const isDevelopment = __DEV__;
   
-  return {
-    returnUrl: Linking.createURL('payfast-success'),
-    cancelUrl: Linking.createURL('payfast-cancel'),
-    notifyUrl: `${baseUrl}/post`, // For webhook notifications in production
-  };
+  if (isDevelopment) {
+    // For development/testing, use a staging server that can handle redirects
+    // Replace this with your own staging server or use ngrok
+    const stagingBaseUrl = 'https://your-staging-server.com'; // Replace with actual staging URL
+    
+    return {
+      returnUrl: `${stagingBaseUrl}/payfast-return?success=true`,
+      cancelUrl: `${stagingBaseUrl}/payfast-return?success=false`,
+      notifyUrl: `${stagingBaseUrl}/payfast-notify`, // For webhook notifications
+    };
+  } else {
+    // For production, use proper deep links with your domain
+    return {
+      returnUrl: 'https://yourdomain.com/payfast-success',
+      cancelUrl: 'https://yourdomain.com/payfast-cancel', 
+      notifyUrl: 'https://yourdomain.com/api/payfast-notify',
+    };
+  }
 }
 
 // Create PayFast payment URL with exact field names and validation

@@ -31,6 +31,7 @@ import { sendOrderConfirmationEmail } from '../utils/email';
 import { createPayPalOrder, capturePayPalPayment } from '../utils/paypal';
 import { convertZARtoUSD } from '../utils/currency';
 import { initiatePayFastPayment } from '../utils/payfast';
+import { initiatePayFastPaymentDev } from '../utils/payfast-dev';
 
 type PaymentMethod =
   | 'cash_on_delivery'
@@ -274,7 +275,10 @@ export default function CheckoutScreen() {
           itemDescription: `Gas delivery order with ${items.length} item(s)`,
         };
 
-        const success = await initiatePayFastPayment(paymentData);
+        // Use development version in dev mode
+        const success = __DEV__ 
+          ? await initiatePayFastPaymentDev(paymentData)
+          : await initiatePayFastPayment(paymentData);
         
         if (!success) {
           Toast.show({
@@ -455,8 +459,16 @@ export default function CheckoutScreen() {
               {paymentMethod === 'payfast' && (
                 <View style={styles.eftDetailsContainer}>
                   <Text style={styles.eftTitle}>PayFast Payment</Text>
+                  {__DEV__ && (
+                    <Text style={styles.eftText}>
+                      <Text style={{ color: COLORS.primary }}>Development Mode:</Text> PayFast payment will be simulated for testing.
+                    </Text>
+                  )}
                   <Text style={styles.eftText}>
-                    You will be redirected to PayFast to complete your payment securely. PayFast supports all major South African banks and payment methods.
+                    {__DEV__ 
+                      ? 'In production, you will be redirected to PayFast to complete your payment securely.'
+                      : 'You will be redirected to PayFast to complete your payment securely. PayFast supports all major South African banks and payment methods.'
+                    }
                   </Text>
                 </View>
               )}
