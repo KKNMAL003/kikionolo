@@ -30,6 +30,7 @@ import DeliveryScheduler from '../components/DeliveryScheduler';
 import { sendOrderConfirmationEmail } from '../utils/email';
 import { createPayPalOrder, capturePayPalPayment } from '../utils/paypal';
 import { convertZARtoUSD } from '../utils/currency';
+import { initiatePayFastPayment } from '../utils/payfast';
 
 type PaymentMethod =
   | 'cash_on_delivery'
@@ -259,6 +260,36 @@ export default function CheckoutScreen() {
         Alert.alert('Error', 'Could not connect to PayPal. Please try again.');
         setLoading(false);
       }
+    } else if (paymentMethod === 'payfast') {
+      try {
+        setLoading(true);
+        
+        const paymentData = {
+          orderId: `ORDER-${Date.now()}`,
+          amount: totalPrice + 50, // Including delivery fee
+          customerName: formData.name,
+          customerEmail: formData.email,
+          customerPhone: formData.phone,
+          itemName: 'Onolo Gas Delivery Order',
+          itemDescription: `Gas delivery order with ${items.length} item(s)`,
+        };
+
+        const success = await initiatePayFastPayment(paymentData);
+        
+        if (!success) {
+          Toast.show({
+            type: 'error',
+            text1: 'PayFast Error',
+            text2: 'Could not initiate PayFast payment. Please try again.',
+          });
+          setLoading(false);
+        }
+        // Loading state will be handled by the return URL handling
+      } catch (error) {
+        console.error('PayFast payment initiation failed:', error);
+        Alert.alert('Error', 'Could not connect to PayFast. Please try again.');
+        setLoading(false);
+      }
     } else {
       await completeOrder(paymentMethod);
     }
@@ -280,7 +311,7 @@ export default function CheckoutScreen() {
     cash_on_delivery: 'Pay the driver in cash when your order arrives.',
     card_on_delivery: 'Pay with your debit or credit card using our mobile POS on delivery.',
     card: 'Pay online with your debit or credit card.',
-    payfast: 'Pay securely online via PayFast.',
+    payfast: 'Pay securely online via PayFast - South Africa\'s leading payment processor.',
     paypal: 'Pay securely online with your PayPal account or card.',
     eft: 'Transfer funds directly from your bank. Proof of payment required.',
   };
@@ -340,7 +371,7 @@ export default function CheckoutScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Payment Method</Text>
               <View style={styles.paymentOptions}>
-                {(['cash_on_delivery', 'card_on_delivery', 'paypal', 'eft'] as PaymentMethod[]).map(
+                {(['cash_on_delivery', 'card_on_delivery', 'paypal', 'payfast', 'eft'] as PaymentMethod[]).map(
                   (method) => (
                     <TouchableOpacity
                       key={method}
@@ -358,9 +389,11 @@ export default function CheckoutScreen() {
                               ? 'logo-paypal'
                               : method === 'eft'
                                 ? 'newspaper-outline'
-                                : method === 'card_on_delivery'
-                                  ? 'card-outline'
-                                  : 'cash-outline'
+                                : method === 'payfast'
+                                  ? 'card'
+                                  : method === 'card_on_delivery'
+                                    ? 'card-outline'
+                                    : 'cash-outline'
                           }
                           size={28}
                           color={paymentMethod === method ? COLORS.primary : COLORS.text.gray}
@@ -415,6 +448,15 @@ export default function CheckoutScreen() {
                   <Text style={styles.eftTitle}>PayPal Payment</Text>
                   <Text style={styles.eftText}>
                     You will be redirected to PayPal to complete your payment securely online.
+                  </Text>
+                </View>
+              )}
+
+              {paymentMethod === 'payfast' && (
+                <View style={styles.eftDetailsContainer}>
+                  <Text style={styles.eftTitle}>PayFast Payment</Text>
+                  <Text style={styles.eftText}>
+                    You will be redirected to PayFast to complete your payment securely. PayFast supports all major South African banks and payment methods.
                   </Text>
                 </View>
               )}

@@ -107,6 +107,20 @@ export default function RootLayout() {
                   }}
                 />
                 <Stack.Screen
+                  name="payfast-success"
+                  options={{
+                    presentation: 'card',
+                    gestureEnabled: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="payfast-cancel"
+                  options={{
+                    presentation: 'card',
+                    gestureEnabled: true,
+                  }}
+                />
+                <Stack.Screen
                   name="auth/login"
                   options={{
                     presentation: 'modal',
