@@ -980,13 +980,20 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     try {
       if (session?.user && supabaseConnected) {
         // Save to Supabase for authenticated users
+        
+        // Map frontend payment methods to database-compatible values
+        let dbPaymentMethod = orderData.paymentMethod;
+        if (orderData.paymentMethod === 'card_on_delivery') {
+          dbPaymentMethod = 'card';
+        }
+        
         const orderInsert = {
           user_id: session.user.id,
           status: orderData.status || 'pending',
           total_amount: orderData.totalAmount,
           delivery_address: orderData.deliveryAddress,
           delivery_phone: orderData.customerPhone || '',
-          payment_method: orderData.paymentMethod,
+          payment_method: dbPaymentMethod,
           customer_name: orderData.customerName || '',
           customer_email: orderData.customerEmail || '',
           notes: orderData.notes || '',
