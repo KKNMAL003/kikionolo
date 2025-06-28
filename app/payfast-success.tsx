@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { COLORS } from '../constants/colors';
 import Toast from 'react-native-toast-message';
+import Button from '../components/Button';
 
 export default function PayFastSuccessScreen() {
   const router = useRouter();
@@ -21,19 +22,37 @@ export default function PayFastSuccessScreen() {
       visibilityTime: 3000,
     });
 
-    // Redirect to profile/orders after a short delay
-    const timer = setTimeout(() => {
-      router.replace('/profile');
-    }, 2000);
-
-    return () => clearTimeout(timer);
   }, [params, router]);
+
+  const handleViewOrders = () => {
+    router.replace('/profile');
+  };
+
+  const handleGoHome = () => {
+    router.replace('/(tabs)');
+  };
 
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color={COLORS.primary} />
-      <Text style={styles.title}>Processing Payment</Text>
-      <Text style={styles.subtitle}>Please wait while we confirm your payment...</Text>
+      <Text style={styles.successIcon}>✅</Text>
+      <Text style={styles.title}>Payment Successful!</Text>
+      <Text style={styles.subtitle}>
+        Your PayFast payment has been processed successfully. Your order is now being prepared.
+      </Text>
+      
+      <View style={styles.buttonContainer}>
+        <Button
+          title="View My Orders"
+          onPress={handleViewOrders}
+          style={styles.button}
+        />
+        <Button
+          title="Continue Shopping"
+          onPress={handleGoHome}
+          variant="outline"
+          style={styles.button}
+        />
+      </View>
     </View>
   );
 }
@@ -50,13 +69,25 @@ const styles = StyleSheet.create({
     color: COLORS.text.white,
     fontSize: 24,
     fontWeight: 'bold',
-    marginTop: 20,
+    marginBottom: 16,
     textAlign: 'center',
   },
   subtitle: {
     color: COLORS.text.gray,
     fontSize: 16,
-    marginTop: 10,
+    marginBottom: 40,
     textAlign: 'center',
+    lineHeight: 24,
+  },
+  successIcon: {
+    fontSize: 80,
+    marginBottom: 20,
+  },
+  buttonContainer: {
+    width: '100%',
+    maxWidth: 300,
+  },
+  button: {
+    marginBottom: 16,
   },
 });
