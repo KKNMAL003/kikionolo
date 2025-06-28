@@ -17,13 +17,7 @@ export default function Header({ showBackButton = false, title }: HeaderProps) {
   const { user, orders } = useUser();
 
   // Calculate pending orders count
-  const pendingOrdersCount =
-    orders?.filter(
-      (order) =>
-        order.status === 'pending' ||
-        order.status === 'order_received' ||
-        order.status === 'order_confirmed',
-    ).length || 0;
+  const pendingOrdersCount = orders?.filter((order) => order.status === 'pending').length || 0;
 
   const handleProfilePress = () => {
     // Prevent navigation if already on profile page

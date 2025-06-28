@@ -1113,7 +1113,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         // Update in Supabase
         const { error } = await supabase
           .from('orders')
-          .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+          .update({ 
+            status: 'cancelled', 
+            updated_at: new Date().toISOString(),
+            // Ensure customer_id is set for any triggers that might log this change
+            customer_id: session.user.id
+          })
           .eq('id', orderId)
           .eq('user_id', session.user.id);
 
