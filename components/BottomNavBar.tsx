@@ -63,8 +63,8 @@ export default function BottomNavBar() {
                 {React.createElement(
                   active ? tab.activeIcon : tab.icon,
                   {
-                  size={24}
-                  color={active ? COLORS.primary : COLORS.text.gray}
+                  size: 24,
+                  color: active ? COLORS.primary : COLORS.text.gray
                   }
                 )}
                 <Text style={[styles.tabText, active && styles.activeTabText]}>{tab.name}</Text>
