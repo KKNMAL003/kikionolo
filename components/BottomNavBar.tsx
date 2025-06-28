@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Home, Flame, ShoppingCart, MessageCircle, Menu } from 'lucide-react-native';
 import { usePathname, useRouter } from 'expo-router';
 
 import { COLORS } from '../constants/colors';
@@ -10,8 +10,8 @@ import { useCart } from '../context/CartContext';
 interface Tab {
   name: string;
   path: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  activeIcon: keyof typeof Ionicons.glyphMap;
+  icon: React.ComponentType<any>;
+  activeIcon: React.ComponentType<any>;
   badge?: number;
 }
 
@@ -21,17 +21,17 @@ export default function BottomNavBar() {
   const { totalItems } = useCart();
 
   const tabs: Tab[] = [
-    { name: 'Home', path: '/(tabs)', icon: 'home-outline', activeIcon: 'home' },
-    { name: 'Order', path: '/(tabs)/order', icon: 'flame-outline', activeIcon: 'flame' },
+    { name: 'Home', path: '/(tabs)', icon: Home, activeIcon: Home },
+    { name: 'Order', path: '/(tabs)/order', icon: Flame, activeIcon: Flame },
     {
       name: 'Cart',
       path: '/(tabs)/cart',
-      icon: 'cart-outline',
-      activeIcon: 'cart',
+      icon: ShoppingCart,
+      activeIcon: ShoppingCart,
       badge: totalItems > 0 ? totalItems : undefined,
     },
-    { name: 'Chat', path: '/(tabs)/chat', icon: 'chatbubble-outline', activeIcon: 'chatbubble' },
-    { name: 'Menu', path: '/(tabs)/menu', icon: 'menu-outline', activeIcon: 'menu' },
+    { name: 'Chat', path: '/(tabs)/chat', icon: MessageCircle, activeIcon: MessageCircle },
+    { name: 'Menu', path: '/(tabs)/menu', icon: Menu, activeIcon: Menu },
   ];
 
   const isActive = (path: string) => {
@@ -60,12 +60,13 @@ export default function BottomNavBar() {
               activeOpacity={0.7}
             >
               <View style={[styles.tabInner, active && styles.activeTab]}>
-                {/* @ts-ignore  – Ionicons typings don\'t include all names */}
-                <Ionicons
-                  name={active ? tab.activeIcon : tab.icon}
+                {React.createElement(
+                  active ? tab.activeIcon : tab.icon,
+                  {
                   size={24}
                   color={active ? COLORS.primary : COLORS.text.gray}
-                />
+                  }
+                )}
                 <Text style={[styles.tabText, active && styles.activeTabText]}>{tab.name}</Text>
               </View>
               {tab.badge && (

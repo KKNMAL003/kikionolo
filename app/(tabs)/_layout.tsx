@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { COLORS } from '../../constants/colors';
-import { Ionicons } from '@expo/vector-icons';
+import { Home, Flame, MessageCircle, ShoppingCart, Menu } from 'lucide-react-native';
 import BottomNavBar from '../../components/BottomNavBar';
 import { View } from 'react-native';
 
@@ -18,35 +18,35 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <Ionicons name="home" size={24} color={color} />,
+          tabBarIcon: ({ color }) => <Home size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="order"
         options={{
           title: 'Order',
-          tabBarIcon: ({ color }) => <Ionicons name="cube" size={24} color={color} />,
+          tabBarIcon: ({ color }) => <Flame size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="chat"
         options={{
           title: 'Chat',
-          tabBarIcon: ({ color }) => <Ionicons name="chatbubble" size={24} color={color} />,
+          tabBarIcon: ({ color }) => <MessageCircle size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="cart"
         options={{
           title: 'Cart',
-          tabBarIcon: ({ color }) => <Ionicons name="cart" size={24} color={color} />,
+          tabBarIcon: ({ color }) => <ShoppingCart size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="menu"
         options={{
           title: 'Menu',
-          tabBarIcon: ({ color }) => <Ionicons name="menu" size={24} color={color} />,
+          tabBarIcon: ({ color }) => <Menu size={24} color={color} />,
         }}
       />
     </Tabs>

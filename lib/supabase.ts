@@ -6,18 +6,22 @@ const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
 // Debug logging for environment variables
-console.log('Supabase Environment Variables:', {
-  url: supabaseUrl ? 'Set' : 'Missing',
-  key: supabaseAnonKey ? 'Set' : 'Missing',
-  urlValue: supabaseUrl,
-  keyValue: supabaseAnonKey ? `${supabaseAnonKey.substring(0, 10)}...` : 'undefined',
-});
+if (__DEV__) {
+  console.log('Supabase Environment Variables:', {
+    url: supabaseUrl ? 'Set' : 'Missing',
+    key: supabaseAnonKey ? 'Set' : 'Missing',
+    urlValue: supabaseUrl,
+    keyValue: supabaseAnonKey ? `${supabaseAnonKey.substring(0, 10)}...` : 'undefined',
+  });
+}
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables:', {
-    EXPO_PUBLIC_SUPABASE_URL: !!supabaseUrl,
-    EXPO_PUBLIC_SUPABASE_ANON_KEY: !!supabaseAnonKey,
-  });
+  if (__DEV__) {
+    console.error('Missing Supabase environment variables:', {
+      EXPO_PUBLIC_SUPABASE_URL: !!supabaseUrl,
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: !!supabaseAnonKey,
+    });
+  }
 
   // Provide more helpful error message
   throw new Error(
@@ -37,7 +41,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     headers: {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': __DEV__ 
+        ? 'http://localhost:8081' 
+        : 'https://your-domain.com',
     },
   },
 });
@@ -45,53 +51,69 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // Enhanced connection test function with better error handling
 export const testSupabaseConnection = async () => {
   try {
-    console.log('Testing Supabase connection to:', supabaseUrl);
+    if (__DEV__) {
+      console.log('Testing Supabase connection to:', supabaseUrl);
+    }
 
     // First, test basic connectivity with a simple query
     const { data, error } = await supabase.from('profiles').select('count').limit(1).single();
 
     if (error) {
-      console.error('Supabase connection test failed with error:', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-      });
+      if (__DEV__) {
+        console.error('Supabase connection test failed with error:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        });
+      }
 
       // Check for specific error types
       if (error.message.includes('Failed to fetch') || error.message.includes('network')) {
-        console.error('Network connectivity issue detected. Please check:');
-        console.error('1. Your internet connection');
-        console.error('2. Supabase CORS settings (add http://localhost:8081 to allowed origins)');
-        console.error('3. Firewall or proxy settings');
+        if (__DEV__) {
+          console.error('Network connectivity issue detected. Please check:');
+          console.error('1. Your internet connection');
+          console.error('2. Supabase CORS settings (add http://localhost:8081 to allowed origins)');
+          console.error('3. Firewall or proxy settings');
+        }
       } else if (error.message.includes('permission denied') || error.code === 'PGRST116') {
-        console.error(
-          'Database permission issue. This might be expected if RLS policies are strict.',
-        );
-        console.log('Connection to Supabase appears to be working despite the permission error.');
+        if (__DEV__) {
+          console.error(
+            'Database permission issue. This might be expected if RLS policies are strict.',
+          );
+          console.log('Connection to Supabase appears to be working despite the permission error.');
+        }
         return true; // Connection is working, just a permission issue
       }
 
       return false;
     }
 
-    console.log('Supabase connection test successful');
+    if (__DEV__) {
+      console.log('Supabase connection test successful');
+    }
     return true;
   } catch (error: any) {
-    console.error('Supabase connection test error:', {
-      message: error.message,
-      name: error.name,
-      stack: error.stack,
-    });
+    if (__DEV__) {
+      console.error('Supabase connection test error:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+      });
+    }
 
     // Provide specific guidance based on error type
     if (error.message?.includes('Failed to fetch')) {
-      console.error('CORS or network issue detected. Please:');
-      console.error('1. Add http://localhost:8081 to Supabase CORS allowed origins');
-      console.error('2. Check if your Supabase project is accessible');
-      console.error('3. Verify your internet connection');
+      if (__DEV__) {
+        console.error('CORS or network issue detected. Please:');
+        console.error('1. Add http://localhost:8081 to Supabase CORS allowed origins');
+        console.error('2. Check if your Supabase project is accessible');
+        console.error('3. Verify your internet connection');
+      }
     } else if (error.message?.includes('Invalid API key')) {
-      console.error('Authentication issue: Check your EXPO_PUBLIC_SUPABASE_ANON_KEY');
+      if (__DEV__) {
+        console.error('Authentication issue: Check your EXPO_PUBLIC_SUPABASE_ANON_KEY');
+      }
     }
 
     return false;
@@ -101,7 +123,9 @@ export const testSupabaseConnection = async () => {
 // Additional utility function to test raw fetch to Supabase
 export const testRawConnection = async () => {
   try {
-    console.log('Testing raw connection to Supabase...');
+    if (__DEV__) {
+      console.log('Testing raw connection to Supabase...');
+    }
     const response = await fetch(`${supabaseUrl}/rest/v1/`, {
       method: 'GET',
       headers: {
@@ -110,15 +134,19 @@ export const testRawConnection = async () => {
       },
     });
 
-    console.log('Raw connection response:', {
-      status: response.status,
-      statusText: response.statusText,
-      ok: response.ok,
-    });
+    if (__DEV__) {
+      console.log('Raw connection response:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+      });
+    }
 
     return response.ok;
   } catch (error: any) {
-    console.error('Raw connection test failed:', error.message);
+    if (__DEV__) {
+      console.error('Raw connection test failed:', error.message);
+    }
     return false;
   }
 };

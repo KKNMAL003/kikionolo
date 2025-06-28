@@ -1,7 +1,7 @@
 import { Resend } from 'resend';
 
-// Initialize Resend with the provided API key
-const resend = new Resend('re_ZKquAjEF_L8WJyLRbHr9JnM9nKJ95A2E5');
+// Initialize Resend with environment variable
+const resend = new Resend(process.env.EXPO_PUBLIC_RESEND_API_KEY);
 
 interface OrderEmailData {
   customerName: string;

@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../../constants/colors';
 import Header from '../../components/Header';
 import { useCart } from '../../context/CartContext';
-import { Ionicons } from '@expo/vector-icons';
+import { ShoppingCart, Cube, Droplets, Minus, Plus, Trash2 } from 'lucide-react-native';
 import Button from '../../components/Button';
 import { useRouter } from 'expo-router';
 
@@ -21,7 +21,7 @@ export default function CartScreen() {
       <SafeAreaView style={styles.container}>
         <Header />
         <View style={styles.emptyContainer}>
-          <Ionicons name="cart-outline" size={80} color={COLORS.text.gray} />
+          <ShoppingCart size={80} color={COLORS.text.gray} />
           <Text style={styles.emptyText}>Your cart is empty</Text>
           <Button
             title="Browse Products"
@@ -45,11 +45,11 @@ export default function CartScreen() {
             <View style={styles.cartItem}>
               <View style={styles.productInfo}>
                 <View style={styles.iconContainer}>
-                  <Ionicons
-                    name={item.product.type === 'gas' ? 'cube-outline' : 'water-outline'}
-                    size={24}
-                    color={COLORS.primary}
-                  />
+                  {item.product.type === 'gas' ? (
+                    <Cube size={24} color={COLORS.primary} />
+                  ) : (
+                    <Droplets size={24} color={COLORS.primary} />
+                  )}
                 </View>
                 <View style={styles.productDetails}>
                   <Text style={styles.productName}>{item.product.name}</Text>
@@ -62,14 +62,14 @@ export default function CartScreen() {
                   style={styles.quantityButton}
                   onPress={() => updateQuantity(item.product.id, item.quantity - 1)}
                 >
-                  <Ionicons name="remove" size={20} color={COLORS.text.white} />
+                  <Minus size={20} color={COLORS.text.white} />
                 </TouchableOpacity>
                 <Text style={styles.quantity}>{item.quantity}</Text>
                 <TouchableOpacity
                   style={styles.quantityButton}
                   onPress={() => updateQuantity(item.product.id, item.quantity + 1)}
                 >
-                  <Ionicons name="add" size={20} color={COLORS.text.white} />
+                  <Plus size={20} color={COLORS.text.white} />
                 </TouchableOpacity>
               </View>
 
@@ -77,7 +77,7 @@ export default function CartScreen() {
                 style={styles.removeButton}
                 onPress={() => removeFromCart(item.product.id)}
               >
-                <Ionicons name="trash-outline" size={20} color={COLORS.error} />
+                <Trash2 size={20} color={COLORS.error} />
               </TouchableOpacity>
             </View>
           )}

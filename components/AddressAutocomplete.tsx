@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { COLORS } from '../constants/colors';
 
+const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
+
 interface AddressAutocompleteProps {
   label?: string;
   value: string;
@@ -20,9 +22,6 @@ interface AddressAutocompleteProps {
   placeholder?: string;
   style?: StyleProp<ViewStyle>;
 }
-
-const MAPBOX_TOKEN =
-  'pk.eyJ1Ijoia2tubWFsMDAzIiwiYSI6ImNtOWI2NGF1MjBjdWwya3M1Mmxua3hqaXgifQ._PMbFD1tTIq4zmjGCwnAHg';
 
 export default function AddressAutocomplete({
   label,
