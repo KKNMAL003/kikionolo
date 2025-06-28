@@ -288,7 +288,24 @@ export default function CheckoutScreen() {
           });
           setLoading(false);
         } else if (result.redirectUrl) {
-          // Use router navigation for proper parameter passing
+          // Store order data for completion after payment
+          const orderData = {
+            items: orderItems,
+            totalAmount: totalPrice + 50,
+            status: 'pending' as const,
+            paymentMethod: 'payfast' as const,
+            deliveryAddress: formData.address,
+            deliverySchedule: formatDeliverySchedule(),
+            customerName: formData.name,
+            customerPhone: formData.phone,
+            customerEmail: formData.email,
+            notes: formData.notes,
+          };
+          
+          // Store order data in AsyncStorage for completion after payment
+          await AsyncStorage.setItem('@onolo_pending_order', JSON.stringify(orderData));
+          
+          // Navigate to PayFast payment
           router.replace(result.redirectUrl);
         }
         // Loading state will be handled by the return URL handling

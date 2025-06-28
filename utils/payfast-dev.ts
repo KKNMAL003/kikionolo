@@ -60,8 +60,8 @@ export async function initiatePayFastPaymentDev(orderData: {
     // Show error and navigate to cancel screen
     Toast.show({
       type: 'error',
-      text1: 'Payment Simulation Failed',
-      text2: 'Testing PayFast error handling',
+      text1: 'PayFast Payment Failed',
+      text2: 'Payment could not be processed. Please try again.',
       position: 'bottom',
       visibilityTime: 3000,
     });
@@ -99,14 +99,6 @@ export async function initiatePayFastPaymentAdvancedTest(orderData: {
     console.log('Testing URLs:', testingUrls);
     console.log('Visit https://webhook.site/' + webhookId + ' to see PayFast responses');
 
-    // Show testing instructions
-    Toast.show({
-      type: 'info',
-      text1: 'Advanced Testing Mode',
-      text2: 'Check webhook.site/' + webhookId + ' for PayFast responses',
-      position: 'bottom',
-      visibilityTime: 6000,
-    });
 
     // For now, simulate the advanced test
     await new Promise(resolve => setTimeout(resolve, 2000));

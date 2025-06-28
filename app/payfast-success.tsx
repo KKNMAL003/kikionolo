@@ -1,14 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
+import { useUser } from '../context/UserContext';
+import { useCart } from '../context/CartContext';
 import Toast from 'react-native-toast-message';
+import { sendOrderConfirmationEmail } from '../utils/email';
 import Button from '../components/Button';
 
 export default function PayFastSuccessScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { addOrder } = useUser();
+  const { clearCart } = useCart();
   const [isProcessing, setIsProcessing] = useState(true);
+  const [orderCreated, setOrderCreated] = useState(false);
 
   useEffect(() => {
     console.log('=== PayFast Success Screen ===');
@@ -28,22 +35,67 @@ export default function PayFastSuccessScreen() {
         await new Promise(resolve => setTimeout(resolve, 1500));
 
         if (status === 'simulated' || status === 'COMPLETE' || status === 'advanced_test') {
-          // Show success message
-          Toast.show({
-            type: 'success',
-            text1: 'Payment Successful!',
-            text2: status === 'simulated' 
-              ? 'Payment simulation completed successfully' 
-              : 'Your PayFast payment has been processed.',
-            position: 'bottom',
-            visibilityTime: 4000,
-          });
-
-          // Here you would typically:
-          // 1. Verify the payment with your backend
-          // 2. Update the order status
-          // 3. Send confirmation emails
-          // 4. Clear the cart
+          // Retrieve and complete the pending order
+          const pendingOrderData = await AsyncStorage.getItem('@onolo_pending_order');
+          if (pendingOrderData) {
+            const orderData = JSON.parse(pendingOrderData);
+            
+            // Create the order in the system
+            const newOrder = await addOrder(orderData);
+            setOrderCreated(true);
+            
+            // Clear the pending order data
+            await AsyncStorage.removeItem('@onolo_pending_order');
+            
+            // Clear the cart
+            clearCart();
+            
+            // Send confirmation email if email is provided
+            if (orderData.customerEmail && orderData.customerEmail.trim() !== '') {
+              console.log('Sending PayFast order confirmation email...');
+              const emailData = {
+                customerName: orderData.customerName,
+                customerEmail: orderData.customerEmail,
+                orderId: newOrder.id.slice(-6),
+                orderDate: new Date(newOrder.date).toLocaleDateString('en-ZA', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                }),
+                orderItems: orderData.items,
+                totalAmount: newOrder.totalAmount,
+                paymentMethod: 'PayFast',
+                deliveryAddress: newOrder.deliveryAddress,
+                deliverySchedule: orderData.deliverySchedule,
+              };
+              
+              sendOrderConfirmationEmail(emailData).catch((error) => {
+                console.error('Error sending PayFast confirmation email:', error);
+              });
+            }
+            
+            // Show success message
+            Toast.show({
+              type: 'success',
+              text1: 'Order Placed Successfully!',
+              text2: status === 'simulated' 
+                ? 'Payment simulation completed - Order created successfully' 
+                : 'Your PayFast payment has been processed and order created.',
+              position: 'bottom',
+              visibilityTime: 4000,
+            });
+          } else {
+            console.warn('No pending order data found after PayFast payment');
+            Toast.show({
+              type: 'warning',
+              text1: 'Payment Successful',
+              text2: 'Payment completed but order data not found. Please contact support.',
+              position: 'bottom',
+              visibilityTime: 6000,
+            });
+          }
           
           console.log('PayFast payment processed successfully');
         } else {
@@ -91,7 +143,10 @@ export default function PayFastSuccessScreen() {
       <Text style={styles.successIcon}>✅</Text>
       <Text style={styles.title}>Payment Successful!</Text>
       <Text style={styles.subtitle}>
-        Your PayFast payment has been processed successfully. Your order is now being prepared for delivery.
+        {orderCreated 
+          ? 'Your PayFast payment has been processed and your order has been created successfully. Your order is now being prepared for delivery.'
+          : 'Your PayFast payment has been processed successfully.'
+        }
       </Text>
       
       {params.orderId && (
@@ -112,6 +167,7 @@ export default function PayFastSuccessScreen() {
         <View style={styles.debugInfo}>
           <Text style={styles.debugLabel}>Debug Info:</Text>
           <Text style={styles.debugText}>Status: {params.status}</Text>
+          <Text style={styles.debugText}>Order Created: {orderCreated ? 'Yes' : 'No'}</Text>
           {params.webhook_id && (
             <Text style={styles.debugText}>Webhook ID: {params.webhook_id}</Text>
           )}
@@ -120,7 +176,7 @@ export default function PayFastSuccessScreen() {
       
       <View style={styles.buttonContainer}>
         <Button
-          title="View My Orders"
+          title={orderCreated ? "View My Orders" : "Go to Profile"}
           onPress={handleViewOrders}
           style={styles.button}
         />
