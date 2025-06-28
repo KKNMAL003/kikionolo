@@ -23,7 +23,7 @@ export async function initiatePayFastPaymentDev(orderData: {
   customerPhone?: string;
   itemName: string;
   itemDescription?: string;
-}): Promise<boolean> {
+}): Promise<{ success: boolean; redirectUrl?: string }> {
   try {
     console.log('=== PayFast Development Payment (Simulated) ===');
     console.log('Order data:', orderData);
@@ -43,19 +43,17 @@ export async function initiatePayFastPaymentDev(orderData: {
     // Simulate successful payment flow
     console.log('Simulating PayFast payment flow...');
     
-    // Navigate to success screen with test data
-    const successUrl = Linking.createURL('payfast-success', {
+    // Create success URL with test data for router navigation
+    const successUrl = '/payfast-success?' + new URLSearchParams({
       orderId: orderData.orderId,
       amount: orderData.amount.toString(),
       status: 'simulated',
       payment_status: 'COMPLETE',
       merchant_id: PAYFAST_TESTING_CONFIG.merchantId,
       m_payment_id: orderData.orderId,
-    });
+    }).toString();
     
-    await Linking.openURL(successUrl);
-    
-    return true;
+    return { success: true, redirectUrl: successUrl };
   } catch (error) {
     console.error('Error in PayFast development simulation:', error);
     
@@ -68,14 +66,12 @@ export async function initiatePayFastPaymentDev(orderData: {
       visibilityTime: 3000,
     });
 
-    const cancelUrl = Linking.createURL('payfast-cancel', {
+    const cancelUrl = '/payfast-cancel?' + new URLSearchParams({
       orderId: orderData.orderId,
       status: 'error',
-    });
+    }).toString();
     
-    await Linking.openURL(cancelUrl);
-    
-    return false;
+    return { success: false, redirectUrl: cancelUrl };
   }
 }
 
@@ -88,7 +84,7 @@ export async function initiatePayFastPaymentAdvancedTest(orderData: {
   customerPhone?: string;
   itemName: string;
   itemDescription?: string;
-}): Promise<boolean> {
+}): Promise<{ success: boolean; redirectUrl?: string }> {
   try {
     console.log('=== PayFast Advanced Testing ===');
     
@@ -115,19 +111,17 @@ export async function initiatePayFastPaymentAdvancedTest(orderData: {
     // For now, simulate the advanced test
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    const successUrl = Linking.createURL('payfast-success', {
+    const successUrl = '/payfast-success?' + new URLSearchParams({
       orderId: orderData.orderId,
       amount: orderData.amount.toString(),
       status: 'advanced_test',
       webhook_id: webhookId,
-    });
+    }).toString();
     
-    await Linking.openURL(successUrl);
-    
-    return true;
+    return { success: true, redirectUrl: successUrl };
   } catch (error) {
     console.error('Error in PayFast advanced testing:', error);
-    return false;
+    return { success: false };
   }
 }
 

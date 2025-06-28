@@ -276,17 +276,20 @@ export default function CheckoutScreen() {
         };
 
         // Use development version in dev mode
-        const success = __DEV__ 
+        const result = __DEV__ 
           ? await initiatePayFastPaymentDev(paymentData)
           : await initiatePayFastPayment(paymentData);
         
-        if (!success) {
+        if (!result.success) {
           Toast.show({
             type: 'error',
             text1: 'PayFast Error',
             text2: 'Could not initiate PayFast payment. Please try again.',
           });
           setLoading(false);
+        } else if (result.redirectUrl) {
+          // Use router navigation for proper parameter passing
+          router.replace(result.redirectUrl);
         }
         // Loading state will be handled by the return URL handling
       } catch (error) {
