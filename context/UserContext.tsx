@@ -998,6 +998,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
               : orderData.deliverySchedule?.includes('evening')
                 ? 'evening'
                 : null,
+          customer_id: session.user.id, // Fix: Set customer_id to user ID for RLS policy
         };
 
         console.log('Creating order in Supabase:', orderInsert);
