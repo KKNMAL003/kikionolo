@@ -2,14 +2,15 @@ import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';
 import CryptoJS from 'crypto-js';
 
-// PayFast configuration
+// PayFast configuration for testing
 const PAYFAST_CONFIG = {
+  // Sandbox credentials for testing
   merchantId: '10040008',
   merchantKey: 'ph5ub7pps68v2',
   saltPassphrase: 'gasmeupalready19',
   sandboxUrl: 'https://sandbox.payfast.co.za/eng/process',
   productionUrl: 'https://www.payfast.co.za/eng/process',
-  // Use sandbox for development/testing
+  // Always use sandbox for testing
   useSandbox: true,
 };
 
@@ -34,8 +35,7 @@ export interface PayFastPaymentData {
 function generateSignature(data: Record<string, string | number>, passphrase?: string): string {
   console.log('=== PayFast Signature Generation ===');
   console.log('Input data:', data);
-  console.log('Passphrase provided:', !!passphrase);
-
+  
   // Step 1: Remove signature field and empty/null values
   const filteredData: Record<string, string> = {};
   
@@ -53,17 +53,18 @@ function generateSignature(data: Record<string, string | number>, passphrase?: s
   const sortedKeys = Object.keys(filteredData).sort();
   console.log('Sorted keys:', sortedKeys);
 
-  // Step 3: Build the query string with proper URL encoding
-  // PayFast uses standard URL encoding but WITHOUT encoding certain characters
+  // Step 3: Build the query string exactly as PayFast expects
   const pairs: string[] = [];
   
   sortedKeys.forEach(key => {
     const value = filteredData[key];
-    // Use standard encodeURIComponent but PayFast expects specific encoding
+    // PayFast expects URL encoding but with specific handling
     const encodedValue = encodeURIComponent(value)
-      .replace(/[!'()*]/g, function(c) {
-        return '%' + c.charCodeAt(0).toString(16).toUpperCase();
-      });
+      .replace(/!/g, '%21')
+      .replace(/'/g, '%27')
+      .replace(/\(/g, '%28')
+      .replace(/\)/g, '%29')
+      .replace(/\*/g, '%2A');
     
     pairs.push(`${key}=${encodedValue}`);
   });
@@ -81,34 +82,27 @@ function generateSignature(data: Record<string, string | number>, passphrase?: s
   // Step 5: Generate MD5 hash
   const signature = CryptoJS.MD5(queryString).toString().toLowerCase();
   console.log('Generated signature:', signature);
-  console.log('Signature length:', signature.length);
   console.log('=== End Signature Generation ===');
   
   return signature;
 }
 
-// Get proper return URLs for PayFast
-function getPayFastReturnUrls() {
-  const isDevelopment = __DEV__;
+// Get testing URLs that work with the current environment
+function getPayFastTestingUrls() {
+  // For testing, we'll use a public testing service
+  // You can replace this with your own webhook.site URL
+  const webhookSiteId = 'unique-test-id-' + Date.now();
   
-  if (isDevelopment) {
-    // For development/testing, use a staging server that can handle redirects
-    // Replace this with your own staging server or use ngrok
-    const stagingBaseUrl = 'https://your-staging-server.com'; // Replace with actual staging URL
-    
-    return {
-      returnUrl: `${stagingBaseUrl}/payfast-return?success=true`,
-      cancelUrl: `${stagingBaseUrl}/payfast-return?success=false`,
-      notifyUrl: `${stagingBaseUrl}/payfast-notify`, // For webhook notifications
-    };
-  } else {
-    // For production, use proper deep links with your domain
-    return {
-      returnUrl: 'https://yourdomain.com/payfast-success',
-      cancelUrl: 'https://yourdomain.com/payfast-cancel', 
-      notifyUrl: 'https://yourdomain.com/api/payfast-notify',
-    };
-  }
+  // Alternative: Use httpbin.org for testing
+  const testingUrls = {
+    returnUrl: `https://httpbin.org/redirect-to?url=${encodeURIComponent('https://webhook.site/' + webhookSiteId + '/success')}`,
+    cancelUrl: `https://httpbin.org/redirect-to?url=${encodeURIComponent('https://webhook.site/' + webhookSiteId + '/cancel')}`,
+    notifyUrl: `https://webhook.site/${webhookSiteId}/notify`,
+  };
+
+  console.log('Using testing URLs:', testingUrls);
+  
+  return testingUrls;
 }
 
 // Create PayFast payment URL with exact field names and validation
@@ -131,12 +125,12 @@ export function createPayFastPayment(orderData: {
   const firstName = nameParts[0] || 'Customer';
   const lastName = nameParts.slice(1).join(' ') || 'User';
 
-  // Get return URLs
-  const { returnUrl, cancelUrl, notifyUrl } = getPayFastReturnUrls();
+  // Get testing URLs
+  const { returnUrl, cancelUrl, notifyUrl } = getPayFastTestingUrls();
 
   // Prepare payment data with EXACT field names required by PayFast
   const paymentData: Record<string, string | number> = {
-    // Required fields
+    // Required fields - EXACT case and names as per PayFast API
     merchant_id: PAYFAST_CONFIG.merchantId,
     merchant_key: PAYFAST_CONFIG.merchantKey,
     return_url: returnUrl,
@@ -153,14 +147,27 @@ export function createPayFastPayment(orderData: {
     amount: parseFloat(orderData.amount.toFixed(2)),
     item_name: orderData.itemName,
     item_description: orderData.itemDescription || `Gas delivery order ${orderData.orderId}`,
+    
+    // Additional PayFast fields for better processing
+    payment_method: 'cc',
+    
+    // Custom fields for tracking
+    custom_str1: 'onolo-gas-app',
+    custom_str2: __DEV__ ? 'development' : 'production',
   };
 
   // Add optional phone number if provided and valid
   if (orderData.customerPhone) {
     const cleanPhone = orderData.customerPhone.replace(/\D/g, '');
     if (cleanPhone.length >= 10) {
-      // PayFast expects South African format
-      paymentData.cell_number = cleanPhone;
+      // Format for South African numbers
+      if (cleanPhone.startsWith('0')) {
+        paymentData.cell_number = cleanPhone;
+      } else if (cleanPhone.startsWith('27')) {
+        paymentData.cell_number = '0' + cleanPhone.substring(2);
+      } else {
+        paymentData.cell_number = cleanPhone;
+      }
     }
   }
 
@@ -181,8 +188,7 @@ export function createPayFastPayment(orderData: {
     .join('&');
 
   const finalUrl = `${baseUrl}?${queryString}`;
-  console.log('Final PayFast URL length:', finalUrl.length);
-  console.log('PayFast payment URL:', finalUrl);
+  console.log('Final PayFast URL:', finalUrl);
   console.log('=== End PayFast Payment Creation ===');
   
   return finalUrl;
@@ -209,34 +215,6 @@ export function verifyPayFastPayment(data: Record<string, string>): boolean {
   console.log('=== End Verification ===');
   
   return signature === expectedSignature;
-}
-
-// Handle PayFast return URLs
-export function handlePayFastReturn(url: string): { success: boolean; orderId?: string; data?: Record<string, string> } {
-  try {
-    console.log('Handling PayFast return URL:', url);
-    
-    const urlObj = new URL(url);
-    const params: Record<string, string> = {};
-    
-    urlObj.searchParams.forEach((value, key) => {
-      params[key] = value;
-    });
-
-    const isSuccess = params.success === 'true' || url.includes('payfast-success') || params.payment_status === 'COMPLETE';
-    const orderId = params.m_payment_id;
-
-    console.log('PayFast return parsed:', { isSuccess, orderId, params });
-
-    return {
-      success: isSuccess,
-      orderId: orderId,
-      data: params,
-    };
-  } catch (error) {
-    console.error('Error parsing PayFast return URL:', error);
-    return { success: false };
-  }
 }
 
 // Validate PayFast payment data before submission
@@ -279,6 +257,11 @@ function validatePayFastData(orderData: {
   if (!/^\d+(\.\d{1,2})?$/.test(orderData.amount.toFixed(2))) {
     throw new Error('Amount must have maximum 2 decimal places');
   }
+
+  // Minimum amount check (PayFast requirement)
+  if (orderData.amount < 5.00) {
+    throw new Error('Minimum payment amount is R5.00');
+  }
 }
 
 // Open PayFast payment in browser
@@ -301,9 +284,10 @@ export async function initiatePayFastPayment(orderData: {
     const paymentUrl = createPayFastPayment(orderData);
     
     console.log('Opening PayFast payment URL...');
+    console.log('PayFast URL:', paymentUrl);
     
     if (Platform.OS === 'web') {
-      // On web, open in the same window for better user experience
+      // On web, open in the same window
       window.location.href = paymentUrl;
     } else {
       // On mobile, open in external browser
@@ -319,7 +303,42 @@ export async function initiatePayFastPayment(orderData: {
     return true;
   } catch (error) {
     console.error('Error initiating PayFast payment:', error);
-    console.log('PayFast payment initiation failed');
     return false;
   }
+}
+
+// Get PayFast configuration for debugging
+export function getPayFastConfig() {
+  return {
+    ...PAYFAST_CONFIG,
+    // Don't expose sensitive keys in logs
+    merchantKey: PAYFAST_CONFIG.merchantKey ? '***' + PAYFAST_CONFIG.merchantKey.slice(-4) : 'Not set',
+    saltPassphrase: PAYFAST_CONFIG.saltPassphrase ? '***' : 'Not set',
+  };
+}
+
+// Test signature generation with known values
+export function testSignatureGeneration() {
+  console.log('=== Testing PayFast Signature Generation ===');
+  
+  // Test with PayFast's example data
+  const testData = {
+    merchant_id: '10040008',
+    merchant_key: 'ph5ub7pps68v2',
+    return_url: 'https://example.com/return',
+    cancel_url: 'https://example.com/cancel',
+    notify_url: 'https://example.com/notify',
+    name_first: 'John',
+    name_last: 'Doe',
+    email_address: 'test@example.com',
+    m_payment_id: 'TEST123',
+    amount: 100.00,
+    item_name: 'Test Item',
+  };
+  
+  const signature = generateSignature(testData, 'gasmeupalready19');
+  console.log('Test signature result:', signature);
+  console.log('=== End Test ===');
+  
+  return signature;
 }

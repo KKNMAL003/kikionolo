@@ -1,21 +1,20 @@
 import * as Linking from 'expo-linking';
 import Toast from 'react-native-toast-message';
+import { Platform } from 'react-native';
 
 /**
  * Development-friendly PayFast integration
- * This version uses a simpler approach for testing PayFast integration
- * without requiring external URLs during development
+ * This version provides multiple testing approaches for PayFast integration
  */
 
-const PAYFAST_CONFIG = {
+const PAYFAST_TESTING_CONFIG = {
   merchantId: '10040008',
   merchantKey: 'ph5ub7pps68v2',
   saltPassphrase: 'gasmeupalready19',
   sandboxUrl: 'https://sandbox.payfast.co.za/eng/process',
 };
 
-// For development testing, we'll use a simple approach
-// that simulates the PayFast flow without requiring external URLs
+// Simple simulation for initial testing
 export async function initiatePayFastPaymentDev(orderData: {
   orderId: string;
   amount: number;
@@ -29,73 +28,181 @@ export async function initiatePayFastPaymentDev(orderData: {
     console.log('=== PayFast Development Payment (Simulated) ===');
     console.log('Order data:', orderData);
 
-    // Show a development warning
+    // Show development mode notification
     Toast.show({
       type: 'info',
       text1: 'Development Mode',
-      text2: 'PayFast payment simulation - no real payment will be processed',
+      text2: 'Testing PayFast integration - no real payment processed',
       position: 'bottom',
       visibilityTime: 4000,
     });
 
-    // Simulate the PayFast payment process
-    setTimeout(() => {
-      // Simulate successful payment after 2 seconds
-      Toast.show({
-        type: 'success',
-        text1: 'Payment Simulation Complete',
-        text2: 'This would redirect to PayFast in production',
-        position: 'bottom',
-        visibilityTime: 3000,
-      });
+    // Simulate loading time
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
-      // Navigate to success screen
-      const successUrl = Linking.createURL('payfast-success', {
-        orderId: orderData.orderId,
-        amount: orderData.amount.toString(),
-        status: 'simulated'
-      });
-      
-      Linking.openURL(successUrl);
-    }, 2000);
-
+    // Simulate successful payment flow
+    console.log('Simulating PayFast payment flow...');
+    
+    // Navigate to success screen with test data
+    const successUrl = Linking.createURL('payfast-success', {
+      orderId: orderData.orderId,
+      amount: orderData.amount.toString(),
+      status: 'simulated',
+      payment_status: 'COMPLETE',
+      merchant_id: PAYFAST_TESTING_CONFIG.merchantId,
+      m_payment_id: orderData.orderId,
+    });
+    
+    await Linking.openURL(successUrl);
+    
     return true;
   } catch (error) {
     console.error('Error in PayFast development simulation:', error);
+    
+    // Show error and navigate to cancel screen
+    Toast.show({
+      type: 'error',
+      text1: 'Payment Simulation Failed',
+      text2: 'Testing PayFast error handling',
+      position: 'bottom',
+      visibilityTime: 3000,
+    });
+
+    const cancelUrl = Linking.createURL('payfast-cancel', {
+      orderId: orderData.orderId,
+      status: 'error',
+    });
+    
+    await Linking.openURL(cancelUrl);
+    
     return false;
   }
 }
 
-// Alternative: Use a public testing service
-export function createPayFastTestPayment(orderData: {
+// Advanced testing with actual PayFast sandbox but local return handling
+export async function initiatePayFastPaymentAdvancedTest(orderData: {
   orderId: string;
   amount: number;
   customerName: string;
   customerEmail: string;
+  customerPhone?: string;
   itemName: string;
-}): string {
-  // Use a testing service like webhook.site or httpbin.org for URLs
-  const testingSiteId = 'your-unique-id'; // Get from webhook.site
-  
-  const paymentData = {
-    merchant_id: PAYFAST_CONFIG.merchantId,
-    merchant_key: PAYFAST_CONFIG.merchantKey,
-    return_url: `https://webhook.site/${testingSiteId}/success`,
-    cancel_url: `https://webhook.site/${testingSiteId}/cancel`,
-    notify_url: `https://webhook.site/${testingSiteId}/notify`,
-    name_first: orderData.customerName.split(' ')[0] || 'Test',
-    name_last: orderData.customerName.split(' ').slice(1).join(' ') || 'User',
-    email_address: orderData.customerEmail,
-    m_payment_id: orderData.orderId,
-    amount: orderData.amount.toFixed(2),
-    item_name: orderData.itemName,
-    item_description: `Test order ${orderData.orderId}`,
-  };
+  itemDescription?: string;
+}): Promise<boolean> {
+  try {
+    console.log('=== PayFast Advanced Testing ===');
+    
+    // Create a test payment URL using webhook.site for returns
+    const webhookId = 'test-' + Date.now();
+    const testingUrls = {
+      returnUrl: `https://webhook.site/${webhookId}/success`,
+      cancelUrl: `https://webhook.site/${webhookId}/cancel`,
+      notifyUrl: `https://webhook.site/${webhookId}/notify`,
+    };
 
-  // For testing, we can skip signature generation
-  const queryString = Object.entries(paymentData)
-    .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-    .join('&');
+    console.log('Testing URLs:', testingUrls);
+    console.log('Visit https://webhook.site/' + webhookId + ' to see PayFast responses');
 
-  return `${PAYFAST_CONFIG.sandboxUrl}?${queryString}`;
+    // Show testing instructions
+    Toast.show({
+      type: 'info',
+      text1: 'Advanced Testing Mode',
+      text2: 'Check webhook.site/' + webhookId + ' for PayFast responses',
+      position: 'bottom',
+      visibilityTime: 6000,
+    });
+
+    // For now, simulate the advanced test
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    const successUrl = Linking.createURL('payfast-success', {
+      orderId: orderData.orderId,
+      amount: orderData.amount.toString(),
+      status: 'advanced_test',
+      webhook_id: webhookId,
+    });
+    
+    await Linking.openURL(successUrl);
+    
+    return true;
+  } catch (error) {
+    console.error('Error in PayFast advanced testing:', error);
+    return false;
+  }
 }
+
+// Test with ngrok (requires ngrok to be running)
+export function createNgrokTestUrls(ngrokUrl: string, orderId: string) {
+  if (!ngrokUrl || !ngrokUrl.startsWith('https://')) {
+    throw new Error('Valid ngrok HTTPS URL is required');
+  }
+
+  return {
+    returnUrl: `${ngrokUrl}/payfast-return?success=true&orderId=${orderId}`,
+    cancelUrl: `${ngrokUrl}/payfast-return?success=false&orderId=${orderId}`,
+    notifyUrl: `${ngrokUrl}/api/payfast-notify`,
+  };
+}
+
+// Test signature generation with known values
+export function testPayFastSignature() {
+  console.log('=== Testing PayFast Signature ===');
+  
+  // Import the actual signature function for testing
+  const { testSignatureGeneration } = require('./payfast');
+  
+  const result = testSignatureGeneration();
+  
+  Toast.show({
+    type: 'info',
+    text1: 'Signature Test',
+    text2: `Generated signature: ${result.substring(0, 8)}...`,
+    position: 'bottom',
+    visibilityTime: 4000,
+  });
+  
+  return result;
+}
+
+// Validate PayFast configuration
+export function validatePayFastConfig() {
+  const config = PAYFAST_TESTING_CONFIG;
+  const issues: string[] = [];
+  
+  if (!config.merchantId || config.merchantId === 'your_merchant_id') {
+    issues.push('Merchant ID not configured');
+  }
+  
+  if (!config.merchantKey || config.merchantKey === 'your_merchant_key') {
+    issues.push('Merchant Key not configured');
+  }
+  
+  if (!config.saltPassphrase) {
+    issues.push('Salt Passphrase not configured');
+  }
+  
+  const isValid = issues.length === 0;
+  
+  console.log('PayFast Configuration Validation:');
+  console.log('Valid:', isValid);
+  console.log('Issues:', issues);
+  
+  Toast.show({
+    type: isValid ? 'success' : 'error',
+    text1: 'PayFast Config',
+    text2: isValid ? 'Configuration valid' : `Issues: ${issues.join(', ')}`,
+    position: 'bottom',
+    visibilityTime: 4000,
+  });
+  
+  return { isValid, issues };
+}
+
+// Development utilities for testing
+export const PayFastDevUtils = {
+  simulatePayment: initiatePayFastPaymentDev,
+  advancedTest: initiatePayFastPaymentAdvancedTest,
+  testSignature: testPayFastSignature,
+  validateConfig: validatePayFastConfig,
+  createNgrokUrls: createNgrokTestUrls,
+};

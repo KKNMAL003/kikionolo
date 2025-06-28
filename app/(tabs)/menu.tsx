@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../../constants/colors';
 import { COMPANY } from '../../constants/company';
 import { Ionicons } from '@expo/vector-icons';
 import MenuOption from '../../components/MenuOption';
+import PayFastTestingPanel from '../../components/PayFastTestingPanel';
 import { useRouter } from 'expo-router';
 
 export default function MenuScreen() {
   const router = useRouter();
+  const [showTestingPanel, setShowTestingPanel] = useState(false);
 
   const handleMenuOption = (title: string) => {
     router.push(`/menu/${title.toLowerCase().replace(/\s+/g, '-')}`);
@@ -30,6 +32,15 @@ export default function MenuScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Menu</Text>
+        {__DEV__ && (
+          <TouchableOpacity
+            style={styles.testingButton}
+            onPress={() => setShowTestingPanel(true)}
+          >
+            <Ionicons name="flask" size={20} color={COLORS.primary} />
+            <Text style={styles.testingButtonText}>PayFast Tests</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView style={styles.content}>
@@ -120,6 +131,11 @@ export default function MenuScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <PayFastTestingPanel 
+        visible={showTestingPanel} 
+        onClose={() => setShowTestingPanel(false)} 
+      />
     </SafeAreaView>
   );
 }
@@ -139,6 +155,22 @@ const styles = StyleSheet.create({
     color: COLORS.text.white,
     fontSize: 28,
     fontWeight: 'bold',
+  },
+  testingButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.card,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  testingButtonText: {
+    color: COLORS.primary,
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginLeft: 4,
   },
   content: {
     flex: 1,
