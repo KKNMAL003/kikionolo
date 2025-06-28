@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Home, Flame, ShoppingCart, MessageCircle, Menu } from 'lucide-react-native';
+import { Chrome as Home, Flame, ShoppingCart, MessageCircle, Menu } from 'lucide-react-native';
 import { usePathname, useRouter } from 'expo-router';
 
 import { COLORS } from '../constants/colors';
