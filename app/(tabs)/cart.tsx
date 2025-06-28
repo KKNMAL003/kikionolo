@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../../constants/colors';
 import Header from '../../components/Header';
 import { useCart } from '../../context/CartContext';
-import { ShoppingCart, Cube, Droplets, Minus, Plus, Trash2 } from 'lucide-react-native';
+import { ShoppingCart, Cuboid as Cube, Droplets, Minus, Plus, Trash2 } from 'lucide-react-native';
 import Button from '../../components/Button';
 import { useRouter } from 'expo-router';
 

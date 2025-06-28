@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { COLORS } from '../../constants/colors';
-import { Home, Flame, MessageCircle, ShoppingCart, Menu } from 'lucide-react-native';
+import { Chrome as Home, Flame, MessageCircle, ShoppingCart, Menu } from 'lucide-react-native';
 import BottomNavBar from '../../components/BottomNavBar';
 import { View } from 'react-native';
 
