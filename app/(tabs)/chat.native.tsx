@@ -86,8 +86,8 @@ export default function ChatScreen() {
     const dates = new Set<string>();
     messages.forEach((msg) => {
       // Validate date before processing
-      if (msg.created_at && !isNaN(new Date(msg.created_at).getTime())) {
-        dates.add(new Date(msg.created_at).toISOString().split('T')[0]);
+      if (msg.createdAt && !isNaN(new Date(msg.createdAt).getTime())) {
+        dates.add(new Date(msg.createdAt).toISOString().split('T')[0]);
       }
     });
     return Array.from(dates).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
@@ -98,10 +98,10 @@ export default function ChatScreen() {
     if (!activeConversationDate) return [];
     return messages.filter((msg) => {
       // Validate date before processing
-      if (!msg.created_at || isNaN(new Date(msg.created_at).getTime())) {
+      if (!msg.createdAt || isNaN(new Date(msg.createdAt).getTime())) {
         return false;
       }
-      return new Date(msg.created_at).toISOString().split('T')[0] === activeConversationDate;
+      return new Date(msg.createdAt).toISOString().split('T')[0] === activeConversationDate;
     });
   }, [messages, activeConversationDate]);
 
@@ -109,6 +109,20 @@ export default function ChatScreen() {
     // Start a new chat for today
     const today = new Date().toISOString().split('T')[0];
     setActiveConversationDate(today);
+  };
+
+  // Safely format a date string, handling potential invalid dates
+  const formatThreadDate = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) {
+        return 'Invalid Date';
+      }
+      return date.toLocaleDateString();
+    } catch (error) {
+      console.warn('Error formatting date:', error);
+      return 'Invalid Date';
+    }
   };
 
   return (
@@ -154,7 +168,7 @@ export default function ChatScreen() {
                     ]}
                     onPress={() => setActiveConversationDate(item)}
                   >
-                    <Text style={styles.threadButtonText}>{new Date(item).toLocaleDateString()}</Text>
+                    <Text style={styles.threadButtonText}>{formatThreadDate(item)}</Text>
                   </TouchableOpacity>
                 )}
                 showsHorizontalScrollIndicator={false}

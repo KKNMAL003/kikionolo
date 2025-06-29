@@ -76,33 +76,44 @@ export default function ChatScreen() {
     }
   };
 
-  const renderItem = ({ item }: { item: any }) => (
-    <View
-      style={[
-        styles.messageBubble,
-        item.senderType === 'customer' ? styles.userBubble : styles.staffBubble,
-      ]}
-    >
-      {item.logType === 'order_status_update' && (
-        <View style={styles.orderUpdateHeader}>
-          <Ionicons name="cube-outline" size={16} color={COLORS.primary} />
-          <Text style={styles.orderUpdateLabel}>Order Update</Text>
-        </View>
-      )}
-      <Text style={styles.messageText}>{item.subject}</Text>
-      <View style={styles.messageFooter}>
-        <Text style={styles.timestamp}>
-          {new Date(item.createdAt).toLocaleTimeString([], { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-          })}
-        </Text>
-        {!item.isRead && item.senderType === 'staff' && (
-          <View style={styles.unreadDot} />
+  const renderItem = ({ item }: { item: any }) => {
+    // Safely format timestamp
+    let timeString = '';
+    try {
+      if (item.createdAt && !isNaN(new Date(item.createdAt).getTime())) {
+        timeString = new Date(item.createdAt).toLocaleTimeString([], { 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        });
+      }
+    } catch (error) {
+      console.warn('Error formatting message timestamp:', error);
+      timeString = 'Unknown time';
+    }
+
+    return (
+      <View
+        style={[
+          styles.messageBubble,
+          item.senderType === 'customer' ? styles.userBubble : styles.staffBubble,
+        ]}
+      >
+        {item.logType === 'order_status_update' && (
+          <View style={styles.orderUpdateHeader}>
+            <Ionicons name="cube-outline" size={16} color={COLORS.primary} />
+            <Text style={styles.orderUpdateLabel}>Order Update</Text>
+          </View>
         )}
+        <Text style={styles.messageText}>{item.subject}</Text>
+        <View style={styles.messageFooter}>
+          <Text style={styles.timestamp}>{timeString}</Text>
+          {!item.isRead && item.senderType === 'staff' && (
+            <View style={styles.unreadDot} />
+          )}
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
