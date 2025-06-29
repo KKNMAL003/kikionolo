@@ -71,6 +71,20 @@ export type NotificationPreferences = {
   newsletter?: boolean;
 };
 
+// Message interface for real-time chat
+export interface Message {
+  id: string;
+  user_id: string;
+  customer_id: string;
+  staff_id?: string;
+  log_type: 'user_message' | 'staff_message' | 'order_status_update';
+  subject: string;
+  message: string;
+  sender_type: 'customer' | 'staff';
+  is_read: boolean;
+  created_at: string;
+}
+
 // Context interface
 interface UserContextType {
   user: User | null;
@@ -122,6 +136,12 @@ interface UserContextType {
     confirmPassword: string;
   }) => Promise<void>;
   submitOtp: (otp: string) => Promise<void>;
+  // New real-time features
+  messages: Message[];
+  unreadMessagesCount: number;
+  markMessageAsRead: (messageId: string) => Promise<void>;
+  markAllMessagesAsRead: () => Promise<void>;
+  sendMessage: (message: string) => Promise<void>;
 }
 
 // Create context with undefined default value
@@ -150,6 +170,8 @@ const withTimeout = <T,>(
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
@@ -396,6 +418,145 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Load messages for the current user
+  const loadUserMessages = useCallback(async () => {
+    if (!session?.user || !supabaseConnected) {
+      console.log('Cannot load messages - no user session or Supabase not connected');
+      return;
+    }
+
+    try {
+      const { data: messagesData, error } = await supabase
+        .from('communication_logs')
+        .select('*')
+        .eq('customer_id', session.user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching messages:', error);
+        return;
+      }
+
+      if (messagesData) {
+        setMessages(messagesData);
+        
+        // Count unread messages
+        const unreadCount = messagesData.filter(msg => !msg.is_read && msg.sender_type === 'staff').length;
+        setUnreadMessagesCount(unreadCount);
+        
+        console.log(`Loaded ${messagesData.length} messages, ${unreadCount} unread`);
+      }
+    } catch (error: any) {
+      console.error('Error loading messages:', error.message);
+    }
+  }, [session?.user?.id, supabaseConnected]);
+
+  // Set up real-time subscriptions for orders and messages
+  useEffect(() => {
+    if (!session?.user || !supabaseConnected) {
+      return;
+    }
+
+    console.log('Setting up real-time subscriptions for user:', session.user.id);
+
+    // Subscribe to order updates
+    const orderChannel = supabase
+      .channel('user-orders')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `user_id=eq.${session.user.id}`,
+        },
+        (payload) => {
+          console.log('Order update received:', payload);
+          
+          if (payload.eventType === 'UPDATE') {
+            const updatedOrder = payload.new as any;
+            
+            // Update local orders state
+            setOrders(prevOrders => 
+              prevOrders.map(order => 
+                order.id === updatedOrder.id 
+                  ? { ...order, status: updatedOrder.status }
+                  : order
+              )
+            );
+
+            // Show toast notification for status changes
+            const statusMessages = {
+              order_received: 'Your order has been received!',
+              order_confirmed: 'Your order has been confirmed!',
+              preparing: 'Your order is being prepared',
+              scheduled_for_delivery: 'Your order has been scheduled for delivery',
+              driver_dispatched: 'Driver has been dispatched!',
+              out_for_delivery: 'Your order is out for delivery!',
+              delivered: 'Your order has been delivered!',
+              cancelled: 'Your order has been cancelled',
+            };
+
+            const message = statusMessages[updatedOrder.status] || 'Order status updated';
+            
+            Toast.show({
+              type: updatedOrder.status === 'cancelled' ? 'error' : 'success',
+              text1: 'Order Update',
+              text2: message,
+              position: 'top',
+              visibilityTime: 4000,
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    // Subscribe to new messages
+    const messageChannel = supabase
+      .channel('user-messages')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'communication_logs',
+          filter: `customer_id=eq.${session.user.id}`,
+        },
+        (payload) => {
+          console.log('New message received:', payload);
+          
+          const newMessage = payload.new as Message;
+          
+          // Add to messages state
+          setMessages(prevMessages => [newMessage, ...prevMessages]);
+          
+          // Update unread count if it's from staff
+          if (newMessage.sender_type === 'staff') {
+            setUnreadMessagesCount(prev => prev + 1);
+            
+            // Show toast notification for new staff messages
+            Toast.show({
+              type: 'info',
+              text1: 'New Message',
+              text2: newMessage.log_type === 'order_status_update' 
+                ? 'Order status update received'
+                : 'New message from support',
+              position: 'top',
+              visibilityTime: 4000,
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscriptions
+    return () => {
+      console.log('Cleaning up real-time subscriptions');
+      supabase.removeChannel(orderChannel);
+      supabase.removeChannel(messageChannel);
+    };
+  }, [session?.user?.id, supabaseConnected]);
+
   // Initialize auth state with better error handling
   useEffect(() => {
     console.log('Initializing auth state...');
@@ -468,6 +629,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           } else {
             setUser(null);
             setOrders([]);
+            setMessages([]);
+            setUnreadMessagesCount(0);
             resetNavigationState();
           }
         }
@@ -481,15 +644,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, [supabaseConnected, resetNavigationState]);
 
-  // Load orders when user ID changes (stable)
+  // Load orders and messages when user ID changes (stable)
   useEffect(() => {
     if (session?.user?.id && !isLoading) {
       loadUserOrders();
+      loadUserMessages();
     } else if (!session?.user) {
       // If no authenticated user, try to load guest orders from AsyncStorage
       loadOrdersFromStorage();
     }
-  }, [session?.user?.id, isLoading, loadUserOrders]);
+  }, [session?.user?.id, isLoading, loadUserOrders, loadUserMessages]);
 
   // Login function with enhanced error handling
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -680,6 +844,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setSession(null);
       setOrders([]);
+      setMessages([]);
+      setUnreadMessagesCount(0);
 
       // Clear AsyncStorage
       await AsyncStorage.removeItem('@onolo_orders_data_v2');
@@ -1163,6 +1329,94 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     return orders.find((order) => order.id === orderId);
   };
 
+  // Mark message as read
+  const markMessageAsRead = async (messageId: string): Promise<void> => {
+    if (!session?.user || !supabaseConnected) return;
+
+    try {
+      const { error } = await supabase
+        .from('communication_logs')
+        .update({ is_read: true })
+        .eq('id', messageId)
+        .eq('customer_id', session.user.id);
+
+      if (error) {
+        console.error('Error marking message as read:', error);
+        return;
+      }
+
+      // Update local state
+      setMessages(prevMessages =>
+        prevMessages.map(msg =>
+          msg.id === messageId ? { ...msg, is_read: true } : msg
+        )
+      );
+
+      // Update unread count
+      setUnreadMessagesCount(prev => Math.max(0, prev - 1));
+    } catch (error: any) {
+      console.error('Error marking message as read:', error.message);
+    }
+  };
+
+  // Mark all messages as read
+  const markAllMessagesAsRead = async (): Promise<void> => {
+    if (!session?.user || !supabaseConnected) return;
+
+    try {
+      const { error } = await supabase
+        .from('communication_logs')
+        .update({ is_read: true })
+        .eq('customer_id', session.user.id)
+        .eq('is_read', false);
+
+      if (error) {
+        console.error('Error marking all messages as read:', error);
+        return;
+      }
+
+      // Update local state
+      setMessages(prevMessages =>
+        prevMessages.map(msg => ({ ...msg, is_read: true }))
+      );
+
+      setUnreadMessagesCount(0);
+    } catch (error: any) {
+      console.error('Error marking all messages as read:', error.message);
+    }
+  };
+
+  // Send message to staff
+  const sendMessage = async (message: string): Promise<void> => {
+    if (!session?.user || !supabaseConnected) {
+      throw new Error('Cannot send message - not authenticated or not connected');
+    }
+
+    try {
+      const { error } = await supabase
+        .from('communication_logs')
+        .insert({
+          user_id: session.user.id,
+          customer_id: session.user.id,
+          log_type: 'user_message',
+          subject: message,
+          message: message,
+          sender_type: 'customer',
+          is_read: false,
+        });
+
+      if (error) {
+        console.error('Error sending message:', error);
+        throw new Error('Failed to send message');
+      }
+
+      console.log('Message sent successfully');
+    } catch (error: any) {
+      console.error('Error sending message:', error.message);
+      throw error;
+    }
+  };
+
   // Fetch notification preferences from Supabase
   const fetchNotificationPreferences = useCallback(async () => {
     if (!session?.user || !supabaseConnected) return;
@@ -1547,6 +1801,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     closePasswordModal,
     submitNewPassword,
     submitOtp,
+    // New real-time features
+    messages,
+    unreadMessagesCount,
+    markMessageAsRead,
+    markAllMessagesAsRead,
+    sendMessage,
   };
 
   return <UserContext.Provider value={contextValue}>{children}</UserContext.Provider>;

@@ -14,7 +14,7 @@ interface HeaderProps {
 export default function Header({ showBackButton = false, title }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, orders } = useUser();
+  const { user, orders, unreadMessagesCount } = useUser();
 
   // Calculate pending orders count
   const pendingOrdersCount = orders?.filter((order) => order.status === 'pending').length || 0;
@@ -37,6 +37,11 @@ export default function Header({ showBackButton = false, title }: HeaderProps) {
 
     // Navigate directly to profile page using replace to prevent stacking
     router.replace('/profile');
+  };
+
+  const handleMessagesPress = () => {
+    // Navigate to chat screen
+    router.push('/(tabs)/chat');
   };
 
   const handleBackPress = () => {
@@ -95,6 +100,20 @@ export default function Header({ showBackButton = false, title }: HeaderProps) {
       </View>
 
       <View style={styles.rightSection}>
+        {/* Messages Badge - Show unread messages count */}
+        {unreadMessagesCount > 0 && (
+          <TouchableOpacity
+            style={styles.messagesBadgeContainer}
+            onPress={handleMessagesPress}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="chatbubble-outline" size={20} color={COLORS.primary} />
+            <View style={styles.messagesBadge}>
+              <Text style={styles.messagesBadgeText}>{unreadMessagesCount}</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* Pending Orders Badge - Make it more prominent and clickable */}
         {pendingOrdersCount > 0 && (
           <TouchableOpacity
@@ -139,8 +158,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    padding: 0, // Remove any padding around the logo container
-    margin: 0, // Remove any margin around the logo container
+    padding: 0,
+    margin: 0,
   },
   logoWrapper: {
     width: 60,
@@ -154,8 +173,8 @@ const styles = StyleSheet.create({
   logoImage: {
     width: 40,
     height: 40,
-    borderRadius: 0, // no rounding
-    overflow: 'hidden', // Ensure the image is clipped to the border radius
+    borderRadius: 0,
+    overflow: 'hidden',
   },
   companyName: {
     color: COLORS.primary,
@@ -171,6 +190,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  messagesBadgeContainer: {
+    position: 'relative',
+    backgroundColor: COLORS.card,
+    borderRadius: 20,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: COLORS.primary + '40',
+  },
+  messagesBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: COLORS.error,
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  messagesBadgeText: {
+    color: COLORS.text.white,
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   ordersBadgeContainer: {
     position: 'relative',
