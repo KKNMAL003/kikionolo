@@ -11,7 +11,7 @@ interface OrdersContextType {
   isProcessingOrder: boolean;
   
   // Order methods
-  createOrder: (orderData: CreateOrderRequest) => Promise<Order>;
+  createOrder: (orderData: Omit<CreateOrderRequest, 'userId'>) => Promise<Order>;
   getOrderById: (id: string) => Order | undefined;
   cancelOrder: (orderId: string) => Promise<boolean>;
   refreshOrders: () => Promise<void>;
@@ -107,7 +107,7 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Order methods
-  const createOrder = useCallback(async (orderData: CreateOrderRequest): Promise<Order> => {
+  const createOrder = useCallback(async (orderData: Omit<CreateOrderRequest, 'userId'>): Promise<Order> => {
     if (!user) {
       throw new Error('User not authenticated');
     }
@@ -119,6 +119,7 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
       // Add user information to order data
       const orderWithUser: CreateOrderRequest = {
         ...orderData,
+        userId: user.id,
         customerName: orderData.customerName || user.name,
         customerEmail: orderData.customerEmail || user.email,
         customerPhone: orderData.customerPhone || user.phone,

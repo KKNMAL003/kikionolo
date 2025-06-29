@@ -26,6 +26,7 @@ export type OrderStatus =
   | 'cancelled';
 
 export interface CreateOrderRequest {
+  userId: string;
   customerName: string;
   customerEmail: string;
   customerPhone: string;

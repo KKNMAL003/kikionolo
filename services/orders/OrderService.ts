@@ -29,6 +29,8 @@ export class OrderService implements IOrderService {
 
       // Prepare order record for Supabase
       const orderRecord = {
+        user_id: request.userId,
+        customer_id: request.userId,
         customer_name: request.customerName,
         customer_email: request.customerEmail,
         delivery_address: request.deliveryAddress,
