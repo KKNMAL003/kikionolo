@@ -12,18 +12,19 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../../constants/colors';
 import Header from '../../components/Header';
-import { useUser } from '../../context/UserContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { useMessages } from '../../contexts/MessagesContext';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function ChatScreen() {
+  const { user } = useAuth();
   const { 
-    user, 
     messages, 
     sendMessage, 
     refreshMessages,
-    markAllMessagesAsRead,
-    unreadMessagesCount 
-  } = useUser();
+    markAllAsRead,
+    unreadCount 
+  } = useMessages();
   
   const [input, setInput] = React.useState('');
   const [sending, setSending] = React.useState(false);
@@ -31,10 +32,10 @@ export default function ChatScreen() {
 
   // Mark messages as read when screen is focused
   useEffect(() => {
-    if (unreadMessagesCount > 0) {
-      markAllMessagesAsRead();
+    if (unreadCount > 0) {
+      markAllAsRead();
     }
-  }, [unreadMessagesCount, markAllMessagesAsRead]);
+  }, [unreadCount, markAllAsRead]);
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -79,10 +80,10 @@ export default function ChatScreen() {
     <View
       style={[
         styles.messageBubble,
-        item.sender_type === 'customer' ? styles.userBubble : styles.staffBubble,
+        item.senderType === 'customer' ? styles.userBubble : styles.staffBubble,
       ]}
     >
-      {item.log_type === 'order_status_update' && (
+      {item.logType === 'order_status_update' && (
         <View style={styles.orderUpdateHeader}>
           <Ionicons name="cube-outline" size={16} color={COLORS.primary} />
           <Text style={styles.orderUpdateLabel}>Order Update</Text>
@@ -91,12 +92,12 @@ export default function ChatScreen() {
       <Text style={styles.messageText}>{item.subject}</Text>
       <View style={styles.messageFooter}>
         <Text style={styles.timestamp}>
-          {new Date(item.created_at).toLocaleTimeString([], { 
+          {new Date(item.createdAt).toLocaleTimeString([], { 
             hour: '2-digit', 
             minute: '2-digit' 
           })}
         </Text>
-        {!item.is_read && item.sender_type === 'staff' && (
+        {!item.isRead && item.senderType === 'staff' && (
           <View style={styles.unreadDot} />
         )}
       </View>
@@ -137,7 +138,7 @@ export default function ChatScreen() {
             </View>
           }
           inverted={false}
-          // Data is already sorted by created_at desc in UserContext
+          // Data is already sorted by created_at desc in MessagesContext
           showsVerticalScrollIndicator={false}
           onRefresh={handleRefresh}
           refreshing={false}

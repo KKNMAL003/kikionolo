@@ -4,7 +4,9 @@ import { COLORS } from '../constants/colors';
 import { COMPANY } from '../constants/company';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, usePathname } from 'expo-router';
-import { useUser } from '../context/UserContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useOrders } from '../contexts/OrdersContext';
+import { useMessages } from '../contexts/MessagesContext';
 
 interface HeaderProps {
   showBackButton?: boolean;
@@ -14,7 +16,9 @@ interface HeaderProps {
 export default function Header({ showBackButton = false, title }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, orders, unreadMessagesCount } = useUser();
+  const { user } = useAuth();
+  const { orders } = useOrders();
+  const { unreadCount } = useMessages();
 
   // Calculate pending orders count
   const pendingOrdersCount = orders?.filter((order) => order.status === 'pending').length || 0;
@@ -101,7 +105,7 @@ export default function Header({ showBackButton = false, title }: HeaderProps) {
 
       <View style={styles.rightSection}>
         {/* Messages Badge - Show unread messages count */}
-        {unreadMessagesCount > 0 && (
+        {unreadCount > 0 && (
           <TouchableOpacity
             style={styles.messagesBadgeContainer}
             onPress={handleMessagesPress}
@@ -109,7 +113,7 @@ export default function Header({ showBackButton = false, title }: HeaderProps) {
           >
             <Ionicons name="chatbubble-outline" size={20} color={COLORS.primary} />
             <View style={styles.messagesBadge}>
-              <Text style={styles.messagesBadgeText}>{unreadMessagesCount}</Text>
+              <Text style={styles.messagesBadgeText}>{unreadCount}</Text>
             </View>
           </TouchableOpacity>
         )}
