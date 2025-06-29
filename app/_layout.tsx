@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CartProvider } from '../context/CartContext';
 import { AuthProvider } from '../contexts/AuthContext';
 import { OrdersProvider } from '../contexts/OrdersContext';
@@ -12,6 +13,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useRouter, useSegments } from 'expo-router';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { initializeConnectionTest } from '../utils/connectionTest';
+import { queryClient } from '../utils/queryClient';
 import { useAuth } from '../contexts/AuthContext';
 
 // Enhanced Auth guard component with better navigation management
@@ -74,17 +76,19 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 // Context providers wrapper to keep layout clean
 function ContextProviders({ children }: { children: React.ReactNode }) {
   return (
-    <AuthProvider>
-      <OrdersProvider>
-        <MessagesProvider>
-          <NotificationsProvider>
-            <CartProvider>
-              {children}
-            </CartProvider>
-          </NotificationsProvider>
-        </MessagesProvider>
-      </OrdersProvider>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <OrdersProvider>
+          <MessagesProvider>
+            <NotificationsProvider>
+              <CartProvider>
+                {children}
+              </CartProvider>
+            </NotificationsProvider>
+          </MessagesProvider>
+        </OrdersProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 
