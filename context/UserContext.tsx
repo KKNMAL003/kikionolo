@@ -330,100 +330,116 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Setup message subscription
+  // Setup message subscription with proper error handling
   const setupMessageSubscription = useCallback(async () => {
-    // Validate prerequisites
+    // Validate all required conditions before setting up subscription
     if (!session?.user?.id) {
-      console.log('No user session available for message subscription');
+      console.log('setupMessageSubscription: No user session available');
       return;
     }
 
     if (!supabaseConnected) {
-      console.log('Supabase not connected, skipping message subscription');
+      console.log('setupMessageSubscription: Supabase not connected');
       return;
     }
 
     if (isSubscribedRef.current) {
-      console.log('Already subscribed to messages, skipping duplicate subscription');
+      console.log('setupMessageSubscription: Already subscribed, skipping');
       return;
     }
 
     try {
-      console.log('Setting up message subscription for user:', session.user.id);
+      console.log('setupMessageSubscription: Setting up message subscription for user:', session.user.id);
 
       // Clean up existing subscription if any
       if (messageChannelRef.current) {
-        console.log('Cleaning up existing message subscription');
+        console.log('setupMessageSubscription: Cleaning up existing subscription');
         await supabase.removeChannel(messageChannelRef.current);
         messageChannelRef.current = null;
       }
 
-      // Create new channel for messages
-      const channel = supabase
-        .channel(`messages:${session.user.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'communication_logs',
-            filter: `customer_id=eq.${session.user.id}`,
-          },
-          (payload) => {
-            console.log('New message received:', payload.new);
-            if (payload.new) {
-              const newMessage = payload.new as Message;
-              setMessages((prevMessages) => {
-                // Avoid duplicates
-                if (prevMessages.find((msg) => msg.id === newMessage.id)) {
-                  return prevMessages;
-                }
-                return [...prevMessages, newMessage].sort(
-                  (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
-                );
-              });
+      // Create new channel with unique name
+      const channelName = `messages:${session.user.id}:${Date.now()}`;
+      console.log('setupMessageSubscription: Creating channel:', channelName);
 
-              // Update unread count if message is not from user
-              if (newMessage.sender_type !== 'customer' && !newMessage.is_read) {
-                setUnreadMessagesCount((prev) => prev + 1);
+      const channel = supabase.channel(channelName);
+
+      // Subscribe to new messages for this user
+      channel.on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'communication_logs',
+          filter: `customer_id=eq.${session.user.id}`,
+        },
+        (payload) => {
+          console.log('setupMessageSubscription: New message received:', payload.new);
+          if (payload.new) {
+            const newMessage = payload.new as Message;
+            setMessages((prevMessages) => {
+              // Avoid duplicates
+              if (prevMessages.find((msg) => msg.id === newMessage.id)) {
+                return prevMessages;
               }
-            }
-          },
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'communication_logs',
-            filter: `customer_id=eq.${session.user.id}`,
-          },
-          (payload) => {
-            console.log('Message updated:', payload.new);
-            if (payload.new) {
-              const updatedMessage = payload.new as Message;
-              setMessages((prevMessages) =>
-                prevMessages.map((msg) =>
-                  msg.id === updatedMessage.id ? updatedMessage : msg,
-                ),
+              return [...prevMessages, newMessage].sort(
+                (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
               );
+            });
+
+            // Update unread count if message is from staff
+            if (newMessage.sender_type === 'staff' && !newMessage.is_read) {
+              setUnreadMessagesCount((prev) => prev + 1);
             }
-          },
-        )
-        .subscribe((status) => {
-          console.log('Message subscription status:', status);
-          if (status === 'SUBSCRIBED') {
-            console.log('Message subscription established successfully');
-            isSubscribedRef.current = true;
-          } else if (status === 'CHANNEL_ERROR') {
-            console.error('Message subscription error');
-            isSubscribedRef.current = false;
           }
-        });
+        },
+      );
+
+      // Subscribe to message updates (like read status changes)
+      channel.on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'communication_logs',
+          filter: `customer_id=eq.${session.user.id}`,
+        },
+        (payload) => {
+          console.log('setupMessageSubscription: Message updated:', payload.new);
+          if (payload.new) {
+            const updatedMessage = payload.new as Message;
+            setMessages((prevMessages) =>
+              prevMessages.map((msg) =>
+                msg.id === updatedMessage.id ? updatedMessage : msg
+              )
+            );
+          }
+        },
+      );
+
+      // Subscribe to the channel
+      const status = await channel.subscribe((status) => {
+        console.log('setupMessageSubscription: Subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          isSubscribedRef.current = true;
+          console.log('setupMessageSubscription: Successfully subscribed to messages');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('setupMessageSubscription: Channel error occurred');
+          isSubscribedRef.current = false;
+        } else if (status === 'TIMED_OUT') {
+          console.error('setupMessageSubscription: Subscription timed out');
+          isSubscribedRef.current = false;
+        } else if (status === 'CLOSED') {
+          console.log('setupMessageSubscription: Channel closed');
+          isSubscribedRef.current = false;
+        }
+      });
 
       messageChannelRef.current = channel;
+      console.log('setupMessageSubscription: Message subscription setup completed');
+
     } catch (error: any) {
-      console.error('Error setting up message subscription:', error?.message || 'undefined');
+      console.error('setupMessageSubscription: Error setting up message subscription:', error?.message || 'Unknown error');
       isSubscribedRef.current = false;
     }
   }, [session?.user?.id, supabaseConnected]);
@@ -431,12 +447,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   // Load user messages from Supabase
   const loadUserMessages = useCallback(async () => {
     if (!session?.user?.id || !supabaseConnected) {
-      console.log('Cannot load messages: no user session or Supabase not connected');
+      console.log('loadUserMessages: No user session or Supabase not connected');
       return;
     }
 
     try {
-      console.log('Loading messages for user:', session.user.id);
+      console.log('loadUserMessages: Loading messages for user:', session.user.id);
 
       const { data: messagesData, error } = await supabase
         .from('communication_logs')
@@ -445,98 +461,94 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         .order('created_at', { ascending: true });
 
       if (error) {
-        console.error('Error loading messages:', error);
+        console.error('loadUserMessages: Error fetching messages:', error);
         return;
       }
 
       if (messagesData) {
-        console.log('Loaded messages:', messagesData.length);
-        setMessages(messagesData as Message[]);
+        console.log('loadUserMessages: Loaded messages:', messagesData.length);
+        setMessages(messagesData);
 
-        // Count unread messages
+        // Count unread messages from staff
         const unreadCount = messagesData.filter(
-          (msg) => !msg.is_read && msg.sender_type !== 'customer',
+          (msg) => msg.sender_type === 'staff' && !msg.is_read
         ).length;
         setUnreadMessagesCount(unreadCount);
       }
     } catch (error: any) {
-      console.error('Error loading messages:', error.message);
+      console.error('loadUserMessages: Error loading messages:', error.message);
     }
   }, [session?.user?.id, supabaseConnected]);
 
-  // Send message function
-  const sendMessage = useCallback(
-    async (content: string) => {
-      if (!session?.user?.id || !supabaseConnected) {
-        throw new Error('Cannot send message: not authenticated or not connected');
+  // Send a message
+  const sendMessage = useCallback(async (content: string) => {
+    if (!session?.user?.id || !supabaseConnected) {
+      throw new Error('Cannot send message: No user session or Supabase not connected');
+    }
+
+    try {
+      const { data: newMessage, error } = await supabase
+        .from('communication_logs')
+        .insert({
+          customer_id: session.user.id,
+          user_id: session.user.id,
+          log_type: 'user_message',
+          subject: content,
+          message: content,
+          sender_type: 'customer',
+          is_read: false,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('sendMessage: Error sending message:', error);
+        throw new Error(`Failed to send message: ${error.message}`);
       }
 
-      try {
-        const { data, error } = await supabase
-          .from('communication_logs')
-          .insert({
-            user_id: session.user.id,
-            customer_id: session.user.id,
-            log_type: 'user_message',
-            subject: content,
-            message: content,
-            sender_type: 'customer',
-            is_read: true, // User's own messages are considered read
-          })
-          .select()
-          .single();
+      console.log('sendMessage: Message sent successfully:', newMessage);
+    } catch (error: any) {
+      console.error('sendMessage: Error:', error.message);
+      throw error;
+    }
+  }, [session?.user?.id, supabaseConnected]);
 
-        if (error) {
-          throw new Error(`Failed to send message: ${error.message}`);
-        }
+  // Mark a message as read
+  const markMessageAsRead = useCallback(async (messageId: string) => {
+    if (!supabaseConnected) {
+      console.log('markMessageAsRead: Supabase not connected');
+      return;
+    }
 
-        console.log('Message sent successfully:', data);
-      } catch (error: any) {
-        console.error('Error sending message:', error.message);
-        throw error;
-      }
-    },
-    [session?.user?.id, supabaseConnected],
-  );
+    try {
+      const { error } = await supabase
+        .from('communication_logs')
+        .update({ is_read: true })
+        .eq('id', messageId);
 
-  // Mark message as read
-  const markMessageAsRead = useCallback(
-    async (messageId: string) => {
-      if (!session?.user?.id || !supabaseConnected) {
+      if (error) {
+        console.error('markMessageAsRead: Error marking message as read:', error);
         return;
       }
 
-      try {
-        const { error } = await supabase
-          .from('communication_logs')
-          .update({ is_read: true })
-          .eq('id', messageId)
-          .eq('customer_id', session.user.id);
+      // Update local state
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg.id === messageId ? { ...msg, is_read: true } : msg
+        )
+      );
 
-        if (error) {
-          console.error('Error marking message as read:', error);
-          return;
-        }
-
-        // Update local state
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) =>
-            msg.id === messageId ? { ...msg, is_read: true } : msg,
-          ),
-        );
-
-        // Update unread count
-        setUnreadMessagesCount((prev) => Math.max(0, prev - 1));
-      } catch (error: any) {
-        console.error('Error marking message as read:', error.message);
-      }
-    },
-    [session?.user?.id, supabaseConnected],
-  );
+      // Update unread count
+      setUnreadMessagesCount((prev) => Math.max(0, prev - 1));
+    } catch (error: any) {
+      console.error('markMessageAsRead: Error:', error.message);
+    }
+  }, [supabaseConnected]);
 
   // Mark all messages as read
   const markAllMessagesAsRead = useCallback(async () => {
     if (!session?.user?.id || !supabaseConnected) {
+      console.log('markAllMessagesAsRead: No user session or Supabase not connected');
       return;
     }
 
@@ -548,18 +560,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         .eq('is_read', false);
 
       if (error) {
-        console.error('Error marking all messages as read:', error);
+        console.error('markAllMessagesAsRead: Error marking messages as read:', error);
         return;
       }
 
       // Update local state
       setMessages((prevMessages) =>
-        prevMessages.map((msg) => ({ ...msg, is_read: true })),
+        prevMessages.map((msg) => ({ ...msg, is_read: true }))
       );
 
+      // Reset unread count
       setUnreadMessagesCount(0);
     } catch (error: any) {
-      console.error('Error marking all messages as read:', error.message);
+      console.error('markAllMessagesAsRead: Error:', error.message);
     }
   }, [session?.user?.id, supabaseConnected]);
 
@@ -747,27 +760,30 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     if (session?.user?.id && !isLoading) {
       loadUserOrders();
       loadUserMessages();
-      setupMessageSubscription();
     } else if (!session?.user) {
       // If no authenticated user, try to load guest orders from AsyncStorage
       loadOrdersFromStorage();
-      // Clear messages for guest users
       setMessages([]);
       setUnreadMessagesCount(0);
     }
-  }, [session?.user?.id, isLoading, loadUserOrders, loadUserMessages, setupMessageSubscription]);
+  }, [session?.user?.id, isLoading, loadUserOrders, loadUserMessages]);
 
-  // Cleanup subscriptions on unmount
+  // Setup message subscription when user is authenticated
   useEffect(() => {
+    if (session?.user?.id && supabaseConnected && !isLoading) {
+      setupMessageSubscription();
+    }
+
+    // Cleanup subscription on unmount or user change
     return () => {
       if (messageChannelRef.current) {
-        console.log('Cleaning up message subscription on unmount');
+        console.log('Cleaning up message subscription');
         supabase.removeChannel(messageChannelRef.current);
         messageChannelRef.current = null;
         isSubscribedRef.current = false;
       }
     };
-  }, []);
+  }, [session?.user?.id, supabaseConnected, isLoading, setupMessageSubscription]);
 
   // Login function with enhanced error handling
   const login = async (email: string, password: string): Promise<boolean> => {
