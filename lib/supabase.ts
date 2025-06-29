@@ -1,6 +1,7 @@
 import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
+import { v4 as uuidv4 } from 'uuid';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -148,7 +149,7 @@ export const testOrderCreation = async () => {
     
     // First create a temporary profile to satisfy foreign key constraints
     const tempProfile = {
-      // Don't need to specify id as it's auto-generated
+      id: uuidv4(), // Generate UUID for the id field
       role: 'customer' as const,
       first_name: 'Test',
       last_name: 'User'
