@@ -38,6 +38,15 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: {
     headers: {
       'Access-Control-Allow-Origin': '*',
+      'Content-Type': 'application/json',
+    },
+  },
+  db: {
+    schema: 'public',
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
     },
   },
 });
@@ -46,9 +55,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 export const testSupabaseConnection = async () => {
   try {
     console.log('Testing Supabase connection to:', supabaseUrl);
+    console.log('Using API key:', supabaseAnonKey ? `${supabaseAnonKey.substring(0, 20)}...` : 'undefined');
 
     // First, test basic connectivity with a simple query
-    const { data, error } = await supabase.from('profiles').select('count').limit(1).single();
+    const { data, error } = await supabase.from('profiles').select('count').limit(1);
 
     if (error) {
       console.error('Supabase connection test failed with error:', {
@@ -62,8 +72,9 @@ export const testSupabaseConnection = async () => {
       if (error.message.includes('Failed to fetch') || error.message.includes('network')) {
         console.error('Network connectivity issue detected. Please check:');
         console.error('1. Your internet connection');
-        console.error('2. Supabase CORS settings (add http://localhost:8081 to allowed origins)');
-        console.error('3. Firewall or proxy settings');
+        console.error('2. Supabase project status in dashboard');
+        console.error('3. CORS settings if running on web');
+        console.error('4. Firewall or proxy settings');
       } else if (error.message.includes('permission denied') || error.code === 'PGRST116') {
         console.error(
           'Database permission issue. This might be expected if RLS policies are strict.',
@@ -87,7 +98,7 @@ export const testSupabaseConnection = async () => {
     // Provide specific guidance based on error type
     if (error.message?.includes('Failed to fetch')) {
       console.error('CORS or network issue detected. Please:');
-      console.error('1. Add http://localhost:8081 to Supabase CORS allowed origins');
+      console.error('1. Add your app origin to Supabase CORS allowed origins');
       console.error('2. Check if your Supabase project is accessible');
       console.error('3. Verify your internet connection');
     } else if (error.message?.includes('Invalid API key')) {
@@ -107,6 +118,7 @@ export const testRawConnection = async () => {
       headers: {
         apikey: supabaseAnonKey,
         Authorization: `Bearer ${supabaseAnonKey}`,
+        'Content-Type': 'application/json',
       },
     });
 
@@ -114,11 +126,101 @@ export const testRawConnection = async () => {
       status: response.status,
       statusText: response.statusText,
       ok: response.ok,
+      headers: Object.fromEntries(response.headers.entries()),
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Raw connection error response:', errorText);
+    }
 
     return response.ok;
   } catch (error: any) {
     console.error('Raw connection test failed:', error.message);
     return false;
   }
+};
+
+// Test order creation specifically
+export const testOrderCreation = async () => {
+  try {
+    console.log('Testing order creation...');
+    
+    // Test with minimal required data based on your schema
+    const testOrder = {
+      user_id: '00000000-0000-0000-0000-000000000000', // Placeholder UUID
+      customer_id: '00000000-0000-0000-0000-000000000000', // Placeholder UUID
+      total_amount: 100.00,
+      delivery_address: 'Test Address',
+      delivery_phone: '+1234567890',
+      payment_method: 'card',
+      customer_name: 'Test Customer',
+      customer_email: 'test@example.com',
+      status: 'pending',
+      payment_status: 'pending'
+    };
+
+    const { data, error } = await supabase
+      .from('orders')
+      .insert(testOrder)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Order creation test failed:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
+      return false;
+    }
+
+    console.log('Order creation test successful:', data);
+    
+    // Clean up test order
+    if (data?.id) {
+      await supabase.from('orders').delete().eq('id', data.id);
+      console.log('Test order cleaned up');
+    }
+    
+    return true;
+  } catch (error: any) {
+    console.error('Order creation test error:', {
+      message: error.message,
+      name: error.name,
+      stack: error.stack,
+    });
+    return false;
+  }
+};
+
+// Comprehensive connection diagnostics
+export const runConnectionDiagnostics = async () => {
+  console.log('=== Supabase Connection Diagnostics ===');
+  
+  console.log('1. Environment Variables Check:');
+  console.log('   URL:', supabaseUrl ? '✓ Set' : '✗ Missing');
+  console.log('   Key:', supabaseAnonKey ? '✓ Set' : '✗ Missing');
+  
+  console.log('2. Raw Connection Test:');
+  const rawTest = await testRawConnection();
+  console.log('   Result:', rawTest ? '✓ Success' : '✗ Failed');
+  
+  console.log('3. Supabase Client Test:');
+  const clientTest = await testSupabaseConnection();
+  console.log('   Result:', clientTest ? '✓ Success' : '✗ Failed');
+  
+  console.log('4. Order Creation Test:');
+  const orderTest = await testOrderCreation();
+  console.log('   Result:', orderTest ? '✓ Success' : '✗ Failed');
+  
+  console.log('=== End Diagnostics ===');
+  
+  return {
+    environmentVariables: !!(supabaseUrl && supabaseAnonKey),
+    rawConnection: rawTest,
+    supabaseClient: clientTest,
+    orderCreation: orderTest,
+  };
 };

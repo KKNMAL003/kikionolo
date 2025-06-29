@@ -1,57 +1,45 @@
-import 'react-native-get-random-values';
-import React, { useEffect } from 'react';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { COLORS } from './constants/colors';
-import { CartProvider } from './context/CartContext';
-import { UserProvider } from './context/UserContext';
-import { useCallback } from 'react';
-import { useFonts } from 'expo-font';
-import * as SplashScreen from 'expo-splash-screen';
-import { View } from 'react-native';
-import Toast from 'react-native-toast-message';
-
-// Force all toast messages to appear at the top unless explicitly overridden
-const originalToastShow = Toast.show;
-Toast.show = (options: any) => {
-  originalToastShow({ ...options, position: 'top', topOffset: 60 });
-};
-
-// Keep the splash screen visible while we fetch resources
-SplashScreen.preventAutoHideAsync();
-
-// Import the router
-import { ExpoRoot } from 'expo-router';
+import { StyleSheet, Text, View } from 'react-native';
+import { initializeConnectionTest } from '@/utils/connectionTest';
 
 export default function App() {
-  const [fontsLoaded] = useFonts({
-    'SpaceMono-Regular': require('./assets/fonts/SpaceMono-Regular.ttf'),
-  });
-
-  const onLayoutRootView = useCallback(async () => {
-    if (fontsLoaded) {
-      await SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded]);
-
-  if (!fontsLoaded) {
-    return null;
-  }
-
-  // Set up the router with the app directory
-  const ctx = require.context('./app');
+  useEffect(() => {
+    // Run connection diagnostics on app startup
+    const testConnection = async () => {
+      console.log('Running Supabase connection diagnostics...');
+      const success = await initializeConnectionTest();
+      
+      if (!success) {
+        console.error('⚠️  Connection issues detected. Check the console for details.');
+      } else {
+        console.log('✅ Supabase connection is working properly');
+      }
+    };
+    
+    testConnection();
+  }, []);
 
   return (
-    <SafeAreaProvider>
-      <UserProvider>
-        <CartProvider>
-          <StatusBar style="light" />
-          <View style={{ flex: 1, backgroundColor: COLORS.background }} onLayout={onLayoutRootView}>
-            <ExpoRoot context={ctx} />
-          </View>
-          <Toast position="top" topOffset={60} />
-        </CartProvider>
-      </UserProvider>
-    </SafeAreaProvider>
+    <View style={styles.container}>
+      <Text>Open up App.tsx to start working on your app!</Text>
+      <Text style={styles.debugText}>Check console for Supabase connection status</Text>
+      <StatusBar style="auto" />
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  debugText: {
+    marginTop: 10,
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+  },
+});
