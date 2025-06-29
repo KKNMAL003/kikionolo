@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,158 +12,109 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../../constants/colors';
 import Header from '../../components/Header';
-import { supabase } from '../../lib/supabase';
 import { useUser } from '../../context/UserContext';
-
-interface Message {
-  id: string;
-  sender: string;
-  user_id: string;
-  content: string;
-  created_at: string;
-}
+import { Ionicons } from '@expo/vector-icons';
 
 export default function ChatScreen() {
-  const { user } = useUser();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
+  const { 
+    user, 
+    messages, 
+    sendMessage, 
+    refreshMessages,
+    markAllMessagesAsRead,
+    unreadMessagesCount 
+  } = useUser();
+  
+  const [input, setInput] = React.useState('');
+  const [sending, setSending] = React.useState(false);
   const flatListRef = useRef<FlatList>(null);
 
-  // Fetch messages for this user
+  // Mark messages as read when screen is focused
   useEffect(() => {
-    if (!user) return;
-    const fetchMessages = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('communication_logs')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: true });
-        
-        if (!error && data) {
-          const formattedMessages = data.map(msg => ({
-            id: msg.id,
-            sender: msg.sender_type || 'user',
-            user_id: msg.user_id,
-            content: msg.subject || msg.message,
-            created_at: msg.created_at
-          }));
-          setMessages(formattedMessages);
-        } else if (error) {
-          console.warn('Failed to fetch messages:', error.message);
-        }
-      } catch (error) {
-        console.warn('Error fetching messages:', error);
-      }
-    };
-    fetchMessages();
-  }, [user]);
+    if (unreadMessagesCount > 0) {
+      markAllMessagesAsRead();
+    }
+  }, [unreadMessagesCount, markAllMessagesAsRead]);
 
-  // Real-time subscription with better error handling
+  // Scroll to bottom when new messages arrive
   useEffect(() => {
-    if (!user) return;
-    
-    let isSubscribed = true;
-    
-    const setupSubscription = async () => {
-      try {
-        const channel = supabase
-          .channel(`communication_logs:user_id=eq.${user.id}`)
-          .on(
-            'postgres_changes',
-            { 
-              event: '*', 
-              schema: 'public', 
-              table: 'communication_logs', 
-              filter: `user_id=eq.${user.id}` 
-            },
-            (payload) => {
-              if (!isSubscribed) return;
-              
-              if (payload.eventType === 'INSERT' && payload.new) {
-                const newMessage = {
-                  id: payload.new.id,
-                  sender: payload.new.sender_type || 'user',
-                  user_id: payload.new.user_id,
-                  content: payload.new.subject || payload.new.message,
-                  created_at: payload.new.created_at
-                };
-                setMessages((prev) => [...prev, newMessage]);
-              }
-            },
-          )
-          .subscribe((status, err) => {
-            if (!isSubscribed) return;
-            
-            if (status === 'SUBSCRIBED') {
-              console.log('Successfully subscribed to communication_logs');
-            } else if (status === 'CHANNEL_ERROR') {
-              console.warn('Channel subscription error:', err);
-            } else if (status === 'TIMED_OUT') {
-              console.warn('Channel subscription timed out');
-            } else if (status === 'CLOSED') {
-              console.log('Channel subscription closed');
-            }
-          });
-        
-        return () => {
-          isSubscribed = false;
-          supabase.removeChannel(channel);
-        };
-      } catch (error) {
-        console.warn('Error setting up real-time subscription:', error);
-      }
-    };
-    
-    const cleanup = setupSubscription();
-    
-    return () => {
-      isSubscribed = false;
-      cleanup?.then(cleanupFn => cleanupFn?.());
-    };
-  }, [user]);
+    if (messages.length > 0) {
+      // Use a small delay to ensure the FlatList has rendered the new content
+      setTimeout(() => {
+        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+      }, 100);
+    }
+  }, [messages]);
 
-  const sendMessage = async () => {
-    if (!input.trim() || !user) return;
-    
+  const handleSendMessage = async () => {
+    if (!input.trim() || !user || sending) {
+      return;
+    }
+
+    setSending(true);
+    const messageContent = input.trim();
+    setInput('');
+
     try {
-      const { error } = await supabase.from('communication_logs').insert({
-        user_id: user.id,
-        customer_id: user.id,
-        log_type: 'user_message',
-        subject: input.trim(),
-        message: input.trim(),
-        sender_type: 'customer',
-        is_read: false,
-      });
-      
-      if (error) {
-        console.warn('Failed to send message:', error.message);
-      } else {
-        setInput('');
-      }
-    } catch (error) {
-      console.warn('Error sending message:', error);
+      await sendMessage(messageContent);
+      console.log('Message sent successfully');
+    } catch (error: any) {
+      console.error('Error sending message:', error.message);
+      // Restore input on error
+      setInput(messageContent);
+    } finally {
+      setSending(false);
     }
   };
 
-  const renderItem = ({ item }: { item: Message }) => (
+  const handleRefresh = async () => {
+    try {
+      await refreshMessages();
+    } catch (error) {
+      console.error('Error refreshing messages:', error);
+    }
+  };
+
+  const renderItem = ({ item }: { item: any }) => (
     <View
       style={[
         styles.messageBubble,
-        item.sender === 'customer' ? styles.userBubble : styles.staffBubble,
+        item.sender_type === 'customer' ? styles.userBubble : styles.staffBubble,
       ]}
     >
-      <Text style={styles.messageText}>{item.content}</Text>
-      <Text style={styles.timestamp}>
-        {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-      </Text>
+      {item.log_type === 'order_status_update' && (
+        <View style={styles.orderUpdateHeader}>
+          <Ionicons name="cube-outline" size={16} color={COLORS.primary} />
+          <Text style={styles.orderUpdateLabel}>Order Update</Text>
+        </View>
+      )}
+      <Text style={styles.messageText}>{item.subject}</Text>
+      <View style={styles.messageFooter}>
+        <Text style={styles.timestamp}>
+          {new Date(item.created_at).toLocaleTimeString([], { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          })}
+        </Text>
+        {!item.is_read && item.sender_type === 'staff' && (
+          <View style={styles.unreadDot} />
+        )}
+      </View>
     </View>
   );
 
   return (
     <SafeAreaView style={styles.container}>
       <Header />
+      
+      {/* Pull to refresh header */}
+      <View style={styles.refreshHeader}>
+        <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton}>
+          <Ionicons name="refresh" size={16} color={COLORS.primary} />
+          <Text style={styles.refreshText}>Pull to refresh</Text>
+        </TouchableOpacity>
+      </View>
+
       <KeyboardAvoidingView
         style={styles.flex1}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -174,13 +125,24 @@ export default function ChatScreen() {
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.messagesList}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No messages yet. Send a message to start the conversation!</Text>
+              <Ionicons name="chatbubbles-outline" size={64} color={COLORS.text.gray} />
+              <Text style={styles.emptyText}>
+                No messages yet. Send a message to start the conversation!
+              </Text>
+              <Text style={styles.emptySubtext}>
+                Our support team will respond as soon as possible.
+              </Text>
             </View>
           }
+          inverted={false}
+          // Data is already sorted by created_at desc in UserContext
+          showsVerticalScrollIndicator={false}
+          onRefresh={handleRefresh}
+          refreshing={false}
         />
+        
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
@@ -188,11 +150,22 @@ export default function ChatScreen() {
             onChangeText={setInput}
             placeholder="Type your message..."
             placeholderTextColor={COLORS.text.gray}
-            onSubmitEditing={sendMessage}
+            editable={!sending}
+            multiline
+            maxLength={500}
             returnKeyType="send"
+            onSubmitEditing={handleSendMessage}
           />
-          <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
-            <Text style={styles.sendButtonText}>Send</Text>
+          <TouchableOpacity
+            style={[styles.sendButton, sending && { opacity: 0.5 }]}
+            onPress={handleSendMessage}
+            disabled={sending || !input.trim()}
+          >
+            <Ionicons 
+              name={sending ? "hourglass" : "send"} 
+              size={20} 
+              color={COLORS.text.white} 
+            />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -208,9 +181,26 @@ const styles = StyleSheet.create({
   flex1: {
     flex: 1,
   },
+  refreshHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#222',
+  },
+  refreshButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  refreshText: {
+    color: COLORS.primary,
+    fontSize: 12,
+    marginLeft: 4,
+  },
   messagesList: {
     padding: 16,
-    paddingBottom: 80,
     flexGrow: 1,
   },
   emptyContainer: {
@@ -218,11 +208,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 40,
+    paddingHorizontal: 20,
   },
   emptyText: {
     color: COLORS.text.gray,
     fontSize: 16,
     textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    color: COLORS.text.gray,
+    fontSize: 14,
+    textAlign: 'center',
+    opacity: 0.7,
   },
   messageBubble: {
     marginBottom: 12,
@@ -239,19 +238,42 @@ const styles = StyleSheet.create({
     backgroundColor: '#222',
     alignSelf: 'flex-start',
   },
+  orderUpdateHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  orderUpdateLabel: {
+    color: COLORS.primary,
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginLeft: 4,
+  },
   messageText: {
     color: COLORS.text.white,
     fontSize: 16,
+    lineHeight: 22,
+  },
+  messageFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
   },
   timestamp: {
     color: COLORS.text.gray,
     fontSize: 10,
-    marginTop: 4,
-    textAlign: 'right',
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.primary,
+    marginLeft: 8,
   },
   inputContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     padding: 12,
     borderTopWidth: 1,
     borderTopColor: '#222',
@@ -266,16 +288,14 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 16,
     marginRight: 8,
+    maxHeight: 100,
   },
   sendButton: {
     backgroundColor: COLORS.primary,
     borderRadius: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  sendButtonText: {
-    color: COLORS.text.white,
-    fontWeight: 'bold',
-    fontSize: 16,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

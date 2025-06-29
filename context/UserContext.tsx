@@ -90,6 +90,7 @@ interface UserContextType {
   addOrder: (orderData: any) => Promise<Order>;
   getOrderById: (id: string) => Order | undefined;
   cancelOrder: (orderId: string) => Promise<boolean>;
+  refreshOrders: () => Promise<void>;
   
   // Profile methods
   updateUserProfile: (data: any) => Promise<{ success: boolean; progress: ProfileUpdateProgress[]; error?: string; }>;
@@ -98,6 +99,7 @@ interface UserContextType {
   sendMessage: (content: string) => Promise<void>;
   markMessageAsRead: (messageId: string) => Promise<void>;
   markAllMessagesAsRead: () => Promise<void>;
+  refreshMessages: () => Promise<void>;
   
   // Notification methods
   updateNotificationPreferences: (settings: NotificationSettings, preferences: NotificationPreferences) => Promise<void>;
@@ -128,10 +130,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   // Refs for cleanup and channel management
   const messageChannelRef = useRef<RealtimeChannel | null>(null);
+  const ordersChannelRef = useRef<RealtimeChannel | null>(null);
   const isMountedRef = useRef(true);
   const currentUserIdRef = useRef<string | null>(null);
   const authSubscriptionRef = useRef<any>(null);
   const setupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const ordersSetupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Computed properties
   const isAuthenticated = !!user && !user.isGuest;
@@ -155,6 +159,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setupTimeoutRef.current = null;
     }
 
+    if (ordersSetupTimeoutRef.current) {
+      clearTimeout(ordersSetupTimeoutRef.current);
+      ordersSetupTimeoutRef.current = null;
+    }
+
     // Cleanup message subscription
     if (messageChannelRef.current) {
       try {
@@ -164,6 +173,18 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         messageChannelRef.current = null;
       } catch (error) {
         console.warn('Warning during message subscription cleanup:', error);
+      }
+    }
+
+    // Cleanup orders subscription
+    if (ordersChannelRef.current) {
+      try {
+        console.log('Cleaning up orders subscription...');
+        ordersChannelRef.current.unsubscribe();
+        supabase.removeChannel(ordersChannelRef.current);
+        ordersChannelRef.current = null;
+      } catch (error) {
+        console.warn('Warning during orders subscription cleanup:', error);
       }
     }
 
@@ -184,20 +205,29 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     console.log('✅ Comprehensive cleanup completed');
   }, []);
 
-  // Debounced setup function to prevent multiple rapid subscription attempts
+  // Debounced setup function for message subscription
   const debouncedSetupMessageSubscription = useCallback((userId: string) => {
-    // Clear any existing timeout
     if (setupTimeoutRef.current) {
       clearTimeout(setupTimeoutRef.current);
     }
 
-    // Set a new timeout to debounce the setup
     setupTimeoutRef.current = setTimeout(() => {
       setupMessageSubscription(userId);
-    }, 1000); // 1 second debounce
+    }, 1000);
   }, []);
 
-  // Setup message subscription with improved error handling and deduplication
+  // Debounced setup function for orders subscription
+  const debouncedSetupOrderSubscription = useCallback((userId: string) => {
+    if (ordersSetupTimeoutRef.current) {
+      clearTimeout(ordersSetupTimeoutRef.current);
+    }
+
+    ordersSetupTimeoutRef.current = setTimeout(() => {
+      setupOrderSubscription(userId);
+    }, 1500); // Slightly longer delay to ensure message subscription is established first
+  }, []);
+
+  // Setup message subscription with enhanced UPDATE event handling
   const setupMessageSubscription = useCallback(async (userId: string) => {
     if (!userId || !isMountedRef.current) {
       console.log('setupMessageSubscription: Cannot setup - invalid userId or component unmounted');
@@ -235,20 +265,23 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         }
       });
       
-      // Set up the subscription with improved error handling
+      // Set up the subscription with enhanced event handling
       channel
         .on(
           'postgres_changes',
           { 
-            event: '*', 
+            event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
             schema: 'public', 
             table: 'communication_logs', 
             filter: `customer_id=eq.${userId}` 
           },
           (payload: any) => {
             try {
-              console.log('setupMessageSubscription: Received message payload:', payload.eventType);
-              if (payload.eventType === 'INSERT' && payload.new && isMountedRef.current) {
+              console.log('setupMessageSubscription: Received message payload:', payload.eventType, payload.new?.id);
+              
+              if (!isMountedRef.current) return;
+
+              if (payload.eventType === 'INSERT' && payload.new) {
                 const formattedMessage: Message = {
                   id: payload.new.id,
                   user_id: payload.new.user_id,
@@ -268,6 +301,39 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                 if (payload.new.sender_type === 'staff' && !payload.new.is_read) {
                   setUnreadMessagesCount(prev => prev + 1);
                 }
+                
+                console.log('setupMessageSubscription: Added new message to state');
+              } else if (payload.eventType === 'UPDATE' && payload.new) {
+                // Handle message updates (e.g., is_read status changes from dashboard)
+                setMessages(prev => 
+                  prev.map(msg => 
+                    msg.id === payload.new.id 
+                      ? {
+                          ...msg,
+                          is_read: payload.new.is_read,
+                          subject: payload.new.subject || payload.new.message,
+                          message: payload.new.message,
+                        }
+                      : msg
+                  )
+                );
+
+                // Recalculate unread count
+                if (payload.old?.is_read !== payload.new.is_read) {
+                  setUnreadMessagesCount(prev => {
+                    // If message was marked as read
+                    if (!payload.old?.is_read && payload.new.is_read && payload.new.sender_type === 'staff') {
+                      return Math.max(0, prev - 1);
+                    }
+                    // If message was marked as unread
+                    if (payload.old?.is_read && !payload.new.is_read && payload.new.sender_type === 'staff') {
+                      return prev + 1;
+                    }
+                    return prev;
+                  });
+                }
+                
+                console.log('setupMessageSubscription: Updated message in state');
               }
             } catch (error) {
               console.warn('setupMessageSubscription: Error processing message:', error);
@@ -283,12 +349,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             currentUserIdRef.current = userId;
           } else if (status === 'CHANNEL_ERROR') {
             console.warn('❌ setupMessageSubscription: Channel subscription error:', error);
-            if (error?.message?.includes('mismatch')) {
-              console.warn('setupMessageSubscription: Schema mismatch - this may indicate a database configuration issue');
-              console.warn('💡 Consider checking your database schema and RLS policies');
-            } else if (error?.message?.includes('subscribe multiple times')) {
-              console.warn('setupMessageSubscription: Subscription issue:', error.message);
-            }
             
             // Clean up failed subscription
             if (messageChannelRef.current === channel) {
@@ -327,6 +387,183 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Setup orders subscription for real-time order status updates
+  const setupOrderSubscription = useCallback(async (userId: string) => {
+    if (!userId || !isMountedRef.current) {
+      console.log('setupOrderSubscription: Cannot setup - invalid userId or component unmounted');
+      return;
+    }
+
+    try {
+      console.log(`setupOrderSubscription: Setting up orders subscription for user: ${userId}`);
+      
+      // Clean up any existing orders subscription
+      if (ordersChannelRef.current) {
+        console.log('setupOrderSubscription: Cleaning up existing orders subscription');
+        try {
+          ordersChannelRef.current.unsubscribe();
+          supabase.removeChannel(ordersChannelRef.current);
+        } catch (cleanupError) {
+          console.warn('setupOrderSubscription: Warning during cleanup:', cleanupError);
+        }
+        ordersChannelRef.current = null;
+      }
+
+      // Create unique channel name for orders
+      const ordersChannelName = `orders_${userId}_${Date.now()}`;
+      console.log(`setupOrderSubscription: Creating orders channel: ${ordersChannelName}`);
+      
+      const ordersChannel = supabase.channel(ordersChannelName, {
+        config: {
+          presence: { key: `orders_${userId}` },
+        }
+      });
+      
+      // Set up orders subscription
+      ordersChannel
+        .on(
+          'postgres_changes',
+          { 
+            event: '*', // Listen to INSERT and UPDATE events
+            schema: 'public', 
+            table: 'orders', 
+            filter: `customer_id=eq.${userId}` 
+          },
+          async (payload: any) => {
+            try {
+              console.log('setupOrderSubscription: Received order payload:', payload.eventType, payload.new?.id);
+              
+              if (!isMountedRef.current) return;
+
+              if (payload.eventType === 'INSERT' && payload.new) {
+                // New order created (might be from external dashboard)
+                try {
+                  // Fetch complete order data with items
+                  const { data: orderData, error } = await supabase
+                    .from('orders')
+                    .select(`
+                      id,
+                      customer_name,
+                      customer_email,
+                      delivery_address,
+                      payment_method,
+                      total_amount,
+                      status,
+                      created_at,
+                      order_items (
+                        product_id,
+                        product_name,
+                        quantity,
+                        unit_price
+                      )
+                    `)
+                    .eq('id', payload.new.id)
+                    .single();
+
+                  if (!error && orderData) {
+                    const formattedOrder: Order = {
+                      id: orderData.id,
+                      customerName: orderData.customer_name,
+                      customerEmail: orderData.customer_email,
+                      deliveryAddress: orderData.delivery_address,
+                      paymentMethod: orderData.payment_method,
+                      totalAmount: orderData.total_amount,
+                      status: orderData.status,
+                      date: orderData.created_at,
+                      items: orderData.order_items?.map(item => ({
+                        productId: item.product_id,
+                        productName: item.product_name,
+                        quantity: item.quantity,
+                        price: item.unit_price,
+                      })) || [],
+                    };
+
+                    setOrders(prev => {
+                      // Check if order already exists to avoid duplicates
+                      const existingIndex = prev.findIndex(order => order.id === formattedOrder.id);
+                      if (existingIndex === -1) {
+                        return [formattedOrder, ...prev];
+                      }
+                      return prev;
+                    });
+                    
+                    console.log('setupOrderSubscription: Added new order to state');
+                  }
+                } catch (fetchError) {
+                  console.warn('setupOrderSubscription: Error fetching complete order data:', fetchError);
+                }
+              } else if (payload.eventType === 'UPDATE' && payload.new) {
+                // Order status updated (likely from dashboard)
+                setOrders(prev => 
+                  prev.map(order => 
+                    order.id === payload.new.id 
+                      ? {
+                          ...order,
+                          status: payload.new.status,
+                          customerName: payload.new.customer_name || order.customerName,
+                          customerEmail: payload.new.customer_email || order.customerEmail,
+                          deliveryAddress: payload.new.delivery_address || order.deliveryAddress,
+                          totalAmount: payload.new.total_amount || order.totalAmount,
+                        }
+                      : order
+                  )
+                );
+                
+                console.log('setupOrderSubscription: Updated order status in state:', payload.new.status);
+                
+                // Show notification for status changes (excluding the initial pending status)
+                if (payload.old?.status !== payload.new.status && payload.new.status !== 'pending') {
+                  // This could trigger a toast notification or other UI feedback
+                  console.log(`Order ${payload.new.id} status changed from ${payload.old?.status} to ${payload.new.status}`);
+                }
+              }
+            } catch (error) {
+              console.warn('setupOrderSubscription: Error processing order update:', error);
+            }
+          }
+        )
+        .subscribe((status: string, error?: any) => {
+          console.log(`setupOrderSubscription: Orders subscription status: ${status}`);
+          
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ setupOrderSubscription: Successfully subscribed to orders');
+            ordersChannelRef.current = ordersChannel;
+          } else if (status === 'CHANNEL_ERROR') {
+            console.warn('❌ setupOrderSubscription: Orders channel subscription error:', error);
+            
+            // Clean up failed subscription
+            if (ordersChannelRef.current === ordersChannel) {
+              ordersChannelRef.current = null;
+            }
+          } else if (status === 'TIMED_OUT') {
+            console.warn('⏱️ setupOrderSubscription: Orders channel subscription timed out');
+            if (ordersChannelRef.current === ordersChannel) {
+              ordersChannelRef.current = null;
+            }
+          } else if (status === 'CLOSED') {
+            console.log('📴 setupOrderSubscription: Orders channel subscription closed');
+            if (ordersChannelRef.current === ordersChannel) {
+              ordersChannelRef.current = null;
+            }
+          }
+        });
+
+      console.log('setupOrderSubscription: Orders subscription setup completed');
+    } catch (error) {
+      console.error('setupOrderSubscription: Error setting up orders subscription:', error);
+      // Ensure cleanup on error
+      if (ordersChannelRef.current) {
+        try {
+          ordersChannelRef.current.unsubscribe();
+          supabase.removeChannel(ordersChannelRef.current);
+        } catch (cleanupError) {
+          console.warn('setupOrderSubscription: Error during cleanup:', cleanupError);
+        }
+        ordersChannelRef.current = null;
+      }
+    }
+  }, []);
+
   // Initialize auth state with improved cleanup
   useEffect(() => {
     const initializeAuth = async () => {
@@ -359,13 +596,20 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           
           console.log('Auth state changed:', event, session?.user?.email);
           
-          // Clean up existing subscriptions when auth state changes
-          if (messageChannelRef.current && event !== 'TOKEN_REFRESHED') {
+          // Clean up existing subscriptions when auth state changes (except for token refresh)
+          if ((messageChannelRef.current || ordersChannelRef.current) && event !== 'TOKEN_REFRESHED') {
             console.log('Auth state change: cleaning up existing subscriptions');
             try {
-              messageChannelRef.current.unsubscribe();
-              supabase.removeChannel(messageChannelRef.current);
-              messageChannelRef.current = null;
+              if (messageChannelRef.current) {
+                messageChannelRef.current.unsubscribe();
+                supabase.removeChannel(messageChannelRef.current);
+                messageChannelRef.current = null;
+              }
+              if (ordersChannelRef.current) {
+                ordersChannelRef.current.unsubscribe();
+                supabase.removeChannel(ordersChannelRef.current);
+                ordersChannelRef.current = null;
+              }
               currentUserIdRef.current = null;
             } catch (error) {
               console.warn('Auth state change: cleanup warning:', error);
@@ -435,8 +679,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           loadUserMessages(userId),
         ]);
         
-        // Set up message subscription with debouncing to prevent multiple rapid calls
+        // Set up real-time subscriptions with debouncing
         debouncedSetupMessageSubscription(userId);
+        debouncedSetupOrderSubscription(userId);
       }
     } catch (error) {
       console.error('Error in loadUserProfile:', error);
@@ -563,6 +808,23 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       console.error('loadUserMessages: Error:', error);
     }
   };
+
+  // Manual refresh functions
+  const refreshOrders = useCallback(async () => {
+    if (user && !user.isGuest) {
+      console.log('Manually refreshing orders...');
+      await loadUserOrders(user.id);
+    } else {
+      await loadOrdersFromStorage();
+    }
+  }, [user]);
+
+  const refreshMessages = useCallback(async () => {
+    if (user && !user.isGuest) {
+      console.log('Manually refreshing messages...');
+      await loadUserMessages(user.id);
+    }
+  }, [user]);
 
   // Auth methods
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -738,7 +1000,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         })),
       };
 
-      setOrders(prev => [formattedOrder, ...prev]);
+      // Note: We don't manually add to state here because the real-time subscription will handle it
       console.log('Order added successfully to Supabase:', newOrder.id);
 
       return formattedOrder;
@@ -766,13 +1028,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
 
-      setOrders(prev => 
-        prev.map(order => 
-          order.id === orderId 
-            ? { ...order, status: 'cancelled' }
-            : order
-        )
-      );
+      // Note: Real-time subscription will update the state automatically
 
       return true;
     } catch (error) {
@@ -855,6 +1111,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         throw new Error(error.message);
       }
+
+      // Note: Real-time subscription will add the message to state automatically
     } catch (error) {
       console.error('Error sending message:', error);
       throw error;
@@ -873,16 +1131,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      setMessages(prev => 
-        prev.map(msg => 
-          msg.id === messageId 
-            ? { ...msg, is_read: true }
-            : msg
-        )
-      );
-
-      // Update unread count
-      setUnreadMessagesCount(prev => Math.max(0, prev - 1));
+      // Note: Real-time subscription will update the state automatically
     } catch (error) {
       console.error('Error marking message as read:', error);
     }
@@ -903,11 +1152,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      setMessages(prev => 
-        prev.map(msg => ({ ...msg, is_read: true }))
-      );
-
-      setUnreadMessagesCount(0);
+      // Note: Real-time subscription will update the state automatically
     } catch (error) {
       console.error('Error marking all messages as read:', error);
     }
@@ -999,6 +1244,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     addOrder,
     getOrderById,
     cancelOrder,
+    refreshOrders,
     
     // Profile methods
     updateUserProfile,
@@ -1007,6 +1253,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     sendMessage,
     markMessageAsRead,
     markAllMessagesAsRead,
+    refreshMessages,
     
     // Notification methods
     updateNotificationPreferences,
