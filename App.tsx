@@ -1,10 +1,11 @@
 import 'react-native-get-random-values';
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { COLORS } from './constants/colors';
 import { CartProvider } from './context/CartContext';
 import { UserProvider } from './context/UserContext';
+import { useCallback, useEffect } from 'react';
 import { useFonts, SpaceMono_400Regular } from '@expo-google-fonts/space-mono';
 import * as SplashScreen from 'expo-splash-screen';
 import { View } from 'react-native';
