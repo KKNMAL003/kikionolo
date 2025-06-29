@@ -92,7 +92,7 @@ export const createOrderWithRetry = async (orderData: any) => {
   }, 3, 1000);
 };
 
-// Enhanced message subscription with better error handling and retry logic
+// Simplified message subscription without custom reconnection logic
 export const setupSafeMessageSubscription = (
   userId: string,
   onMessage: (message: any) => void,
@@ -104,123 +104,71 @@ export const setupSafeMessageSubscription = (
   }
 
   let channel: any = null;
-  let reconnectAttempts = 0;
-  const maxReconnectAttempts = 5;
-  let reconnectTimeout: NodeJS.Timeout | null = null;
+  let isSubscribed = false;
 
   const cleanup = () => {
-    if (reconnectTimeout) {
-      clearTimeout(reconnectTimeout);
-      reconnectTimeout = null;
-    }
-    if (channel) {
-      removeSafeChannel(channel);
+    if (channel && isSubscribed) {
+      try {
+        removeSafeChannel(channel);
+        console.log('✅ Channel cleaned up successfully');
+      } catch (error) {
+        console.warn('Warning during channel cleanup:', error);
+      }
       channel = null;
+      isSubscribed = false;
     }
   };
 
-  const setupSubscription = () => {
-    try {
-      console.log(`Setting up message subscription for user: ${userId} (attempt ${reconnectAttempts + 1})`);
-      
-      // Create channel with more robust configuration
-      channel = createSafeChannel(`messages:user_id=eq.${userId}`, {
-        config: {
-          presence: { key: userId },
-          broadcast: { self: true },
+  try {
+    console.log(`Setting up message subscription for user: ${userId}`);
+    
+    // Create channel with simple configuration
+    channel = createSafeChannel(`messages:customer_id=eq.${userId}`);
+
+    // Set up the subscription - let Supabase handle all reconnection logic
+    channel
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'communication_logs', 
+          filter: `customer_id=eq.${userId}` 
         },
+        (payload: any) => {
+          try {
+            console.log('Received message payload:', payload);
+            if (payload.eventType === 'INSERT' && payload.new) {
+              onMessage(payload.new);
+            }
+          } catch (error) {
+            console.warn('Error processing message:', error);
+            onError?.(error);
+          }
+        }
+      )
+      .subscribe((status: string, error?: any) => {
+        console.log(`Subscription status: ${status}`);
+        
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Successfully subscribed to messages');
+          isSubscribed = true;
+        } else if (status === 'CHANNEL_ERROR') {
+          console.warn('❌ Channel subscription error:', error);
+          onError?.(error);
+        } else if (status === 'TIMED_OUT') {
+          console.warn('⏱️ Channel subscription timed out');
+          onError?.(new Error('Subscription timed out'));
+        } else if (status === 'CLOSED') {
+          console.log('📴 Channel subscription closed');
+          isSubscribed = false;
+        }
       });
 
-      // Set up the subscription with timeout handling
-      channel
-        .on(
-          'postgres_changes',
-          { 
-            event: '*', 
-            schema: 'public', 
-            table: 'communication_logs', 
-            filter: `user_id=eq.${userId}` 
-          },
-          (payload: any) => {
-            try {
-              console.log('Received message payload:', payload);
-              if (payload.eventType === 'INSERT' && payload.new) {
-                onMessage(payload.new);
-              }
-            } catch (error) {
-              console.warn('Error processing message:', error);
-              onError?.(error);
-            }
-          }
-        )
-        .subscribe((status: string, error?: any) => {
-          console.log(`Subscription status: ${status}`);
-          
-          if (status === 'SUBSCRIBED') {
-            console.log('✅ Successfully subscribed to messages');
-            reconnectAttempts = 0; // Reset reconnect attempts on success
-          } else if (status === 'CHANNEL_ERROR') {
-            console.warn('❌ Channel subscription error:', error);
-            onError?.(error);
-            
-            // Attempt to reconnect
-            if (reconnectAttempts < maxReconnectAttempts) {
-              const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000); // Exponential backoff, max 30s
-              console.log(`Attempting to reconnect in ${delay}ms...`);
-              
-              reconnectTimeout = setTimeout(() => {
-                reconnectAttempts++;
-                cleanup();
-                setupSubscription();
-              }, delay);
-            } else {
-              console.error('Max reconnection attempts reached. Subscription failed permanently.');
-              onError?.(new Error('Max reconnection attempts reached'));
-            }
-          } else if (status === 'TIMED_OUT') {
-            console.warn('⏱️ Channel subscription timed out');
-            const timeoutError = new Error('Subscription timed out');
-            onError?.(timeoutError);
-            
-            // Attempt to reconnect on timeout
-            if (reconnectAttempts < maxReconnectAttempts) {
-              console.log('Attempting to reconnect after timeout...');
-              reconnectTimeout = setTimeout(() => {
-                reconnectAttempts++;
-                cleanup();
-                setupSubscription();
-              }, 2000);
-            }
-          } else if (status === 'CLOSED') {
-            console.log('📴 Channel subscription closed');
-            
-            // Only attempt reconnection if it wasn't intentionally closed
-            if (reconnectAttempts < maxReconnectAttempts) {
-              console.log('Attempting to reconnect after closure...');
-              reconnectTimeout = setTimeout(() => {
-                reconnectAttempts++;
-                setupSubscription();
-              }, 1000);
-            }
-          }
-        });
-
-    } catch (error) {
-      console.error('Error setting up message subscription:', error);
-      onError?.(error);
-      
-      // Attempt to reconnect on setup error
-      if (reconnectAttempts < maxReconnectAttempts) {
-        reconnectTimeout = setTimeout(() => {
-          reconnectAttempts++;
-          setupSubscription();
-        }, 2000);
-      }
-    }
-  };
-
-  // Initial setup
-  setupSubscription();
+  } catch (error) {
+    console.error('Error setting up message subscription:', error);
+    onError?.(error);
+  }
 
   // Return cleanup function
   return {
