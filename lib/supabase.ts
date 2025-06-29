@@ -50,9 +50,16 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     params: {
       eventsPerSecond: 10,
     },
-    // Add better error handling for realtime connections
-    heartbeatIntervalMs: 30000,
-    reconnectAfterMs: (tries) => Math.min(tries * 1000, 10000),
+    // Improved timeout and reconnection settings
+    heartbeatIntervalMs: 15000, // Reduced from 30000 for faster detection
+    reconnectAfterMs: (tries) => {
+      // More aggressive reconnection strategy
+      const baseDelay = Math.min(tries * 500, 5000); // Start with 500ms, max 5s
+      console.log(`Realtime reconnection attempt ${tries}, waiting ${baseDelay}ms`);
+      return baseDelay;
+    },
+    // Add timeout configuration
+    timeout: 20000, // 20 second timeout for initial connection
   },
 });
 
@@ -154,6 +161,61 @@ export const testOrderCreation = async () => {
   }
 };
 
+// Test realtime connection specifically
+export const testRealtimeConnection = async (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    console.log('🔄 Testing realtime connection...');
+    
+    let timeoutId: NodeJS.Timeout;
+    let resolved = false;
+    
+    const resolveOnce = (result: boolean) => {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeoutId);
+        resolve(result);
+      }
+    };
+
+    // Set up a test channel with shorter timeout
+    const testChannel = supabase.channel(`test_${Date.now()}`, {
+      config: {
+        presence: { key: 'test' },
+      },
+    });
+
+    // Set timeout for the test
+    timeoutId = setTimeout(() => {
+      console.log('❌ Realtime connection test timed out');
+      testChannel.unsubscribe();
+      resolveOnce(false);
+    }, 15000); // 15 second timeout
+
+    testChannel.subscribe((status, error) => {
+      console.log(`Realtime test status: ${status}`);
+      
+      if (status === 'SUBSCRIBED') {
+        console.log('✅ Realtime connection successful');
+        testChannel.unsubscribe();
+        resolveOnce(true);
+      } else if (status === 'CHANNEL_ERROR') {
+        console.log('❌ Realtime connection failed:', error);
+        testChannel.unsubscribe();
+        resolveOnce(false);
+      } else if (status === 'TIMED_OUT') {
+        console.log('❌ Realtime connection timed out');
+        testChannel.unsubscribe();
+        resolveOnce(false);
+      } else if (status === 'CLOSED') {
+        console.log('📴 Realtime connection closed');
+        if (!resolved) {
+          resolveOnce(false);
+        }
+      }
+    });
+  });
+};
+
 // Comprehensive connection diagnostics
 export const runConnectionDiagnostics = async () => {
   console.log('🔍 Running Supabase connection diagnostics...');
@@ -164,16 +226,24 @@ export const runConnectionDiagnostics = async () => {
   
   const clientTest = await testSupabaseConnection();
   
+  // Test realtime connection
+  const realtimeTest = await testRealtimeConnection();
+  
   // Only run database write test if basic connection works
   let writeTest = false;
   if (clientTest) {
     writeTest = await testOrderCreation();
   }
   
-  const allPassed = !!(supabaseUrl && supabaseAnonKey) && rawTest && clientTest && writeTest;
+  const allPassed = !!(supabaseUrl && supabaseAnonKey) && rawTest && clientTest && realtimeTest && writeTest;
   
   if (allPassed) {
     console.log('✅ All connection tests passed');
+  } else if (clientTest && !realtimeTest) {
+    console.log('⚠️  Basic connection works, but realtime features may not work');
+    console.log('💡 This is likely a CORS configuration issue. Add your development URL to Supabase CORS settings:');
+    console.log('   1. Go to Supabase Dashboard → Project Settings → API → Configuration');
+    console.log('   2. Add your development URL (e.g., http://localhost:19006) to "Web origins (CORS)"');
   } else if (clientTest) {
     console.log('⚠️  Basic connection works, but some advanced features may not work');
   } else {
@@ -184,19 +254,22 @@ export const runConnectionDiagnostics = async () => {
     environmentVariables: !!(supabaseUrl && supabaseAnonKey),
     rawConnection: rawTest,
     supabaseClient: clientTest,
+    realtimeConnection: realtimeTest,
     databaseWrite: writeTest,
   };
 };
 
-// Helper function for safe channel subscription
-export const createSafeChannel = (channelName: string) => {
-  return supabase.channel(channelName);
+// Helper function for safe channel subscription with improved error handling
+export const createSafeChannel = (channelName: string, config?: any) => {
+  console.log(`Creating channel: ${channelName}`);
+  return supabase.channel(channelName, config);
 };
 
 // Helper function to safely remove channels
 export const removeSafeChannel = (channel: any) => {
   try {
     if (channel && typeof channel.unsubscribe === 'function') {
+      console.log('Unsubscribing from channel');
       channel.unsubscribe();
     }
     supabase.removeChannel(channel);
