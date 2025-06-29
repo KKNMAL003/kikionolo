@@ -1964,6 +1964,18 @@
     "@supabase/realtime-js" "2.11.10"
     "@supabase/storage-js" "2.7.1"
 
+"@tanstack/query-core@5.81.5":
+  version "5.81.5"
+  resolved "https://registry.npmjs.org/@tanstack/query-core/-/query-core-5.81.5.tgz"
+  integrity sha512-ZJOgCy/z2qpZXWaj/oxvodDx07XcQa9BF92c0oINjHkoqUPsmm3uG08HpTaviviZ/N9eP1f9CM7mKSEkIo7O1Q==
+
+"@tanstack/react-query@^5.18.1":
+  version "5.81.5"
+  resolved "https://registry.npmjs.org/@tanstack/react-query/-/react-query-5.81.5.tgz"
+  integrity sha512-lOf2KqRRiYWpQT86eeeftAGnjuTR35myTP8MXyvHa81VlomoAWNEd8x5vkcAfQefu0qtYCvyqLropFZqgI2EQw==
+  dependencies:
+    "@tanstack/query-core" "5.81.5"
+
 "@testing-library/jest-native@^5.4.3":
   version "5.4.3"
   resolved "https://registry.npmjs.org/@testing-library/jest-native/-/jest-native-5.4.3.tgz"
@@ -7176,7 +7188,7 @@ react-test-renderer@>=16.0.0, react-test-renderer@>=18.2.0, react-test-renderer@
     react-is "^19.0.0"
     scheduler "^0.25.0"
 
-react@*, "react@^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc", "react@^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react@^18.0 || ^19.0 || ^19.0.0-rc", "react@^18.0.0 || ^19.0.0", react@^19.0.0, "react@>= 17.0.1", "react@>= 18.2.0", react@>=16.0.0, react@>=16.8, react@>=17.0.0, react@>=18.2.0, react@19.0.0:
+react@*, "react@^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc", "react@^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react@^18 || ^19", "react@^18.0 || ^19.0 || ^19.0.0-rc", "react@^18.0.0 || ^19.0.0", react@^19.0.0, "react@>= 17.0.1", "react@>= 18.2.0", react@>=16.0.0, react@>=16.8, react@>=17.0.0, react@>=18.2.0, react@19.0.0:
   version "19.0.0"
   resolved "https://registry.npmjs.org/react/-/react-19.0.0.tgz"
   integrity sha512-V8AVnmPIICiWpGfm6GLzCR/W5FXLchHop40W4nXBmdlEceh16rCN8O8LNWm5bh5XUX91fh7KpA+W0TgMKmgTpQ==
@@ -8694,7 +8706,7 @@ zod-to-json-schema@^3.24.1:
   resolved "https://registry.npmjs.org/zod-to-json-schema/-/zod-to-json-schema-3.24.5.tgz"
   integrity sha512-/AuWwMP+YqiPbsJx5D6TfgRTc4kTLjsh5SOcd4bLsfUg2RcEXrFMJl1DGgdHy2aCfsIA/cr/1JM0xcB2GZji8g==
 
-zod@^3.23.8, zod@^3.24.1, zod@^3.24.2:
+zod@^3.22.4, zod@^3.23.8, zod@^3.24.1, zod@^3.24.2:
   version "3.24.4"
   resolved "https://registry.npmjs.org/zod/-/zod-3.24.4.tgz"
   integrity sha512-OdqJE9UDRPwWsrHjLN2F8bPxvwJBK22EHLWtanu0LSYr5YqzsaaW3RMgmjwr8Rypg5k+meEJdSPXJZXE/yqOMg==
