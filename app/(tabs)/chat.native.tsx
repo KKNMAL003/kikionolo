@@ -85,7 +85,10 @@ export default function ChatScreen() {
     // Group messages by date for conversation history
     const dates = new Set<string>();
     messages.forEach((msg) => {
-      dates.add(new Date(msg.created_at).toISOString().split('T')[0]);
+      // Validate date before processing
+      if (msg.created_at && !isNaN(new Date(msg.created_at).getTime())) {
+        dates.add(new Date(msg.created_at).toISOString().split('T')[0]);
+      }
     });
     return Array.from(dates).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
   }, [messages]);
@@ -93,9 +96,13 @@ export default function ChatScreen() {
   const currentChatMessages = useMemo(() => {
     // Filter messages for the active conversation date
     if (!activeConversationDate) return [];
-    return messages.filter(
-      (msg) => new Date(msg.created_at).toISOString().split('T')[0] === activeConversationDate,
-    );
+    return messages.filter((msg) => {
+      // Validate date before processing
+      if (!msg.created_at || isNaN(new Date(msg.created_at).getTime())) {
+        return false;
+      }
+      return new Date(msg.created_at).toISOString().split('T')[0] === activeConversationDate;
+    });
   }, [messages, activeConversationDate]);
 
   const startNewChat = () => {
