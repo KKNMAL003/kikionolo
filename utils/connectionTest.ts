@@ -1,4 +1,4 @@
-import { supabase, runConnectionDiagnostics, createSafeChannel, removeSafeChannel } from '@/lib/supabase';
+import { supabase, runConnectionDiagnostics } from '@/lib/supabase';
 
 // Utility to test connection on app startup
 export const initializeConnectionTest = async () => {
@@ -92,91 +92,6 @@ export const createOrderWithRetry = async (orderData: any) => {
   }, 3, 1000);
 };
 
-// Simplified message subscription without custom reconnection logic
-export const setupSafeMessageSubscription = (
-  userId: string,
-  onMessage: (message: any) => void,
-  onError?: (error: any) => void
-) => {
-  if (!userId) {
-    console.warn('Cannot setup subscription: userId is required');
-    return null;
-  }
-
-  let channel: any = null;
-  let isSubscribed = false;
-
-  const cleanup = () => {
-    if (channel && isSubscribed) {
-      try {
-        removeSafeChannel(channel);
-        console.log('✅ Channel cleaned up successfully');
-      } catch (error) {
-        console.warn('Warning during channel cleanup:', error);
-      }
-      channel = null;
-      isSubscribed = false;
-    }
-  };
-
-  try {
-    console.log(`Setting up message subscription for user: ${userId}`);
-    
-    // Create channel with simple configuration
-    channel = createSafeChannel(`messages:customer_id=eq.${userId}`);
-
-    // Set up the subscription - let Supabase handle all reconnection logic
-    channel
-      .on(
-        'postgres_changes',
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'communication_logs', 
-          filter: `customer_id=eq.${userId}` 
-        },
-        (payload: any) => {
-          try {
-            console.log('Received message payload:', payload);
-            if (payload.eventType === 'INSERT' && payload.new) {
-              onMessage(payload.new);
-            }
-          } catch (error) {
-            console.warn('Error processing message:', error);
-            onError?.(error);
-          }
-        }
-      )
-      .subscribe((status: string, error?: any) => {
-        console.log(`Subscription status: ${status}`);
-        
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Successfully subscribed to messages');
-          isSubscribed = true;
-        } else if (status === 'CHANNEL_ERROR') {
-          console.warn('❌ Channel subscription error:', error);
-          onError?.(error);
-        } else if (status === 'TIMED_OUT') {
-          console.warn('⏱️ Channel subscription timed out');
-          onError?.(new Error('Subscription timed out'));
-        } else if (status === 'CLOSED') {
-          console.log('📴 Channel subscription closed');
-          isSubscribed = false;
-        }
-      });
-
-  } catch (error) {
-    console.error('Error setting up message subscription:', error);
-    onError?.(error);
-  }
-
-  // Return cleanup function
-  return {
-    channel,
-    unsubscribe: cleanup
-  };
-};
-
 // Helper function to test if realtime subscriptions are working
 export const testRealtimeSubscription = async (testDuration: number = 10000): Promise<boolean> => {
   return new Promise((resolve) => {
@@ -192,12 +107,13 @@ export const testRealtimeSubscription = async (testDuration: number = 10000): Pr
 
     // Create a test subscription
     const testChannelName = `test_subscription_${Date.now()}`;
-    const testChannel = createSafeChannel(testChannelName);
+    const testChannel = supabase.channel(testChannelName);
 
     // Set overall test timeout
     const testTimeout = setTimeout(() => {
       console.log('❌ Realtime subscription test timed out');
-      removeSafeChannel(testChannel);
+      testChannel.unsubscribe();
+      supabase.removeChannel(testChannel);
       resolveOnce(false);
     }, testDuration);
 
@@ -207,12 +123,14 @@ export const testRealtimeSubscription = async (testDuration: number = 10000): Pr
       if (status === 'SUBSCRIBED') {
         console.log('✅ Realtime subscription test successful');
         clearTimeout(testTimeout);
-        removeSafeChannel(testChannel);
+        testChannel.unsubscribe();
+        supabase.removeChannel(testChannel);
         resolveOnce(true);
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
         console.log('❌ Realtime subscription test failed:', error || 'Timed out');
         clearTimeout(testTimeout);
-        removeSafeChannel(testChannel);
+        testChannel.unsubscribe();
+        supabase.removeChannel(testChannel);
         resolveOnce(false);
       }
     });

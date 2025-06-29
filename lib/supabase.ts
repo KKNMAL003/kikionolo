@@ -258,22 +258,3 @@ export const runConnectionDiagnostics = async () => {
     databaseWrite: writeTest,
   };
 };
-
-// Helper function for safe channel subscription with improved error handling
-export const createSafeChannel = (channelName: string, config?: any) => {
-  console.log(`Creating channel: ${channelName}`);
-  return supabase.channel(channelName, config);
-};
-
-// Helper function to safely remove channels
-export const removeSafeChannel = (channel: any) => {
-  try {
-    if (channel && typeof channel.unsubscribe === 'function') {
-      console.log('Unsubscribing from channel');
-      channel.unsubscribe();
-    }
-    supabase.removeChannel(channel);
-  } catch (error) {
-    console.warn('Error removing channel:', error);
-  }
-};
