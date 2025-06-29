@@ -50,6 +50,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     params: {
       eventsPerSecond: 10,
     },
+    // Add better error handling for realtime connections
+    heartbeatIntervalMs: 30000,
+    reconnectAfterMs: (tries) => Math.min(tries * 1000, 10000),
   },
 });
 
@@ -183,4 +186,21 @@ export const runConnectionDiagnostics = async () => {
     supabaseClient: clientTest,
     databaseWrite: writeTest,
   };
+};
+
+// Helper function for safe channel subscription
+export const createSafeChannel = (channelName: string) => {
+  return supabase.channel(channelName);
+};
+
+// Helper function to safely remove channels
+export const removeSafeChannel = (channel: any) => {
+  try {
+    if (channel && typeof channel.unsubscribe === 'function') {
+      channel.unsubscribe();
+    }
+    supabase.removeChannel(channel);
+  } catch (error) {
+    console.warn('Error removing channel:', error);
+  }
 };

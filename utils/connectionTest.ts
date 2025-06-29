@@ -1,4 +1,4 @@
-import { supabase, runConnectionDiagnostics } from '@/lib/supabase';
+import { supabase, runConnectionDiagnostics, createSafeChannel, removeSafeChannel } from '@/lib/supabase';
 
 // Utility to test connection on app startup
 export const initializeConnectionTest = async () => {
@@ -81,4 +81,62 @@ export const createOrderWithRetry = async (orderData: any) => {
     console.log('Order created successfully:', data);
     return data;
   }, 3, 1000);
+};
+
+// Helper function to safely setup message subscriptions
+export const setupSafeMessageSubscription = (
+  userId: string,
+  onMessage: (message: any) => void,
+  onError?: (error: any) => void
+) => {
+  if (!userId) {
+    console.warn('Cannot setup subscription: userId is required');
+    return null;
+  }
+
+  try {
+    const channel = createSafeChannel(`messages:user_id=eq.${userId}`)
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'communication_logs', 
+          filter: `user_id=eq.${userId}` 
+        },
+        (payload) => {
+          try {
+            if (payload.eventType === 'INSERT' && payload.new) {
+              onMessage(payload.new);
+            }
+          } catch (error) {
+            console.warn('Error processing message:', error);
+            onError?.(error);
+          }
+        }
+      )
+      .subscribe((status, error) => {
+        console.log(`Subscription status: ${status}`);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Successfully subscribed to messages');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.warn('❌ Channel subscription error:', error);
+          onError?.(error);
+        } else if (status === 'TIMED_OUT') {
+          console.warn('⏱️ Channel subscription timed out');
+          onError?.(new Error('Subscription timed out'));
+        } else if (status === 'CLOSED') {
+          console.log('📴 Channel subscription closed');
+        }
+      });
+
+    return {
+      channel,
+      unsubscribe: () => removeSafeChannel(channel)
+    };
+  } catch (error) {
+    console.error('Error setting up message subscription:', error);
+    onError?.(error);
+    return null;
+  }
 };

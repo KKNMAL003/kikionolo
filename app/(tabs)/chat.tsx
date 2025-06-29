@@ -33,51 +33,125 @@ export default function ChatScreen() {
   useEffect(() => {
     if (!user) return;
     const fetchMessages = async () => {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: true });
-      if (!error && data) setMessages(data);
+      try {
+        const { data, error } = await supabase
+          .from('communication_logs')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: true });
+        
+        if (!error && data) {
+          const formattedMessages = data.map(msg => ({
+            id: msg.id,
+            sender: msg.sender_type || 'user',
+            user_id: msg.user_id,
+            content: msg.subject || msg.message,
+            created_at: msg.created_at
+          }));
+          setMessages(formattedMessages);
+        } else if (error) {
+          console.warn('Failed to fetch messages:', error.message);
+        }
+      } catch (error) {
+        console.warn('Error fetching messages:', error);
+      }
     };
     fetchMessages();
   }, [user]);
 
-  // Real-time subscription
+  // Real-time subscription with better error handling
   useEffect(() => {
     if (!user) return;
-    const channel = supabase
-      .channel('realtime:messages')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'realtime', table: 'messages', filter: `user_id=eq.${user.id}` },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setMessages((prev) => [...prev, payload.new as Message]);
-          }
-        },
-      )
-      .subscribe();
+    
+    let isSubscribed = true;
+    
+    const setupSubscription = async () => {
+      try {
+        const channel = supabase
+          .channel(`communication_logs:user_id=eq.${user.id}`)
+          .on(
+            'postgres_changes',
+            { 
+              event: '*', 
+              schema: 'public', 
+              table: 'communication_logs', 
+              filter: `user_id=eq.${user.id}` 
+            },
+            (payload) => {
+              if (!isSubscribed) return;
+              
+              if (payload.eventType === 'INSERT' && payload.new) {
+                const newMessage = {
+                  id: payload.new.id,
+                  sender: payload.new.sender_type || 'user',
+                  user_id: payload.new.user_id,
+                  content: payload.new.subject || payload.new.message,
+                  created_at: payload.new.created_at
+                };
+                setMessages((prev) => [...prev, newMessage]);
+              }
+            },
+          )
+          .subscribe((status, err) => {
+            if (!isSubscribed) return;
+            
+            if (status === 'SUBSCRIBED') {
+              console.log('Successfully subscribed to communication_logs');
+            } else if (status === 'CHANNEL_ERROR') {
+              console.warn('Channel subscription error:', err);
+            } else if (status === 'TIMED_OUT') {
+              console.warn('Channel subscription timed out');
+            } else if (status === 'CLOSED') {
+              console.log('Channel subscription closed');
+            }
+          });
+        
+        return () => {
+          isSubscribed = false;
+          supabase.removeChannel(channel);
+        };
+      } catch (error) {
+        console.warn('Error setting up real-time subscription:', error);
+      }
+    };
+    
+    const cleanup = setupSubscription();
+    
     return () => {
-      supabase.removeChannel(channel);
+      isSubscribed = false;
+      cleanup?.then(cleanupFn => cleanupFn?.());
     };
   }, [user]);
 
   const sendMessage = async () => {
     if (!input.trim() || !user) return;
-    await supabase.from('messages').insert({
-      sender: 'user',
-      user_id: user.id,
-      content: input.trim(),
-    });
-    setInput('');
+    
+    try {
+      const { error } = await supabase.from('communication_logs').insert({
+        user_id: user.id,
+        customer_id: user.id,
+        log_type: 'user_message',
+        subject: input.trim(),
+        message: input.trim(),
+        sender_type: 'customer',
+        is_read: false,
+      });
+      
+      if (error) {
+        console.warn('Failed to send message:', error.message);
+      } else {
+        setInput('');
+      }
+    } catch (error) {
+      console.warn('Error sending message:', error);
+    }
   };
 
   const renderItem = ({ item }: { item: Message }) => (
     <View
       style={[
         styles.messageBubble,
-        item.sender === 'user' ? styles.userBubble : styles.staffBubble,
+        item.sender === 'customer' ? styles.userBubble : styles.staffBubble,
       ]}
     >
       <Text style={styles.messageText}>{item.content}</Text>
@@ -101,6 +175,11 @@ export default function ChatScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.messagesList}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No messages yet. Send a message to start the conversation!</Text>
+            </View>
+          }
         />
         <View style={styles.inputContainer}>
           <TextInput
@@ -132,6 +211,18 @@ const styles = StyleSheet.create({
   messagesList: {
     padding: 16,
     paddingBottom: 80,
+    flexGrow: 1,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    color: COLORS.text.gray,
+    fontSize: 16,
+    textAlign: 'center',
   },
   messageBubble: {
     marginBottom: 12,
