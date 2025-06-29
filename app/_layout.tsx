@@ -17,7 +17,19 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (isLoading) return;
+    // Run connection diagnostics on app startup in the background
+    const testConnection = async () => {
+      const success = await initializeConnectionTest();
+      
+      if (!success) {
+        console.warn('⚠️  Some connection issues detected. App functionality may be limited.');
+        console.warn('For full functionality, configure CORS in your Supabase project settings.');
+      } else {
+        console.log('🎉 Supabase connection is working properly');
+      }
+    };
+    
+    testConnection();
 
     const inAuthGroup = segments[0] === 'auth';
     const inTabsGroup = segments[0] === '(tabs)';
