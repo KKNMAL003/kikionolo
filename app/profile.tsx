@@ -31,7 +31,7 @@ import Toast from 'react-native-toast-message';
 import CustomTextInput from '../components/CustomTextInput';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import ProfileUpdateProgress from '../components/ProfileUpdateProgress';
-import { validateField, validateProfileData } from '../utils/profileValidation';
+import { ProfileUpdateSchema, validateData, getValidationErrors } from '../validation/schemas/index';
 import { supabase } from '../lib/supabase';
 
 type TabType = 'orders' | 'profile' | 'settings';
@@ -189,42 +189,39 @@ export default function ProfileScreen() {
         setFormErrors((prev) => ({ ...prev, [field]: '' }));
       }
 
-      // Real-time validation
-      const validation = validateField(field, value);
-      if (!validation.isValid && validation.error) {
-        setFormErrors((prev) => ({ ...prev, [field]: validation.error || '' }));
+      // Real-time validation using Zod
+      const fieldValidation = validateData(ProfileUpdateSchema.pick({ [field]: true }), { [field]: value });
+      if (!fieldValidation.success) {
+        const errors = getValidationErrors(fieldValidation.errors);
+        if (errors[field]) {
+          setFormErrors((prev) => ({ ...prev, [field]: errors[field] }));
+        }
       }
     },
     [formErrors],
   );
 
   const validateForm = useCallback((): boolean => {
-    const errors: FormErrors = {};
+    // Validate the complete form data using Zod
+    const validationResult = validateData(ProfileUpdateSchema, formData);
 
-    // Validate the complete form data including individual address fields
-    const validationResult = validateProfileData(formData);
+    if (!validationResult.success) {
+      const errors = getValidationErrors(validationResult.errors);
+      setFormErrors(errors);
 
-    if (!validationResult.isValid) {
-      // Map validation errors to form errors
-      Object.entries(validationResult.errors).forEach(([field, fieldErrors]) => {
-        if (fieldErrors && fieldErrors.length > 0) {
-          errors[field] = fieldErrors[0]; // Take the first error for each field
-        }
-      });
-    }
-
-    setFormErrors(errors);
-
-    if (Object.keys(errors).length > 0) {
-      const firstError = Object.values(errors)[0];
-      Toast.show({
-        type: 'error',
-        text1: 'Validation Error',
-        text2: firstError,
-        position: 'bottom',
-        visibilityTime: 4000,
-      });
-      return false;
+      if (Object.keys(errors).length > 0) {
+        const firstError = Object.values(errors)[0];
+        Toast.show({
+          type: 'error',
+          text1: 'Validation Error',
+          text2: firstError,
+          position: 'bottom',
+          visibilityTime: 4000,
+        });
+        return false;
+      }
+    } else {
+      setFormErrors({});
     }
 
     return true;
