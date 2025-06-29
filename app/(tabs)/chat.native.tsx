@@ -17,9 +17,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { COLORS } from '../../constants/colors';
 import Header from '../../components/Header';
 import { WebView } from 'react-native-webview';
-import { useUser } from '../../context/UserContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { useMessages } from '../../contexts/MessagesContext';
 import MessageBubble from '../../components/MessageBubble';
-import type { Message } from '../../context/UserContext';
+import type { Message } from '../../services/interfaces/IMessageService';
 import { Ionicons } from '@expo/vector-icons';
 
 // ChatScreen: Main chat UI for live staff and AI assistant
@@ -29,14 +30,14 @@ import { Ionicons } from '@expo/vector-icons';
 // - Allows starting a new chat (adds a system message)
 export default function ChatScreen() {
   const chatbaseUrl = 'https://www.chatbase.co/chatbot-iframe/SzxvYORICrmmckhOCkvB6';
+  const { user } = useAuth();
   const { 
-    user, 
     messages, 
-    unreadMessagesCount, 
-    markMessageAsRead, 
-    markAllMessagesAsRead, 
+    unreadCount, 
+    markAsRead, 
+    markAllAsRead, 
     sendMessage 
-  } = useUser();
+  } = useMessages();
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [isLiveChatVisible, setLiveChatVisible] = useState(false);
@@ -53,10 +54,10 @@ export default function ChatScreen() {
 
   // Mark messages as read when viewing them
   useEffect(() => {
-    if (isLiveChatVisible && unreadMessagesCount > 0) {
-      markAllMessagesAsRead();
+    if (isLiveChatVisible && unreadCount > 0) {
+      markAllAsRead();
     }
-  }, [isLiveChatVisible, unreadMessagesCount, markAllMessagesAsRead]);
+  }, [isLiveChatVisible, unreadCount, markAllAsRead]);
 
   const handleSendMessage = async () => {
     if (!input.trim() || !user || sending) {
@@ -110,9 +111,9 @@ export default function ChatScreen() {
       <View style={styles.liveChatButtonContainer}>
         <TouchableOpacity style={styles.liveChatButton} onPress={() => setLiveChatVisible(true)}>
           <Text style={styles.liveChatButtonText}>Live Chat with Staff</Text>
-          {unreadMessagesCount > 0 && (
+          {unreadCount > 0 && (
             <View style={styles.unreadBadge}>
-              <Text style={styles.unreadBadgeText}>{unreadMessagesCount}</Text>
+              <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
             </View>
           )}
         </TouchableOpacity>
