@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Toast from 'react-native-toast-message';
-import { supabase, testSupabaseConnection, testRawConnection } from '../lib/supabase';
-import { validateProfileData, sanitizeProfileData } from '../utils/profileValidation';
-import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
+import { setupSafeMessageSubscription } from '../utils/connectionTest';
+import { Platform } from 'react-native';
+import * as Notifications from 'expo-notifications';
 
-// User interface
+// Types
 export interface User {
   id: string;
   name: string;
@@ -13,9 +13,29 @@ export interface User {
   phone: string;
   address: string;
   isGuest: boolean;
+  securitySettings?: {
+    biometricLogin?: boolean;
+    twoFactorAuth?: boolean;
+  };
 }
 
-// Message interface matching the database schema
+export interface Order {
+  id: string;
+  customerName: string;
+  customerEmail: string;
+  deliveryAddress: string;
+  paymentMethod: string;
+  totalAmount: number;
+  items: Array<{ 
+    productId: string; 
+    productName: string; 
+    quantity: number; 
+    price: number; 
+  }>;
+  status: string;
+  date: string;
+}
+
 export interface Message {
   id: string;
   user_id: string;
@@ -29,153 +49,70 @@ export interface Message {
   created_at: string;
 }
 
-// Order interface matching Supabase schema
-interface Order {
-  id: string;
-  date: string;
-  items: Array<{
-    productId: string;
-    productName: string;
-    quantity: number;
-    price: number;
-  }>;
-  totalAmount: number;
-  status:
-    | 'pending'
-    | 'order_received'
-    | 'order_confirmed'
-    | 'preparing'
-    | 'scheduled_for_delivery'
-    | 'driver_dispatched'
-    | 'out_for_delivery'
-    | 'delivered'
-    | 'cancelled';
-  paymentMethod: string;
-  deliveryAddress: string;
-  deliverySchedule?: string;
-  customerName?: string;
-  customerPhone?: string;
-  customerEmail?: string;
-  notes?: string;
-}
-
-// Profile update progress tracking
 export interface ProfileUpdateProgress {
-  step:
-    | 'validation'
-    | 'sanitization'
-    | 'auth_update'
-    | 'profile_update'
-    | 'local_update'
-    | 'completed';
+  step: string;
   status: 'pending' | 'inProgress' | 'completed' | 'error';
   message?: string;
   error?: string;
 }
 
-// Notification Preferences Types
-export type NotificationSettings = {
-  email?: boolean;
-  sms?: boolean;
-  push?: boolean;
-};
-export type NotificationPreferences = {
-  orderUpdates?: boolean;
-  promotions?: boolean;
-  newsletter?: boolean;
-};
+interface NotificationSettings {
+  email: boolean;
+  sms: boolean;
+  push: boolean;
+}
 
-// Context interface
+interface NotificationPreferences {
+  orderUpdates: boolean;
+  promotions: boolean;
+  newsletter: boolean;
+}
+
 interface UserContextType {
   user: User | null;
-  isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string) => Promise<boolean>;
-  logout: () => Promise<void>;
-  updateUserProfile: (
-    userData: Partial<User>,
-  ) => Promise<{ success: boolean; progress: ProfileUpdateProgress[]; error?: string }>;
-  loginAsGuest: () => Promise<void>;
-  isAuthenticated: boolean;
   orders: Order[];
-  addOrder: (order: Omit<Order, 'id' | 'date'>) => Promise<Order>;
-  cancelOrder: (orderId: string) => Promise<boolean>;
-  getOrderById: (orderId: string) => Order | undefined;
-  loadUserOrders: () => Promise<void>;
-  supabaseConnected: boolean;
-  resetNavigationState: () => void;
-  isProcessingOrder: boolean;
-  notificationSettings: NotificationSettings;
-  notificationPreferences: NotificationPreferences;
-  expoPushToken: string | null;
-  fetchNotificationPreferences: () => Promise<void>;
-  updateNotificationPreferences: (
-    settings: NotificationSettings,
-    preferences: NotificationPreferences,
-  ) => Promise<void>;
-  registerForPushNotifications: () => Promise<string | null>;
-  passwordModalInfo: {
-    isOpen: boolean;
-    step: 'password' | 'otp';
-    isLoading: boolean;
-    error: string | null;
-  };
-  setPasswordModalInfo: React.Dispatch<
-    React.SetStateAction<{
-      isOpen: boolean;
-      step: 'password' | 'otp';
-      isLoading: boolean;
-      error: string | null;
-    }>
-  >;
-  openPasswordModal: () => void;
-  closePasswordModal: () => void;
-  submitNewPassword: (passwordData: {
-    currentPassword: string;
-    newPassword: string;
-    confirmPassword: string;
-  }) => Promise<void>;
-  submitOtp: (otp: string) => Promise<void>;
-  // Message-related functions
   messages: Message[];
   unreadMessagesCount: number;
+  notificationSettings: NotificationSettings;
+  notificationPreferences: NotificationPreferences;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  isProcessingOrder: boolean;
+  isGuest: boolean;
+  
+  // Auth methods
+  login: (email: string, password: string) => Promise<boolean>;
+  loginAsGuest: () => Promise<void>;
+  register: (name: string, email: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
+  
+  // Order methods
+  addOrder: (orderData: any) => Promise<Order>;
+  getOrderById: (id: string) => Order | undefined;
+  cancelOrder: (orderId: string) => Promise<boolean>;
+  
+  // Profile methods
+  updateUserProfile: (data: any) => Promise<{ success: boolean; progress: ProfileUpdateProgress[]; error?: string; }>;
+  
+  // Message methods
   sendMessage: (content: string) => Promise<void>;
   markMessageAsRead: (messageId: string) => Promise<void>;
   markAllMessagesAsRead: () => Promise<void>;
+  
+  // Notification methods
+  updateNotificationPreferences: (settings: NotificationSettings, preferences: NotificationPreferences) => Promise<void>;
+  registerForPushNotifications: () => Promise<void>;
+  fetchNotificationPreferences: () => Promise<void>;
 }
 
-// Create context with undefined default value
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-// Timeout wrapper for promises with proper typing
-const withTimeout = <T,>(
-  promise: Promise<T>,
-  timeoutMs: number = 8000,
-  operationName: string = 'Operation',
-): Promise<T> => {
-  // Create a promise that rejects after the timeout
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    const timeoutId = setTimeout(() => {
-      reject(new Error(`${operationName} timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
-
-    // Clean up the timeout if the original promise resolves/rejects
-    promise.finally(() => clearTimeout(timeoutId));
-  });
-
-  // Return the first promise to resolve/reject
-  return Promise.race<T>([promise, timeoutPromise]);
-};
-
 export function UserProvider({ children }: { children: React.ReactNode }) {
+  // State
   const [user, setUser] = useState<User | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isProcessingOrder, setIsProcessingOrder] = useState(false);
-  const [session, setSession] = useState<Session | null>(null);
-  const [supabaseConnected, setSupabaseConnected] = useState(false);
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
     email: true,
     sms: true,
@@ -186,340 +123,607 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     promotions: true,
     newsletter: true,
   });
-  const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
-  const [passwordModalInfo, setPasswordModalInfo] = useState<UserContextType['passwordModalInfo']>({
-    isOpen: false,
-    step: 'password',
-    isLoading: false,
-    error: null,
-  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isProcessingOrder, setIsProcessingOrder] = useState(false);
 
-  // Refs for subscription management
-  const messageChannelRef = useRef<any>(null);
-  const isSubscribedRef = useRef(false);
+  // Refs for cleanup
+  const messageSubscriptionRef = useRef<{ unsubscribe: () => void } | null>(null);
+  const isMountedRef = useRef(true);
 
-  // Navigation state reset function
-  const resetNavigationState = useCallback(() => {
-    console.log('Resetting navigation state...');
-    // This function can be called to clear navigation history
-    // Implementation will depend on how the app navigation is structured
-  }, []);
+  // Computed properties
+  const isAuthenticated = !!user && !user.isGuest;
+  const isGuest = !!user && user.isGuest;
 
-  // Enhanced Supabase connection testing
+  // Cleanup on unmount
   useEffect(() => {
-    const checkConnection = async () => {
-      console.log('Testing Supabase connection...');
-
-      // Test both methods to get better diagnostics
-      const [basicConnection, rawConnection] = await Promise.all([
-        testSupabaseConnection(),
-        testRawConnection(),
-      ]);
-
-      const connected = basicConnection || rawConnection;
-      setSupabaseConnected(connected);
-
-      if (!connected) {
-        console.warn('Supabase connection failed, app will work in offline mode');
-        console.warn('To fix this issue:');
-        console.warn('1. Check your internet connection');
-        console.warn('2. Verify Supabase project settings');
-        console.warn('3. Add http://localhost:8081 to CORS allowed origins in Supabase dashboard');
-
-        Toast.show({
-          type: 'info',
-          text1: 'Offline Mode',
-          text2: 'Working in offline mode. Some features may be limited.',
-          position: 'bottom',
-          visibilityTime: 4000,
-        });
-      } else {
-        console.log('Supabase connection successful');
-        Toast.show({
-          type: 'success',
-          text1: 'Connected',
-          text2: 'Database connection established successfully.',
-          position: 'bottom',
-          visibilityTime: 3000,
-        });
+    return () => {
+      isMountedRef.current = false;
+      if (messageSubscriptionRef.current) {
+        messageSubscriptionRef.current.unsubscribe();
+        messageSubscriptionRef.current = null;
       }
     };
-
-    checkConnection();
   }, []);
 
-  // Convert Supabase user to our User interface
-  const convertSupabaseUser = async (supabaseUser: SupabaseUser): Promise<User> => {
-    // Only try to get profile data if Supabase is connected
-    let profileData = null;
-    if (supabaseConnected) {
+  // Initialize auth state
+  useEffect(() => {
+    const initializeAuth = async () => {
       try {
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', supabaseUser.id)
-          .single();
-
+        console.log('Initializing auth state...');
+        
+        // Check if Supabase is connected
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
         if (error) {
-          console.log('Could not fetch profile data:', error.message);
-        } else {
-          profileData = profile;
+          console.log('Supabase not connected, skipping auth initialization');
+          await loadOrdersFromStorage();
+          setIsLoading(false);
+          return;
         }
-      } catch (error: any) {
-        console.log('Error fetching profile data:', error.message);
+
+        if (session?.user) {
+          console.log('Initial session:', session.user.email);
+          await loadUserProfile(session.user.id);
+        } else {
+          await loadOrdersFromStorage();
+        }
+
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+          if (!isMountedRef.current) return;
+          
+          console.log('Auth state changed:', event, session?.user?.email);
+          
+          if (session?.user) {
+            await loadUserProfile(session.user.id);
+          } else {
+            setUser(null);
+            setOrders([]);
+            setMessages([]);
+            setUnreadMessagesCount(0);
+            
+            // Clean up message subscription
+            if (messageSubscriptionRef.current) {
+              messageSubscriptionRef.current.unsubscribe();
+              messageSubscriptionRef.current = null;
+            }
+            
+            await loadOrdersFromStorage();
+          }
+          
+          setIsLoading(false);
+        });
+
+        return () => {
+          subscription?.unsubscribe();
+        };
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        await loadOrdersFromStorage();
+        setIsLoading(false);
       }
-    }
-
-    const name =
-      profileData?.first_name && profileData?.last_name
-        ? `${profileData.first_name} ${profileData.last_name}`.trim()
-        : supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User';
-
-    return {
-      id: supabaseUser.id,
-      name,
-      email: supabaseUser.email || '',
-      phone: profileData?.phone || supabaseUser.user_metadata?.phone || '',
-      address: profileData?.address || supabaseUser.user_metadata?.address || '',
-      isGuest: false,
     };
-  };
 
-  // Ensure user profile exists in database
-  const ensureUserProfile = async (supabaseUser: SupabaseUser) => {
-    // Skip profile creation if Supabase is not connected
-    if (!supabaseConnected) {
-      console.log('Skipping profile creation - Supabase not connected');
-      return;
-    }
+    initializeAuth();
+  }, []);
 
+  // Load user profile and set up subscriptions
+  const loadUserProfile = async (userId: string) => {
     try {
-      // Check if profile exists
-      const { data: existingProfile } = await supabase
+      const { data: profile, error } = await supabase
         .from('profiles')
-        .select('id')
-        .eq('id', supabaseUser.id)
+        .select('*')
+        .eq('id', userId)
         .single();
 
-      if (!existingProfile) {
-        // Create profile if it doesn't exist
-        const name =
-          supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User';
-        const nameParts = name.split(' ');
-
-        const { error: profileError } = await supabase.from('profiles').insert([
-          {
-            id: supabaseUser.id,
-            first_name: nameParts[0] || name,
-            last_name: nameParts.slice(1).join(' ') || '',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-        ]);
-
-        if (profileError) {
-          console.warn('Could not create profile automatically:', profileError.message);
-          // Don't throw error, profile creation is optional for app functionality
-        } else {
-          console.log('Profile created successfully for user:', supabaseUser.id);
-        }
-      }
-    } catch (error: any) {
-      console.warn('Error ensuring user profile:', error.message);
-      // Don't throw error, app should still work without profile table access
-    }
-  };
-
-  // Setup message subscription with proper error handling
-  const setupMessageSubscription = useCallback(async () => {
-    // Validate all required conditions before setting up subscription
-    if (!session?.user?.id) {
-      console.log('setupMessageSubscription: No user session available');
-      return;
-    }
-
-    if (!supabaseConnected) {
-      console.log('setupMessageSubscription: Supabase not connected');
-      return;
-    }
-
-    if (isSubscribedRef.current) {
-      console.log('setupMessageSubscription: Already subscribed, skipping');
-      return;
-    }
-
-    try {
-      console.log('setupMessageSubscription: Setting up message subscription for user:', session.user.id);
-
-      // Clean up existing subscription if any
-      if (messageChannelRef.current) {
-        console.log('setupMessageSubscription: Cleaning up existing subscription');
-        await supabase.removeChannel(messageChannelRef.current);
-        messageChannelRef.current = null;
-      }
-
-      // Create new channel with unique name
-      const channelName = `messages:${session.user.id}:${Date.now()}`;
-      console.log('setupMessageSubscription: Creating channel:', channelName);
-
-      const channel = supabase.channel(channelName);
-
-      // Subscribe to new messages for this user
-      channel.on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'communication_logs',
-          filter: `customer_id=eq.${session.user.id}`,
-        },
-        (payload) => {
-          console.log('setupMessageSubscription: New message received:', payload.new);
-          if (payload.new) {
-            const newMessage = payload.new as Message;
-            setMessages((prevMessages) => {
-              // Avoid duplicates
-              if (prevMessages.find((msg) => msg.id === newMessage.id)) {
-                return prevMessages;
-              }
-              return [...prevMessages, newMessage].sort(
-                (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
-              );
-            });
-
-            // Update unread count if message is from staff
-            if (newMessage.sender_type === 'staff' && !newMessage.is_read) {
-              setUnreadMessagesCount((prev) => prev + 1);
-            }
-          }
-        },
-      );
-
-      // Subscribe to message updates (like read status changes)
-      channel.on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'communication_logs',
-          filter: `customer_id=eq.${session.user.id}`,
-        },
-        (payload) => {
-          console.log('setupMessageSubscription: Message updated:', payload.new);
-          if (payload.new) {
-            const updatedMessage = payload.new as Message;
-            setMessages((prevMessages) =>
-              prevMessages.map((msg) =>
-                msg.id === updatedMessage.id ? updatedMessage : msg
-              )
-            );
-          }
-        },
-      );
-
-      // Subscribe to the channel
-      const status = await channel.subscribe((status) => {
-        console.log('setupMessageSubscription: Subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          isSubscribedRef.current = true;
-          console.log('setupMessageSubscription: Successfully subscribed to messages');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('setupMessageSubscription: Channel error occurred');
-          isSubscribedRef.current = false;
-        } else if (status === 'TIMED_OUT') {
-          console.error('setupMessageSubscription: Subscription timed out');
-          isSubscribedRef.current = false;
-        } else if (status === 'CLOSED') {
-          console.log('setupMessageSubscription: Channel closed');
-          isSubscribedRef.current = false;
-        }
-      });
-
-      messageChannelRef.current = channel;
-      console.log('setupMessageSubscription: Message subscription setup completed');
-
-    } catch (error: any) {
-      console.error('setupMessageSubscription: Error setting up message subscription:', error?.message || 'Unknown error');
-      isSubscribedRef.current = false;
-    }
-  }, [session?.user?.id, supabaseConnected]);
-
-  // Load user messages from Supabase
-  const loadUserMessages = useCallback(async () => {
-    if (!session?.user?.id || !supabaseConnected) {
-      console.log('loadUserMessages: No user session or Supabase not connected');
-      return;
-    }
-
-    try {
-      console.log('loadUserMessages: Loading messages for user:', session.user.id);
-
-      const { data: messagesData, error } = await supabase
-        .from('communication_logs')
-        .select('*')
-        .eq('customer_id', session.user.id)
-        .order('created_at', { ascending: true });
-
       if (error) {
-        console.error('loadUserMessages: Error fetching messages:', error);
+        console.error('Error loading profile:', error);
         return;
       }
 
-      if (messagesData) {
-        console.log('loadUserMessages: Loaded messages:', messagesData.length);
-        setMessages(messagesData);
+      if (profile && isMountedRef.current) {
+        const userData: User = {
+          id: profile.id,
+          name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User',
+          email: '', // Will be set from auth user
+          phone: profile.phone || '',
+          address: profile.address || '',
+          isGuest: false,
+        };
 
-        // Count unread messages from staff
-        const unreadCount = messagesData.filter(
-          (msg) => msg.sender_type === 'staff' && !msg.is_read
+        // Get email from auth user
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser) {
+          userData.email = authUser.email || '';
+        }
+
+        setUser(userData);
+        
+        // Load user-specific data
+        await Promise.all([
+          loadUserOrders(userId),
+          loadUserMessages(userId),
+          setupUserMessageSubscription(userId),
+        ]);
+      }
+    } catch (error) {
+      console.error('Error in loadUserProfile:', error);
+    }
+  };
+
+  // Load orders from storage (fallback)
+  const loadOrdersFromStorage = async () => {
+    try {
+      console.log('Loaded orders from AsyncStorage fallback');
+      const storedOrders = await AsyncStorage.getItem('@onolo_orders');
+      if (storedOrders && isMountedRef.current) {
+        setOrders(JSON.parse(storedOrders));
+      }
+    } catch (error) {
+      console.error('Error loading orders from storage:', error);
+    }
+  };
+
+  // Load user orders from Supabase
+  const loadUserOrders = async (userId: string) => {
+    try {
+      console.log('Loading orders for user:', userId);
+      
+      const { data: ordersData, error } = await supabase
+        .from('orders')
+        .select(`
+          id,
+          customer_name,
+          customer_email,
+          delivery_address,
+          payment_method,
+          total_amount,
+          status,
+          created_at,
+          order_items (
+            product_id,
+            product_name,
+            quantity,
+            unit_price
+          )
+        `)
+        .eq('customer_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading orders:', error);
+        await loadOrdersFromStorage();
+        return;
+      }
+
+      if (ordersData && isMountedRef.current) {
+        const formattedOrders: Order[] = ordersData.map(order => ({
+          id: order.id,
+          customerName: order.customer_name,
+          customerEmail: order.customer_email,
+          deliveryAddress: order.delivery_address,
+          paymentMethod: order.payment_method,
+          totalAmount: order.total_amount,
+          status: order.status,
+          date: order.created_at,
+          items: order.order_items?.map(item => ({
+            productId: item.product_id,
+            productName: item.product_name,
+            quantity: item.quantity,
+            price: item.unit_price,
+          })) || [],
+        }));
+
+        setOrders(formattedOrders);
+        console.log(`Loaded orders from Supabase: ${formattedOrders.length}`);
+        
+        // Also save to storage as backup
+        await AsyncStorage.setItem('@onolo_orders', JSON.stringify(formattedOrders));
+      }
+    } catch (error) {
+      console.error('Error loading user orders:', error);
+      await loadOrdersFromStorage();
+    }
+  };
+
+  // Load user messages from communication_logs
+  const loadUserMessages = async (userId: string) => {
+    try {
+      console.log('loadUserMessages: Loading messages for user:', userId);
+      
+      const { data: messagesData, error } = await supabase
+        .from('communication_logs')
+        .select('*')
+        .eq('customer_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(50); // Limit to recent messages for performance
+
+      if (error) {
+        console.error('loadUserMessages: Error loading messages:', error);
+        return;
+      }
+
+      if (messagesData && isMountedRef.current) {
+        const formattedMessages: Message[] = messagesData.map(msg => ({
+          id: msg.id,
+          user_id: msg.user_id,
+          customer_id: msg.customer_id,
+          staff_id: msg.staff_id,
+          log_type: msg.log_type,
+          subject: msg.subject || msg.message,
+          message: msg.message,
+          sender_type: msg.sender_type,
+          is_read: msg.is_read,
+          created_at: msg.created_at,
+        }));
+
+        setMessages(formattedMessages);
+        
+        // Calculate unread count
+        const unreadCount = formattedMessages.filter(msg => 
+          !msg.is_read && msg.sender_type === 'staff'
         ).length;
         setUnreadMessagesCount(unreadCount);
+        
+        console.log(`loadUserMessages: Loaded messages: ${formattedMessages.length}`);
       }
-    } catch (error: any) {
-      console.error('loadUserMessages: Error loading messages:', error.message);
+    } catch (error) {
+      console.error('loadUserMessages: Error:', error);
     }
-  }, [session?.user?.id, supabaseConnected]);
+  };
 
-  // Send a message
-  const sendMessage = useCallback(async (content: string) => {
-    if (!session?.user?.id || !supabaseConnected) {
-      throw new Error('Cannot send message: No user session or Supabase not connected');
-    }
-
+  // Set up safe message subscription
+  const setupUserMessageSubscription = async (userId: string) => {
     try {
-      const { data: newMessage, error } = await supabase
-        .from('communication_logs')
-        .insert({
-          customer_id: session.user.id,
-          user_id: session.user.id,
-          log_type: 'user_message',
-          subject: content,
-          message: content,
-          sender_type: 'customer',
-          is_read: false,
-        })
+      console.log('setupMessageSubscription: Setting up message subscription for user:', userId);
+      
+      // Clean up any existing subscription
+      if (messageSubscriptionRef.current) {
+        messageSubscriptionRef.current.unsubscribe();
+        messageSubscriptionRef.current = null;
+      }
+
+      const subscription = setupSafeMessageSubscription(
+        userId,
+        (newMessage) => {
+          if (!isMountedRef.current) return;
+          
+          console.log('setupMessageSubscription: New message received:', newMessage);
+          
+          const formattedMessage: Message = {
+            id: newMessage.id,
+            user_id: newMessage.user_id,
+            customer_id: newMessage.customer_id,
+            staff_id: newMessage.staff_id,
+            log_type: newMessage.log_type,
+            subject: newMessage.subject || newMessage.message,
+            message: newMessage.message,
+            sender_type: newMessage.sender_type,
+            is_read: newMessage.is_read,
+            created_at: newMessage.created_at,
+          };
+
+          setMessages(prev => [formattedMessage, ...prev]);
+          
+          // Update unread count if it's from staff and unread
+          if (newMessage.sender_type === 'staff' && !newMessage.is_read) {
+            setUnreadMessagesCount(prev => prev + 1);
+          }
+        },
+        (error) => {
+          console.error('setupMessageSubscription: Subscription error:', error);
+        }
+      );
+
+      if (subscription) {
+        messageSubscriptionRef.current = subscription;
+        console.log('setupMessageSubscription: Message subscription setup completed');
+      } else {
+        console.warn('setupMessageSubscription: Failed to create subscription');
+      }
+    } catch (error) {
+      console.error('setupMessageSubscription: Error setting up subscription:', error);
+    }
+  };
+
+  // Auth methods
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      
+      if (error) {
+        console.error('Login error:', error);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loginAsGuest = async (): Promise<void> => {
+    try {
+      const guestUser: User = {
+        id: 'guest-' + Date.now(),
+        name: 'Guest User',
+        email: '',
+        phone: '',
+        address: '',
+        isGuest: true,
+      };
+      
+      setUser(guestUser);
+      await loadOrdersFromStorage();
+    } catch (error) {
+      console.error('Guest login error:', error);
+    }
+  };
+
+  const register = async (name: string, email: string, password: string): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      
+      // Create auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (authError || !authData.user) {
+        console.error('Registration error:', authError);
+        return false;
+      }
+
+      // Create profile
+      const nameParts = name.split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      const { error: profileError } = await supabase.from('profiles').insert({
+        id: authData.user.id,
+        first_name: firstName,
+        last_name: lastName,
+        role: 'customer',
+      });
+
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Registration error:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = async (): Promise<void> => {
+    try {
+      // Clean up subscription
+      if (messageSubscriptionRef.current) {
+        messageSubscriptionRef.current.unsubscribe();
+        messageSubscriptionRef.current = null;
+      }
+      
+      await supabase.auth.signOut();
+      
+      // Clear state
+      setUser(null);
+      setOrders([]);
+      setMessages([]);
+      setUnreadMessagesCount(0);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  // Order methods
+  const addOrder = async (orderData: any): Promise<Order> => {
+    try {
+      setIsProcessingOrder(true);
+      console.log('Adding new order:', orderData);
+
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Create order in Supabase
+      const orderRecord = {
+        customer_id: user.id,
+        user_id: user.id,
+        customer_name: orderData.customerName,
+        customer_email: orderData.customerEmail,
+        delivery_address: orderData.deliveryAddress,
+        delivery_phone: orderData.customerPhone || user.phone,
+        payment_method: orderData.paymentMethod === 'card_on_delivery' ? 'card' : orderData.paymentMethod,
+        total_amount: orderData.totalAmount,
+        status: orderData.status,
+        notes: orderData.notes || '',
+        delivery_date: orderData.deliveryDate || new Date().toISOString().split('T')[0],
+        preferred_delivery_window: orderData.preferredDeliveryWindow || null,
+      };
+
+      console.log('Creating order in Supabase:', orderRecord);
+
+      const { data: newOrder, error: orderError } = await supabase
+        .from('orders')
+        .insert(orderRecord)
         .select()
         .single();
 
-      if (error) {
-        console.error('sendMessage: Error sending message:', error);
-        throw new Error(`Failed to send message: ${error.message}`);
+      if (orderError || !newOrder) {
+        throw new Error(orderError?.message || 'Failed to create order');
       }
 
-      console.log('sendMessage: Message sent successfully:', newMessage);
+      // Create order items
+      const orderItems = orderData.items.map((item: any) => ({
+        order_id: newOrder.id,
+        product_id: item.productId,
+        product_name: item.productName,
+        quantity: item.quantity,
+        unit_price: item.price,
+        total_price: item.price * item.quantity,
+      }));
+
+      console.log('Creating order items:', orderItems);
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) {
+        throw new Error(itemsError.message);
+      }
+
+      const formattedOrder: Order = {
+        id: newOrder.id,
+        customerName: newOrder.customer_name,
+        customerEmail: newOrder.customer_email,
+        deliveryAddress: newOrder.delivery_address,
+        paymentMethod: newOrder.payment_method,
+        totalAmount: newOrder.total_amount,
+        status: newOrder.status,
+        date: newOrder.created_at,
+        items: orderData.items.map((item: any) => ({
+          productId: item.productId,
+          productName: item.productName,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+      };
+
+      setOrders(prev => [formattedOrder, ...prev]);
+      console.log('Order added successfully to Supabase:', newOrder.id);
+
+      return formattedOrder;
+    } catch (error) {
+      console.error('Error adding order:', error);
+      throw error;
+    } finally {
+      setIsProcessingOrder(false);
+    }
+  };
+
+  const getOrderById = (id: string): Order | undefined => {
+    return orders.find(order => order.id === id);
+  };
+
+  const cancelOrder = async (orderId: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: 'cancelled' })
+        .eq('id', orderId);
+
+      if (error) {
+        console.error('Error cancelling order:', error);
+        return false;
+      }
+
+      setOrders(prev => 
+        prev.map(order => 
+          order.id === orderId 
+            ? { ...order, status: 'cancelled' }
+            : order
+        )
+      );
+
+      return true;
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      return false;
+    }
+  };
+
+  // Profile methods
+  const updateUserProfile = async (data: any): Promise<{ success: boolean; progress: ProfileUpdateProgress[]; error?: string; }> => {
+    const progress: ProfileUpdateProgress[] = [];
+    
+    try {
+      if (!user || user.isGuest) {
+        throw new Error('User not authenticated');
+      }
+
+      progress.push({ step: 'validation', status: 'inProgress', message: 'Validating data...' });
+
+      // Update profile
+      const nameParts = data.name.split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      progress.push({ step: 'validation', status: 'completed', message: 'Data validated' });
+      progress.push({ step: 'profile_update', status: 'inProgress', message: 'Updating profile...' });
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          first_name: firstName,
+          last_name: lastName,
+          phone: data.phone,
+          address: data.address,
+        })
+        .eq('id', user.id);
+
+      if (profileError) {
+        progress.push({ step: 'profile_update', status: 'error', error: profileError.message });
+        throw new Error(profileError.message);
+      }
+
+      progress.push({ step: 'profile_update', status: 'completed', message: 'Profile updated' });
+
+      // Update local state
+      setUser(prev => prev ? {
+        ...prev,
+        name: data.name,
+        phone: data.phone,
+        address: data.address,
+      } : null);
+
+      return { success: true, progress };
     } catch (error: any) {
-      console.error('sendMessage: Error:', error.message);
+      return { 
+        success: false, 
+        progress, 
+        error: error.message || 'Failed to update profile' 
+      };
+    }
+  };
+
+  // Message methods
+  const sendMessage = async (content: string): Promise<void> => {
+    try {
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      const { error } = await supabase.from('communication_logs').insert({
+        user_id: user.id,
+        customer_id: user.id,
+        log_type: 'user_message',
+        subject: content,
+        message: content,
+        sender_type: 'customer',
+        is_read: false,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
       throw error;
     }
-  }, [session?.user?.id, supabaseConnected]);
+  };
 
-  // Mark a message as read
-  const markMessageAsRead = useCallback(async (messageId: string) => {
-    if (!supabaseConnected) {
-      console.log('markMessageAsRead: Supabase not connected');
-      return;
-    }
-
+  const markMessageAsRead = async (messageId: string): Promise<void> => {
     try {
       const { error } = await supabase
         .from('communication_logs')
@@ -527,1334 +731,158 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         .eq('id', messageId);
 
       if (error) {
-        console.error('markMessageAsRead: Error marking message as read:', error);
+        console.error('Error marking message as read:', error);
         return;
       }
 
-      // Update local state
-      setMessages((prevMessages) =>
-        prevMessages.map((msg) =>
-          msg.id === messageId ? { ...msg, is_read: true } : msg
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === messageId 
+            ? { ...msg, is_read: true }
+            : msg
         )
       );
 
       // Update unread count
-      setUnreadMessagesCount((prev) => Math.max(0, prev - 1));
-    } catch (error: any) {
-      console.error('markMessageAsRead: Error:', error.message);
+      setUnreadMessagesCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Error marking message as read:', error);
     }
-  }, [supabaseConnected]);
+  };
 
-  // Mark all messages as read
-  const markAllMessagesAsRead = useCallback(async () => {
-    if (!session?.user?.id || !supabaseConnected) {
-      console.log('markAllMessagesAsRead: No user session or Supabase not connected');
-      return;
-    }
-
+  const markAllMessagesAsRead = async (): Promise<void> => {
     try {
+      if (!user) return;
+
       const { error } = await supabase
         .from('communication_logs')
         .update({ is_read: true })
-        .eq('customer_id', session.user.id)
+        .eq('customer_id', user.id)
         .eq('is_read', false);
 
       if (error) {
-        console.error('markAllMessagesAsRead: Error marking messages as read:', error);
+        console.error('Error marking all messages as read:', error);
         return;
       }
 
-      // Update local state
-      setMessages((prevMessages) =>
-        prevMessages.map((msg) => ({ ...msg, is_read: true }))
+      setMessages(prev => 
+        prev.map(msg => ({ ...msg, is_read: true }))
       );
 
-      // Reset unread count
       setUnreadMessagesCount(0);
-    } catch (error: any) {
-      console.error('markAllMessagesAsRead: Error:', error.message);
-    }
-  }, [session?.user?.id, supabaseConnected]);
-
-  // Load user orders from Supabase
-  const loadUserOrders = useCallback(async () => {
-    if (!session?.user) {
-      console.log('No user session, cannot load orders from Supabase.');
-      // Attempt to load from storage as a fallback
-      await loadOrdersFromStorage();
-      return;
-    }
-
-    console.log('Loading orders for user:', session.user.id);
-
-    // Skip if Supabase is not connected
-    if (!supabaseConnected) {
-      console.log('Supabase not connected, loading orders from storage');
-      await loadOrdersFromStorage();
-      return;
-    }
-
-    try {
-      // Fetch orders with order items
-      const { data: ordersData, error: ordersError } = await supabase
-        .from('orders')
-        .select(
-          `
-          *,
-          order_items (
-            product_id,
-            product_name,
-            quantity,
-            unit_price
-          )
-        `,
-        )
-        .eq('user_id', session.user.id)
-        .order('created_at', { ascending: false });
-
-      if (ordersError) {
-        console.error('Error fetching orders:', ordersError);
-        // Fall back to AsyncStorage if Supabase fails
-        await loadOrdersFromStorage();
-        return;
-      }
-
-      if (ordersData) {
-        const formattedOrders: Order[] = ordersData.map((order) => ({
-          id: order.id,
-          date: order.created_at,
-          items: order.order_items.map((item: any) => ({
-            productId: item.product_id,
-            productName: item.product_name,
-            quantity: item.quantity,
-            price: item.unit_price,
-          })),
-          totalAmount: order.total_amount,
-          status: order.status,
-          paymentMethod: order.payment_method,
-          deliveryAddress: order.delivery_address,
-          deliverySchedule: order.preferred_delivery_window
-            ? `${order.delivery_date || 'TBD'} - ${order.preferred_delivery_window}`
-            : undefined,
-          customerName: order.customer_name,
-          customerPhone: order.delivery_phone,
-          customerEmail: order.customer_email,
-          notes: order.notes,
-        }));
-
-        console.log('Loaded orders from Supabase:', formattedOrders.length);
-        setOrders(formattedOrders);
-
-        // Also save to AsyncStorage as backup
-        await AsyncStorage.setItem('@onolo_orders_data_v2', JSON.stringify(formattedOrders));
-      }
-    } catch (error: any) {
-      console.error('Error loading user orders:', error.message);
-      // Fall back to AsyncStorage
-      await loadOrdersFromStorage();
-    }
-  }, [session?.user?.id, supabaseConnected]);
-
-  // Load orders from AsyncStorage
-  const loadOrdersFromStorage = async () => {
-    try {
-      const ordersData = await AsyncStorage.getItem('@onolo_orders_data_v2');
-      if (ordersData) {
-        console.log('Loaded orders from AsyncStorage fallback');
-        setOrders(JSON.parse(ordersData));
-      }
-    } catch (error: any) {
-      console.error('Error loading orders from AsyncStorage:', error.message);
+    } catch (error) {
+      console.error('Error marking all messages as read:', error);
     }
   };
 
-  // Initialize auth state with better error handling
-  useEffect(() => {
-    console.log('Initializing auth state...');
-    setIsLoading(true);
-
-    // Only proceed with auth if Supabase is connected
-    if (!supabaseConnected) {
-      console.log('Supabase not connected, skipping auth initialization');
-      setIsLoading(false);
-      return;
-    }
-
-    // Get initial session with timeout handling
-    const initializeAuth = async () => {
-      try {
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.getSession();
-
-        if (error) {
-          console.error('Error getting initial session:', error.message);
-          setIsLoading(false);
-          return;
-        }
-
-        console.log('Initial session:', session?.user?.email || 'No session');
-        setSession(session);
-
-        if (session?.user) {
-          // Ensure profile exists
-          await ensureUserProfile(session.user);
-          // Convert to our user format
-          const convertedUser = await convertSupabaseUser(session.user);
-          setUser(convertedUser);
-        }
-        setIsLoading(false);
-      } catch (error: any) {
-        console.error('Error initializing auth:', error.message);
-        setIsLoading(false);
-      }
-    };
-
-    initializeAuth();
-
-    // Listen for auth changes with better error handling
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session?.user?.email || 'No session');
-
-      try {
-        if (event === 'USER_UPDATED') {
-          // This is the critical fix. For password changes, we must NOT update the
-          // session object, as it causes a full re-render that interrupts the UI.
-          // We only update the user object with the latest details.
-          if (session?.user) {
-            const updatedUser = await convertSupabaseUser(session.user);
-            setUser(updatedUser);
-            console.log('User object updated without session change to prevent re-render.');
-          }
-        } else {
-          // For all other events (SIGNED_IN, SIGNED_OUT), we update the session,
-          // which correctly triggers the app to reload data as needed.
-          setSession(session);
-          if (session?.user) {
-            await ensureUserProfile(session.user);
-            const convertedUser = await convertSupabaseUser(session.user);
-            setUser(convertedUser);
-          } else {
-            setUser(null);
-            setOrders([]);
-            setMessages([]);
-            setUnreadMessagesCount(0);
-            resetNavigationState();
-          }
-        }
-      } catch (error: any) {
-        console.error('Error handling auth state change:', error.message);
-      }
-
-      setIsLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, [supabaseConnected, resetNavigationState]);
-
-  // Load orders and messages when user ID changes
-  useEffect(() => {
-    if (session?.user?.id && !isLoading) {
-      loadUserOrders();
-      loadUserMessages();
-    } else if (!session?.user) {
-      // If no authenticated user, try to load guest orders from AsyncStorage
-      loadOrdersFromStorage();
-      setMessages([]);
-      setUnreadMessagesCount(0);
-    }
-  }, [session?.user?.id, isLoading, loadUserOrders, loadUserMessages]);
-
-  // Setup message subscription when user is authenticated
-  useEffect(() => {
-    if (session?.user?.id && supabaseConnected && !isLoading) {
-      setupMessageSubscription();
-    }
-
-    // Cleanup subscription on unmount or user change
-    return () => {
-      if (messageChannelRef.current) {
-        console.log('Cleaning up message subscription');
-        supabase.removeChannel(messageChannelRef.current);
-        messageChannelRef.current = null;
-        isSubscribedRef.current = false;
-      }
-    };
-  }, [session?.user?.id, supabaseConnected, isLoading, setupMessageSubscription]);
-
-  // Login function with enhanced error handling
-  const login = async (email: string, password: string): Promise<boolean> => {
-    console.log('Attempting login with email:', email);
-
-    // Check if Supabase is connected
-    if (!supabaseConnected) {
-      console.error('Cannot login: Supabase not connected');
-      Toast.show({
-        type: 'error',
-        text1: 'Connection Error',
-        text2: 'Unable to connect to authentication service. Check your network connection.',
-        position: 'bottom',
-        visibilityTime: 6000,
-      });
-      return false;
-    }
-
-    setIsLoading(true);
-
+  // Notification methods
+  const updateNotificationPreferences = async (settings: NotificationSettings, preferences: NotificationPreferences): Promise<void> => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
-
-      if (error) {
-        // Use console.warn for invalid credentials since this is expected user behavior
-        if (error.message.includes('Invalid login credentials')) {
-          console.warn('Login failed due to invalid credentials for email:', email);
-        } else {
-          console.error('Login error:', error.message);
-        }
-
-        // Provide specific error messages
-        let errorMessage = error.message;
-        if (error.message.includes('Invalid login credentials')) {
-          errorMessage = 'Invalid email or password. Please try again.';
-        } else if (error.message.includes('Failed to fetch')) {
-          errorMessage = 'Connection failed. Please check your internet connection.';
-        }
-
-        Toast.show({
-          type: 'error',
-          text1: 'Login Failed',
-          text2: errorMessage,
-          position: 'bottom',
-          visibilityTime: 6000,
-        });
-        return false;
-      }
-
-      if (data.user) {
-        console.log('Login successful for user:', data.user.email);
-
-        // Reset navigation state on successful login
-        resetNavigationState();
-
-        // Show success toast
-        Toast.show({
-          type: 'success',
-          text1: 'Login Successful',
-          text2: `Welcome back!`,
-          position: 'bottom',
-        });
-
-        return true;
-      }
-
-      return false;
-    } catch (error: any) {
-      console.error('Login error:', error.message);
-      Toast.show({
-        type: 'error',
-        text1: 'Login Error',
-        text2: 'An unexpected error occurred during login. Please try again.',
-        position: 'bottom',
-        visibilityTime: 6000,
-      });
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Register function with enhanced error handling
-  const register = async (name: string, email: string, password: string): Promise<boolean> => {
-    console.log('Attempting registration for:', name, email);
-
-    // Check if Supabase is connected
-    if (!supabaseConnected) {
-      console.error('Cannot register: Supabase not connected');
-      Toast.show({
-        type: 'error',
-        text1: 'Connection Error',
-        text2: 'Unable to connect to authentication service. Check your network connection.',
-        position: 'bottom',
-        visibilityTime: 6000,
-      });
-      return false;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: {
-          data: {
-            name: name.trim(),
-          },
-        },
-      });
-
-      if (error) {
-        console.error('Registration error:', error.message);
-
-        // Provide specific error messages
-        let errorMessage = error.message;
-        if (error.message.includes('User already registered')) {
-          errorMessage =
-            'An account with this email already exists. Please try logging in instead.';
-        } else if (error.message.includes('Failed to fetch')) {
-          errorMessage = 'Connection failed. Please check your internet connection.';
-        }
-
-        Toast.show({
-          type: 'error',
-          text1: 'Registration Failed',
-          text2: errorMessage,
-          position: 'bottom',
-          visibilityTime: 6000,
-        });
-        return false;
-      }
-
-      if (data.user) {
-        console.log('Registration successful for:', name);
-
-        // Reset navigation state on successful registration
-        resetNavigationState();
-
-        // Note: Profile creation will be handled by the auth state change listener
-        // when the user is confirmed and authenticated, not immediately here
-
-        // Show success toast
-        Toast.show({
-          type: 'success',
-          text1: 'Registration Successful',
-          text2: `Welcome, ${name}!`,
-          position: 'bottom',
-        });
-
-        return true;
-      }
-
-      return false;
-    } catch (error: any) {
-      console.error('Registration error:', error.message);
-      Toast.show({
-        type: 'error',
-        text1: 'Registration Error',
-        text2: 'An unexpected error occurred during registration. Please try again.',
-        position: 'bottom',
-        visibilityTime: 6000,
-      });
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Logout function with navigation reset
-  const logout = async (): Promise<void> => {
-    console.log('Logging out user');
-    try {
-      if (supabaseConnected) {
-        const { error } = await supabase.auth.signOut();
-
-        if (error) {
-          console.error('Logout error:', error.message);
-          return;
-        }
-      }
-
-      // Clear local state
-      setUser(null);
-      setSession(null);
-      setOrders([]);
-      setMessages([]);
-      setUnreadMessagesCount(0);
-
-      // Clear AsyncStorage
-      await AsyncStorage.removeItem('@onolo_orders_data_v2');
-
-      // Reset navigation state on logout
-      resetNavigationState();
-
-      // Show success toast
-      Toast.show({
-        type: 'success',
-        text1: 'Logged Out',
-        text2: 'You have been successfully logged out.',
-        position: 'bottom',
-      });
-
-      console.log('Logout successful');
-    } catch (error: any) {
-      console.error('Logout error:', error.message);
-    }
-  };
-
-  // Simplified and more robust update user profile function
-  const updateUserProfile = async (
-    userData: Partial<User>,
-  ): Promise<{ success: boolean; progress: ProfileUpdateProgress[]; error?: string }> => {
-    console.log('Starting simplified profile update with data:', userData);
-
-    const progress: ProfileUpdateProgress[] = [];
-
-    // Step 1: Validation
-    progress.push({
-      step: 'validation',
-      status: 'inProgress',
-      message: 'Validating profile data...',
-    });
-
-    try {
-      // Quick validation
-      const validationResult = validateProfileData(userData);
-      if (!validationResult.isValid) {
-        const errorMessages = Object.entries(validationResult.errors)
-          .map(([field, errors]) => `${field}: ${errors.join(', ')}`)
-          .join('; ');
-
-        progress[0] = { step: 'validation', status: 'error', error: errorMessages };
-
-        console.error('Profile validation failed:', validationResult.errors);
-        return { success: false, progress, error: errorMessages };
-      }
-
-      progress[0] = {
-        step: 'validation',
-        status: 'completed',
-        message: 'Profile data validated successfully',
-      };
-
-      // Step 2: Sanitization
-      progress.push({
-        step: 'sanitization',
-        status: 'inProgress',
-        message: 'Sanitizing input data...',
-      });
-
-      const sanitizedData = sanitizeProfileData(userData);
-      console.log('Sanitized profile data:', sanitizedData);
-
-      progress[1] = { step: 'sanitization', status: 'completed', message: 'Input data sanitized' };
-
-      // Check if user is authenticated
-      if (!session?.user) {
-        const error = 'No authenticated user found';
-        progress.push({ step: 'auth_update', status: 'error', error });
-        console.error('Profile update failed:', error);
-        return { success: false, progress, error };
-      }
-
-      let supabaseSuccess = false;
-
-      // Step 3: Update Supabase (with simplified error handling and timeouts)
-      if (supabaseConnected) {
-        progress.push({
-          step: 'profile_update',
-          status: 'inProgress',
-          message: 'Updating profile database...',
-        });
-
-        try {
-          // Prepare profile update with proper field mapping
-          const nameParts = sanitizedData.name?.trim().split(' ') || [''];
-          const profileUpdate = {
-            first_name: nameParts[0] || '',
-            last_name: nameParts.slice(1).join(' ') || '',
-            phone: sanitizedData.phone?.trim() || '',
-            address: sanitizedData.address?.trim() || '',
-            updated_at: new Date().toISOString(),
-          };
-
-          console.log('Updating Supabase profile with:', profileUpdate);
-
-          // Create a properly typed promise for the update operation
-          const updatePromise = (async () => {
-            const { error } = await supabase
-              .from('profiles')
-              .update(profileUpdate)
-              .eq('id', session.user.id);
-
-            if (error) {
-              throw new Error(`Profile update failed: ${error.message}`);
-            }
-          })();
-
-          // Use timeout wrapper for the Supabase operation
-          await withTimeout(
-            updatePromise,
-            5000, // 5 second timeout
-            'Profile database update',
-          );
-
-          progress[2] = {
-            step: 'profile_update',
-            status: 'completed',
-            message: 'Profile database updated successfully',
-          };
-          supabaseSuccess = true;
-        } catch (error: any) {
-          console.error('Supabase profile update failed:', error.message);
-
-          // Check if it's a timeout or network error
-          const isNetworkError =
-            error.message?.toLowerCase().includes('timeout') ||
-            error.message?.toLowerCase().includes('network') ||
-            error.message?.toLowerCase().includes('connection');
-
-          if (isNetworkError) {
-            progress[2] = {
-              step: 'profile_update',
-              status: 'error',
-              error: 'Network timeout - continuing with local update',
-            };
-          } else {
-            progress[2] = {
-              step: 'profile_update',
-              status: 'error',
-              error: error.message,
-            };
-
-            // For non-network errors, still continue with local update
-            console.log('Non-network error, continuing with local update...');
-          }
-        }
-      } else {
-        progress.push({
-          step: 'profile_update',
-          status: 'completed',
-          message: 'Skipped (offline mode)',
-        });
-      }
-
-      // Step 4: Update local state (always do this)
-      progress.push({
-        step: 'local_update',
-        status: 'inProgress',
-        message: 'Updating local profile...',
-      });
-
-      if (user) {
-        const updatedUser = {
-          ...user,
-          name: sanitizedData.name?.trim() || user.name,
-          email: sanitizedData.email?.trim() || user.email,
-          phone: sanitizedData.phone?.trim() || user.phone,
-          address: sanitizedData.address?.trim() || user.address,
-        };
-        setUser(updatedUser);
-
-        // Save to local storage as backup
-        try {
-          await AsyncStorage.setItem('@onolo_user_data_v2', JSON.stringify(updatedUser));
-        } catch (storageError: any) {
-          console.warn('Failed to save to local storage:', storageError.message);
-        }
-      }
-
-      progress[progress.length - 1] = {
-        step: 'local_update',
-        status: 'completed',
-        message: 'Local profile updated',
-      };
-
-      // Step 5: Completion
-      progress.push({
-        step: 'completed',
-        status: 'completed',
-        message: 'Profile update completed successfully',
-      });
-
-      console.log('Profile update completed successfully');
-
-      // Show appropriate success message
-      if (supabaseSuccess) {
-        Toast.show({
-          type: 'success',
-          text1: 'Profile Updated',
-          text2: 'Your profile has been updated and synchronized.',
-          position: 'bottom',
-          visibilityTime: 4000,
-        });
-      } else {
-        Toast.show({
-          type: 'info',
-          text1: 'Profile Updated Locally',
-          text2: 'Changes saved locally. Will sync when connection is restored.',
-          position: 'bottom',
-          visibilityTime: 4000,
-        });
-      }
-
-      return { success: true, progress };
-    } catch (error: any) {
-      console.error('Unexpected error in profile update:', error.message);
-
-      // Update the last progress item with error
-      if (progress.length > 0) {
-        progress[progress.length - 1] = {
-          ...progress[progress.length - 1],
-          status: 'error',
-          error: error.message,
-        };
-      }
-
-      Toast.show({
-        type: 'error',
-        text1: 'Update Failed',
-        text2: 'An unexpected error occurred. Please try again.',
-        position: 'bottom',
-        visibilityTime: 6000,
-      });
-
-      return { success: false, progress, error: error.message };
-    }
-  };
-
-  // Login as guest
-  const loginAsGuest = async (): Promise<void> => {
-    console.log('Logging in as guest');
-    const guestUser: User = {
-      id: 'guest-' + Date.now(),
-      name: 'Guest User',
-      email: '',
-      phone: '',
-      address: '',
-      isGuest: true,
-    };
-
-    // Update state
-    setUser(guestUser);
-
-    // Reset navigation state for guest login
-    resetNavigationState();
-
-    // Show info toast
-    Toast.show({
-      type: 'info',
-      text1: 'Guest Mode',
-      text2: 'You are now browsing as a guest.',
-      position: 'bottom',
-    });
-
-    console.log('Guest login successful');
-  };
-
-  // Enhanced add order function with proper error handling and validation
-  const addOrder = async (orderData: Omit<Order, 'id' | 'date'>): Promise<Order> => {
-    console.log('Adding new order:', orderData);
-    setIsProcessingOrder(true);
-
-    // Input validation
-    if (!orderData.items || orderData.items.length === 0) {
-      throw new Error('Order must contain at least one item');
-    }
-
-    if (!orderData.customerName?.trim()) {
-      throw new Error('Customer name is required');
-    }
-
-    if (!orderData.deliveryAddress?.trim()) {
-      throw new Error('Delivery address is required');
-    }
-
-    if (!orderData.paymentMethod?.trim()) {
-      throw new Error('Payment method is required');
-    }
-
-    if (!orderData.totalAmount || orderData.totalAmount <= 0) {
-      throw new Error('Invalid order total amount');
-    }
-
-    try {
-      if (session?.user && supabaseConnected) {
-        // Save to Supabase for authenticated users
-        
-        // Map frontend payment methods to database-compatible values
-        let dbPaymentMethod = orderData.paymentMethod;
-        if (orderData.paymentMethod === 'card_on_delivery') {
-          dbPaymentMethod = 'card';
-        }
-        
-        const orderInsert = {
-          user_id: session.user.id,
-          status: orderData.status || 'pending',
-          total_amount: orderData.totalAmount,
-          delivery_address: orderData.deliveryAddress,
-          delivery_phone: orderData.customerPhone || '',
-          payment_method: dbPaymentMethod,
-          customer_name: orderData.customerName || '',
-          customer_email: orderData.customerEmail || '',
-          notes: orderData.notes || '',
-          delivery_date: orderData.deliverySchedule ? new Date().toISOString().split('T')[0] : null,
-          preferred_delivery_window: orderData.deliverySchedule?.includes('morning')
-            ? 'morning'
-            : orderData.deliverySchedule?.includes('afternoon')
-              ? 'afternoon'
-              : orderData.deliverySchedule?.includes('evening')
-                ? 'evening'
-                : null,
-          customer_id: session.user.id, // Fix: Set customer_id to user ID for RLS policy
-        };
-
-        console.log('Creating order in Supabase:', orderInsert);
-
-        const { data: order, error: orderError } = await supabase
-          .from('orders')
-          .insert([orderInsert])
-          .select()
-          .single();
-
-        if (orderError) {
-          console.error('Error creating order in Supabase:', orderError);
-          // Fall back to local storage
-          return addOrderLocally(orderData);
-        }
-
-        // Insert order items
-        const orderItems = orderData.items.map((item) => ({
-          order_id: order.id,
-          product_id: item.productId,
-          product_name: item.productName,
-          quantity: item.quantity,
-          unit_price: item.price,
-          total_price: item.price * item.quantity,
-        }));
-
-        console.log('Creating order items:', orderItems);
-
-        const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
-
-        if (itemsError) {
-          console.error('Error creating order items:', itemsError);
-          // Order was created but items failed - this is recoverable
-        }
-
-        const newOrder: Order = {
-          id: order.id,
-          date: order.created_at,
-          items: orderData.items,
-          totalAmount: orderData.totalAmount,
-          status: orderData.status || 'pending',
-          paymentMethod: orderData.paymentMethod,
-          deliveryAddress: orderData.deliveryAddress,
-          deliverySchedule: orderData.deliverySchedule,
-          customerName: orderData.customerName,
-          customerPhone: orderData.customerPhone,
-          customerEmail: orderData.customerEmail,
-          notes: orderData.notes,
-        };
-
-        // Update local state
-        const updatedOrders = [newOrder, ...orders];
-        setOrders(updatedOrders);
-
-        // Also save to AsyncStorage as backup
-        try {
-          await AsyncStorage.setItem('@onolo_orders_data_v2', JSON.stringify(updatedOrders));
-        } catch (storageError: any) {
-          console.warn('Failed to save orders to local storage:', storageError.message);
-        }
-
-        console.log('Order added successfully to Supabase:', newOrder.id);
-        return newOrder;
-      } else {
-        // For guest users or when Supabase is not connected, save locally only
-        return addOrderLocally(orderData);
-      }
-    } catch (error: any) {
-      console.error('Error adding order:', error.message);
-      // Fall back to local storage
-      return addOrderLocally(orderData);
-    } finally {
-      setIsProcessingOrder(false);
-    }
-  };
-
-  // Add order locally (fallback)
-  const addOrderLocally = async (orderData: Omit<Order, 'id' | 'date'>): Promise<Order> => {
-    const newOrder: Order = {
-      ...orderData,
-      id: `order-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      date: new Date().toISOString(),
-      status: orderData.status || 'pending',
-    };
-
-    const updatedOrders = [newOrder, ...orders];
-    setOrders(updatedOrders);
-
-    // Save to AsyncStorage
-    try {
-      await AsyncStorage.setItem('@onolo_orders_data_v2', JSON.stringify(updatedOrders));
-    } catch (error: any) {
-      console.error('Failed to save order to AsyncStorage:', error.message);
-    }
-
-    console.log('Order added locally:', newOrder.id);
-    return newOrder;
-  };
-
-  // Cancel order
-  const cancelOrder = async (orderId: string): Promise<boolean> => {
-    console.log('Cancelling order:', orderId);
-    try {
-      if (session?.user && supabaseConnected) {
-        // Update in Supabase
-        const { error } = await supabase
-          .from('orders')
-          .update({ 
-            status: 'cancelled', 
-            updated_at: new Date().toISOString(),
-            // Ensure customer_id is set for any triggers that might log this change
-            customer_id: session.user.id
-          })
-          .eq('id', orderId)
-          .eq('user_id', session.user.id);
-
-        if (error) {
-          console.error('Error cancelling order in Supabase:', error);
-          // Fall back to local update
-        }
-      }
-
-      // Update local state
-      const orderIndex = orders.findIndex((order) => order.id === orderId);
-      if (orderIndex === -1) {
-        console.log('Cancel order failed: Order not found');
-        return false;
-      }
-
-      const updatedOrders = [...orders];
-      updatedOrders[orderIndex] = {
-        ...updatedOrders[orderIndex],
-        status: 'cancelled',
-      };
-
-      setOrders(updatedOrders);
-
+      setNotificationSettings(settings);
+      setNotificationPreferences(preferences);
+      
       // Save to AsyncStorage
-      try {
-        await AsyncStorage.setItem('@onolo_orders_data_v2', JSON.stringify(updatedOrders));
-      } catch (error: any) {
-        console.error('Failed to save cancelled order to AsyncStorage:', error.message);
-      }
-
-      console.log('Order cancelled successfully');
-      return true;
-    } catch (error: any) {
-      console.error('Cancel order error:', error.message);
-      return false;
+      await AsyncStorage.setItem('@onolo_notification_settings', JSON.stringify(settings));
+      await AsyncStorage.setItem('@onolo_notification_preferences', JSON.stringify(preferences));
+    } catch (error) {
+      console.error('Error updating notification preferences:', error);
     }
   };
 
-  // Get order by ID
-  const getOrderById = (orderId: string): Order | undefined => {
-    return orders.find((order) => order.id === orderId);
-  };
-
-  // Fetch notification preferences from Supabase
-  const fetchNotificationPreferences = useCallback(async () => {
-    if (!session?.user || !supabaseConnected) return;
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('notification_settings, notification_preferences, expo_push_token')
-      .eq('id', session.user.id)
-      .single();
-    if (!error && data) {
-      setNotificationSettings(data.notification_settings || { email: true, sms: true, push: true });
-      setNotificationPreferences(
-        data.notification_preferences || { orderUpdates: true, promotions: true, newsletter: true },
-      );
-      setExpoPushToken(data.expo_push_token || null);
-    }
-  }, [session?.user, supabaseConnected]);
-
-  // Register for push notifications and save token to Supabase
-  const registerForPushNotifications = useCallback(async () => {
+  const registerForPushNotifications = async (): Promise<void> => {
     try {
-      // Dynamically import to avoid web errors
-      const Notifications = await import('expo-notifications');
-      const Device = await import('expo-device');
-      const Constants = await import('expo-constants');
-
-      // Check if running in development mode
-      const isDev = __DEV__;
-
-      if (!Device.isDevice) {
-        console.log('Push notifications require a physical device');
-        Toast.show({
-          type: 'info',
-          text1: 'Physical device required',
-          text2: 'Push notifications only work on a real device.',
-          visibilityTime: 3000,
-        });
-        return null;
+      if (Platform.OS === 'web') {
+        console.log('Push notifications not supported on web');
+        return;
       }
 
-      // In development with Expo Go, we'll show a message that push notifications are not available
-      if (isDev) {
-        console.log('Running in development mode - push notifications are limited');
-        Toast.show({
-          type: 'info',
-          text1: 'Development Mode',
-          text2: 'Push notifications require a production build to work properly.',
-          visibilityTime: 4000,
-        });
-        // Return a mock token in development
-        return 'mock-push-token-dev';
-      }
-
-      // Configure notification handler
-      Notifications.setNotificationHandler({
-        handleNotification: async () => ({
-          shouldShowAlert: true,
-          shouldPlaySound: true,
-          shouldSetBadge: true,
-          shouldShowBanner: true,
-          shouldShowList: true,
-        }),
-      });
-
-      // Check current permission status
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
 
-      // If no permission, request it
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
       }
 
-      // If permission denied, show error and return
       if (finalStatus !== 'granted') {
-        console.log('Push notification permission denied');
-        Toast.show({
-          type: 'error',
-          text1: 'Permission required',
-          text2: 'Enable push notifications in your device settings.',
-          visibilityTime: 4000,
-        });
-        return null;
+        console.log('Permission not granted for push notifications');
+        return;
       }
 
-      // Get the push token in production
-      console.log('Requesting push notification token...');
-      const tokenData = await Notifications.getExpoPushTokenAsync({
-        projectId: Constants.expoConfig?.extra?.eas?.projectId,
+      // Get push token
+      const token = await Notifications.getExpoPushTokenAsync({
+        projectId: 'your-expo-project-id', // Replace with your actual project ID
       });
 
-      const token = tokenData.data;
-      console.log('Push token received:', token);
-
-      if (!token) {
-        throw new Error('Failed to get push token');
-      }
-
-      // Update local state
-      setExpoPushToken(token);
-
-      // Save to Supabase if user is logged in and connected
-      if (session?.user?.id && supabaseConnected) {
-        console.log('Saving push token to Supabase...');
-        const { error } = await supabase
-          .from('profiles')
-          .update({
-            expo_push_token: token,
-            notification_settings: { ...notificationSettings, push: true },
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', session.user.id);
-
-        if (error) {
-          console.error('Error saving push token to Supabase:', error);
-          throw new Error('Failed to save push token');
-        }
-
-        console.log('Push token saved to Supabase');
-      }
-
-      return token;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      console.error('Push notification registration failed:', errorMessage, error);
-
-      // Don't show error toast if the error is just that we're not on a device
-      if (errorMessage.includes('not available on this device')) {
-        return null;
-      }
-
-      Toast.show({
-        type: 'error',
-        text1: 'Push registration failed',
-        text2: 'Could not enable push notifications. Please try again.',
-        visibilityTime: 4000,
-      });
-
-      return null;
-    }
-  }, [session?.user, supabaseConnected, notificationSettings]);
-
-  // Update notification preferences in Supabase
-  const updateNotificationPreferences = useCallback(
-    async (settings: NotificationSettings, preferences: NotificationPreferences) => {
-      if (!session?.user) return;
-
-      // If push notifications are being enabled, register for them
-      if (settings.push && !notificationSettings.push) {
-        try {
-          await registerForPushNotifications();
-        } catch (error) {
-          console.error('Failed to register for push notifications:', error);
-          // Revert the push setting if registration fails
-          settings = { ...settings, push: false };
-          Toast.show({
-            type: 'error',
-            text1: 'Push Notifications',
-            text2: 'Failed to enable push notifications. Please check app permissions.',
-          });
-        }
-      }
-
-      setNotificationSettings(settings);
-      setNotificationPreferences(preferences);
-
-      // Only update in Supabase if connected
-      if (supabaseConnected) {
-        await supabase
-          .from('profiles')
-          .update({
-            notification_settings: settings,
-            notification_preferences: preferences,
-            // Only update expo_push_token if we have one and push is enabled
-            ...(settings.push && expoPushToken ? { expo_push_token: expoPushToken } : {}),
-          })
-          .eq('id', session.user.id);
-      }
-    },
-    [
-      session?.user,
-      supabaseConnected,
-      registerForPushNotifications,
-      expoPushToken,
-      notificationSettings.push,
-    ],
-  );
-
-  // Fetch preferences on login
-  useEffect(() => {
-    if (session?.user && supabaseConnected) {
-      fetchNotificationPreferences();
-    }
-  }, [session?.user, supabaseConnected, fetchNotificationPreferences]);
-
-  // --- PASSWORD CHANGE MODAL LOGIC ---
-  const openPasswordModal = useCallback(() => {
-    console.log('Opening password modal...');
-    setPasswordModalInfo((prev) => ({
-      ...prev,
-      isOpen: true,
-      step: 'password',
-      isLoading: false,
-      error: null,
-    }));
-  }, [setPasswordModalInfo]);
-
-  const closePasswordModal = useCallback(() => {
-    console.log('Closing password modal...');
-    setPasswordModalInfo({
-      isOpen: false,
-      step: 'password',
-      isLoading: false,
-      error: null,
-    });
-  }, [setPasswordModalInfo]);
-
-  const submitNewPassword = async ({
-    currentPassword,
-    newPassword,
-    confirmPassword,
-  }: {
-    currentPassword: string;
-    newPassword: string;
-    confirmPassword: string;
-  }): Promise<void> => {
-    // Basic validation
-    if (!currentPassword) {
-      setPasswordModalInfo((prev) => ({ ...prev, error: 'Current password is required.' }));
-      return;
-    }
-
-    if (!newPassword || newPassword.length < 6) {
-      setPasswordModalInfo((prev) => ({
-        ...prev,
-        error: 'New password must be at least 6 characters long.',
-      }));
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setPasswordModalInfo((prev) => ({ ...prev, error: 'New passwords do not match.' }));
-      return;
-    }
-
-    // Don't allow the same password
-    if (currentPassword === newPassword) {
-      setPasswordModalInfo((prev) => ({
-        ...prev,
-        error: 'New password must be different from current password.',
-      }));
-      return;
-    }
-
-    // Set loading state
-    setPasswordModalInfo((prev) => ({ ...prev, isLoading: true, error: null }));
-
-    try {
-      if (!user?.email) {
-        throw new Error('User email not found. Please sign in again.');
-      }
-
-      console.log('Attempting to re-authenticate user...');
-
-      // First, re-authenticate the user with their current password
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email: user.email,
-        password: currentPassword,
-      });
-
-      if (authError) {
-        console.error('Authentication error:', authError);
-        throw new Error('Current password is incorrect');
-      }
-
-      console.log('Authentication successful, updating password...');
-
-      // If authentication is successful, update the password
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (updateError) {
-        console.error('Password update error:', updateError);
-        throw updateError;
-      }
-
-      console.log('Password updated successfully');
-
-      // Show success message
-      Toast.show({
-        type: 'success',
-        text1: 'Success',
-        text2: 'Your password has been updated successfully!',
-        position: 'top',
-        visibilityTime: 3000,
-      });
-
-      // Close the modal after a short delay to show the success message
-      console.log('Closing password modal...');
-      closePasswordModal();
-    } catch (error: any) {
-      console.error('Password update error:', error);
-
-      // Only update state if the component is still mounted
-      setPasswordModalInfo((prev) => ({
-        ...prev,
-        isLoading: false,
-        error: error.message || 'Failed to update password. Please try again.',
-      }));
-
-      // Re-throw the error to be handled by the caller if needed
-      throw error;
+      console.log('Push token:', token.data);
+      
+      // TODO: Send token to your server
+    } catch (error) {
+      console.error('Error registering for push notifications:', error);
     }
   };
 
-  const submitOtp = async (otp: string) => {
-    // This function is kept for backward compatibility but won't be used in the new flow
-    setPasswordModalInfo((prev) => ({ ...prev, isLoading: true, error: null }));
+  const fetchNotificationPreferences = async (): Promise<void> => {
     try {
-      if (!user?.email) {
-        throw new Error('User email not found');
+      const settingsStr = await AsyncStorage.getItem('@onolo_notification_settings');
+      const preferencesStr = await AsyncStorage.getItem('@onolo_notification_preferences');
+      
+      if (settingsStr) {
+        setNotificationSettings(JSON.parse(settingsStr));
       }
-
-      const { error } = await supabase.auth.verifyOtp({
-        email: user.email,
-        token: otp,
-        type: 'recovery',
-      });
-
-      if (error) throw error;
-
-      Toast.show({
-        type: 'success',
-        text1: 'Password Reset Successfully!',
-        position: 'bottom',
-        visibilityTime: 3000,
-      });
-
-      closePasswordModal();
-    } catch (error: any) {
-      console.error('OTP verification error:', error);
-      setPasswordModalInfo((prev) => ({
-        ...prev,
-        error: error.message || 'Invalid or expired code.',
-      }));
-    } finally {
-      setPasswordModalInfo((prev) => ({
-        ...prev,
-        isLoading: false,
-      }));
+      
+      if (preferencesStr) {
+        setNotificationPreferences(JSON.parse(preferencesStr));
+      }
+    } catch (error) {
+      console.error('Error fetching notification preferences:', error);
     }
   };
 
-  // Context value
-  const contextValue: UserContextType = {
+  const value: UserContextType = {
     user,
-    isLoading,
-    login,
-    register,
-    logout,
-    updateUserProfile,
-    loginAsGuest,
-    isAuthenticated: !!session && !!user && !user.isGuest,
     orders,
-    addOrder,
-    cancelOrder,
-    getOrderById,
-    loadUserOrders,
-    supabaseConnected,
-    resetNavigationState,
-    isProcessingOrder,
-    notificationSettings,
-    notificationPreferences,
-    expoPushToken,
-    fetchNotificationPreferences,
-    updateNotificationPreferences,
-    registerForPushNotifications,
-    passwordModalInfo,
-    setPasswordModalInfo,
-    openPasswordModal,
-    closePasswordModal,
-    submitNewPassword,
-    submitOtp,
-    // Message-related functions
     messages,
     unreadMessagesCount,
+    notificationSettings,
+    notificationPreferences,
+    isLoading,
+    isAuthenticated,
+    isProcessingOrder,
+    isGuest,
+    
+    // Auth methods
+    login,
+    loginAsGuest,
+    register,
+    logout,
+    
+    // Order methods
+    addOrder,
+    getOrderById,
+    cancelOrder,
+    
+    // Profile methods
+    updateUserProfile,
+    
+    // Message methods
     sendMessage,
     markMessageAsRead,
     markAllMessagesAsRead,
+    
+    // Notification methods
+    updateNotificationPreferences,
+    registerForPushNotifications,
+    fetchNotificationPreferences,
   };
 
-  return <UserContext.Provider value={contextValue}>{children}</UserContext.Provider>;
+  return (
+    <UserContext.Provider value={value}>
+      {children}
+    </UserContext.Provider>
+  );
 }
 
-// Custom hook to use the context
 export function useUser() {
   const context = useContext(UserContext);
   if (context === undefined) {
