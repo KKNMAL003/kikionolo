@@ -9,12 +9,18 @@ import { useEffect } from 'react';
 import { useRouter, useSegments } from 'expo-router';
 import { useUser } from '../context/UserContext';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
+import { initializeConnectionTest } from '../utils/connectionTest';
 
 // Enhanced Auth guard component with better navigation management
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useUser();
   const segments = useSegments();
   const router = useRouter();
+
+  // Don't render children until user state is loaded to prevent early navigation
+  if (isLoading) {
+    return null;
+  }
 
   useEffect(() => {
     // Run connection diagnostics on app startup in the background
@@ -42,6 +48,8 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       segments: segments.join('/'),
     });
 
+    // Add a small delay to ensure router is fully mounted
+    const timeoutId = setTimeout(() => {
     try {
       if (!user && !inAuthGroup) {
         // If no user and not in auth group, redirect to login
@@ -61,7 +69,10 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
         router.replace('/(tabs)');
       }
     }
-  }, [user, isLoading, segments]);
+    }, 100); // Small delay to ensure router is mounted
+
+    return () => clearTimeout(timeoutId);
+  }, [user, segments, router]);
 
   return <>{children}</>;
 }
