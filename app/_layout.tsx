@@ -1,19 +1,22 @@
+import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { CartProvider } from '../context/CartContext';
-import { UserProvider } from '../context/UserContext';
+import { AuthProvider } from '../contexts/AuthContext';
+import { OrdersProvider } from '../contexts/OrdersContext';
+import { MessagesProvider } from '../contexts/MessagesContext';
+import { NotificationsProvider } from '../contexts/NotificationsContext';
 import { COLORS } from '../constants/colors';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useEffect } from 'react';
 import { useRouter, useSegments } from 'expo-router';
-import { useUser } from '../context/UserContext';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { initializeConnectionTest } from '../utils/connectionTest';
+import { useAuth } from '../contexts/AuthContext';
 
 // Enhanced Auth guard component with better navigation management
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useUser();
+  const { user, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
@@ -68,99 +71,130 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Context providers wrapper to keep layout clean
+function ContextProviders({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider>
+      <OrdersProvider>
+        <MessagesProvider>
+          <NotificationsProvider>
+            <CartProvider>
+              {children}
+            </CartProvider>
+          </NotificationsProvider>
+        </MessagesProvider>
+      </OrdersProvider>
+    </AuthProvider>
+  );
+}
+
 export default function RootLayout() {
   useFrameworkReady();
+
+  // Initialize connection test on app startup
+  useEffect(() => {
+    const testConnection = async () => {
+      const success = await initializeConnectionTest();
+      
+      if (!success) {
+        console.warn('⚠️  Some connection issues detected. App functionality may be limited.');
+        console.warn('For full functionality, configure CORS in your Supabase project settings.');
+      } else {
+        console.log('🎉 Supabase connection is working properly');
+      }
+    };
+    
+    testConnection();
+  }, []);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <UserProvider>
-          <CartProvider>
-            <StatusBar style="light" />
-            <AuthGuard>
-              <Stack
-                screenOptions={{
+        <ContextProviders>
+          <StatusBar style="light" />
+          <AuthGuard>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: COLORS.background },
+                animation: 'slide_from_right',
+                // Enhanced gesture handling
+                gestureEnabled: true,
+                gestureDirection: 'horizontal',
+              }}
+              initialRouteName="(tabs)"
+            >
+              <Stack.Screen
+                name="(tabs)"
+                options={{
                   headerShown: false,
-                  contentStyle: { backgroundColor: COLORS.background },
-                  animation: 'slide_from_right',
-                  // Enhanced gesture handling
-                  gestureEnabled: true,
-                  gestureDirection: 'horizontal',
+                  // Reset stack when navigating to tabs
+                  animationTypeForReplace: 'push',
                 }}
-                initialRouteName="(tabs)"
-              >
-                <Stack.Screen
-                  name="(tabs)"
-                  options={{
-                    headerShown: false,
-                    // Reset stack when navigating to tabs
-                    animationTypeForReplace: 'push',
-                  }}
-                />
-                <Stack.Screen
-                  name="checkout"
-                  options={{
-                    presentation: 'card',
-                    gestureEnabled: true,
-                  }}
-                />
-                <Stack.Screen
-                  name="profile"
-                  options={{
-                    presentation: 'card',
-                    gestureEnabled: true,
-                    // Ensure profile screen doesn't stack - use replace navigation
-                    animationTypeForReplace: 'push',
-                  }}
-                />
-                <Stack.Screen
-                  name="order/[id]"
-                  options={{
-                    presentation: 'card',
-                    gestureEnabled: true,
-                  }}
-                />
-                <Stack.Screen
-                  name="payfast-success"
-                  options={{
-                    presentation: 'card',
-                    gestureEnabled: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="payfast-cancel"
-                  options={{
-                    presentation: 'card',
-                    gestureEnabled: true,
-                  }}
-                />
-                <Stack.Screen
-                  name="auth/login"
-                  options={{
-                    presentation: 'modal',
-                    gestureEnabled: false,
-                    // Prevent going back from login
-                    headerLeft: () => null,
-                  }}
-                />
-                <Stack.Screen
-                  name="auth/register"
-                  options={{
-                    presentation: 'modal',
-                    gestureEnabled: true,
-                  }}
-                />
-                <Stack.Screen
-                  name="+not-found"
-                  options={{
-                    title: 'Not Found',
-                    gestureEnabled: true,
-                  }}
-                />
-              </Stack>
-            </AuthGuard>
-          </CartProvider>
-        </UserProvider>
+              />
+              <Stack.Screen
+                name="checkout"
+                options={{
+                  presentation: 'card',
+                  gestureEnabled: true,
+                }}
+              />
+              <Stack.Screen
+                name="profile"
+                options={{
+                  presentation: 'card',
+                  gestureEnabled: true,
+                  // Ensure profile screen doesn't stack - use replace navigation
+                  animationTypeForReplace: 'push',
+                }}
+              />
+              <Stack.Screen
+                name="order/[id]"
+                options={{
+                  presentation: 'card',
+                  gestureEnabled: true,
+                }}
+              />
+              <Stack.Screen
+                name="payfast-success"
+                options={{
+                  presentation: 'card',
+                  gestureEnabled: false,
+                }}
+              />
+              <Stack.Screen
+                name="payfast-cancel"
+                options={{
+                  presentation: 'card',
+                  gestureEnabled: true,
+                }}
+              />
+              <Stack.Screen
+                name="auth/login"
+                options={{
+                  presentation: 'modal',
+                  gestureEnabled: false,
+                  // Prevent going back from login
+                  headerLeft: () => null,
+                }}
+              />
+              <Stack.Screen
+                name="auth/register"
+                options={{
+                  presentation: 'modal',
+                  gestureEnabled: true,
+                }}
+              />
+              <Stack.Screen
+                name="+not-found"
+                options={{
+                  title: 'Not Found',
+                  gestureEnabled: true,
+                }}
+              />
+            </Stack>
+          </AuthGuard>
+        </ContextProviders>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
