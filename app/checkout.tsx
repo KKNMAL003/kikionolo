@@ -18,7 +18,8 @@ import { COMPANY } from '../constants/company';
 import Header from '../components/Header';
 import Button from '../components/Button';
 import { useCart } from '../context/CartContext';
-import { useUser } from '../context/UserContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useOrders } from '../contexts/OrdersContext';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
@@ -35,7 +36,8 @@ type TimeSlot = 'morning' | 'afternoon' | 'evening';
 
 export default function CheckoutScreen() {
   const { totalPrice, items, clearCart } = useCart();
-  const { user, addOrder, isAuthenticated, isProcessingOrder } = useUser();
+  const { user } = useAuth();
+  const { createOrder, isProcessingOrder } = useOrders();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash_on_delivery');
@@ -90,20 +92,19 @@ export default function CheckoutScreen() {
       }));
       const deliverySchedule = formatDeliverySchedule();
       const orderData = {
-        items: orderItems,
-        totalAmount: totalPrice + 50, // Including delivery fee
-        status: 'pending' as const,
-        paymentMethod: paymentMethodUsed,
-        deliveryAddress: formData.address,
-        deliverySchedule,
         customerName: formData.name,
-        customerPhone: formData.phone,
         customerEmail: formData.email,
+        customerPhone: formData.phone,
+        deliveryAddress: formData.address,
+        paymentMethod: paymentMethodUsed,
+        totalAmount: totalPrice + 50, // Including delivery fee
+        items: orderItems,
         notes: formData.notes,
+        deliverySchedule,
       };
 
       console.log('Creating order with data:', orderData);
-      const newOrder = await addOrder(orderData);
+      const newOrder = await createOrder(orderData);
 
       if (formData.email && formData.email.trim() !== '') {
         console.log('Attempting to send confirmation email to:', formData.email);
