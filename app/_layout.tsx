@@ -17,25 +17,11 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const segments = useSegments();
   const router = useRouter();
 
-  // Don't render children until user state is loaded to prevent early navigation
-  if (isLoading) {
-    return null;
-  }
-
   useEffect(() => {
-    // Run connection diagnostics on app startup in the background
-    const testConnection = async () => {
-      const success = await initializeConnectionTest();
-      
-      if (!success) {
-        console.warn('⚠️  Some connection issues detected. App functionality may be limited.');
-        console.warn('For full functionality, configure CORS in your Supabase project settings.');
-      } else {
-        console.log('🎉 Supabase connection is working properly');
-      }
-    };
-    
-    testConnection();
+    // Don't perform navigation logic while loading
+    if (isLoading) {
+      return;
+    }
 
     const inAuthGroup = segments[0] === 'auth';
     const inTabsGroup = segments[0] === '(tabs)';
@@ -72,7 +58,12 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     }, 100); // Small delay to ensure router is mounted
 
     return () => clearTimeout(timeoutId);
-  }, [user, segments, router]);
+  }, [user, segments, router, isLoading]);
+
+  // Don't render children until user state is loaded to prevent early navigation
+  if (isLoading) {
+    return null;
+  }
 
   return <>{children}</>;
 }
