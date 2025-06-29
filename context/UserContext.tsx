@@ -130,6 +130,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const messageChannelRef = useRef<RealtimeChannel | null>(null);
   const isMountedRef = useRef(true);
   const currentUserIdRef = useRef<string | null>(null);
+  const authSubscriptionRef = useRef<any>(null);
+  const setupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Computed properties
   const isAuthenticated = !!user && !user.isGuest;
@@ -139,52 +141,101 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
-      cleanupMessageSubscription();
+      cleanupAll();
     };
   }, []);
 
-  // Centralized cleanup function for message subscription
-  const cleanupMessageSubscription = useCallback(() => {
+  // Comprehensive cleanup function
+  const cleanupAll = useCallback(() => {
+    console.log('🧹 Starting comprehensive cleanup...');
+    
+    // Clear any pending timeouts
+    if (setupTimeoutRef.current) {
+      clearTimeout(setupTimeoutRef.current);
+      setupTimeoutRef.current = null;
+    }
+
+    // Cleanup message subscription
     if (messageChannelRef.current) {
       try {
         console.log('Cleaning up message subscription...');
         messageChannelRef.current.unsubscribe();
         supabase.removeChannel(messageChannelRef.current);
         messageChannelRef.current = null;
-        currentUserIdRef.current = null;
-        console.log('✅ Message subscription cleaned up successfully');
       } catch (error) {
         console.warn('Warning during message subscription cleanup:', error);
       }
     }
+
+    // Cleanup auth subscription
+    if (authSubscriptionRef.current) {
+      try {
+        console.log('Cleaning up auth subscription...');
+        authSubscriptionRef.current.unsubscribe();
+        authSubscriptionRef.current = null;
+      } catch (error) {
+        console.warn('Warning during auth subscription cleanup:', error);
+      }
+    }
+
+    // Reset refs
+    currentUserIdRef.current = null;
+    
+    console.log('✅ Comprehensive cleanup completed');
   }, []);
 
-  // Setup message subscription directly in UserContext
+  // Debounced setup function to prevent multiple rapid subscription attempts
+  const debouncedSetupMessageSubscription = useCallback((userId: string) => {
+    // Clear any existing timeout
+    if (setupTimeoutRef.current) {
+      clearTimeout(setupTimeoutRef.current);
+    }
+
+    // Set a new timeout to debounce the setup
+    setupTimeoutRef.current = setTimeout(() => {
+      setupMessageSubscription(userId);
+    }, 1000); // 1 second debounce
+  }, []);
+
+  // Setup message subscription with improved error handling and deduplication
   const setupMessageSubscription = useCallback(async (userId: string) => {
     if (!userId || !isMountedRef.current) {
-      console.log('Cannot setup subscription: invalid userId or component unmounted');
+      console.log('setupMessageSubscription: Cannot setup - invalid userId or component unmounted');
       return;
     }
 
     // If we already have a subscription for this user, don't create another one
     if (currentUserIdRef.current === userId && messageChannelRef.current) {
-      console.log('Message subscription already exists for this user');
+      console.log('setupMessageSubscription: Subscription already exists for this user');
       return;
     }
 
-    // Clean up any existing subscription before creating a new one
-    cleanupMessageSubscription();
-
     try {
-      console.log(`Setting up message subscription for user: ${userId}`);
+      console.log(`setupMessageSubscription: Setting up message subscription for user: ${userId}`);
       
-      // Create the channel
-      const channelName = `messages:customer_id=eq.${userId}`;
-      console.log(`Creating channel: ${channelName}`);
+      // Clean up any existing subscription before creating a new one
+      if (messageChannelRef.current) {
+        console.log('setupMessageSubscription: Cleaning up existing subscription');
+        try {
+          messageChannelRef.current.unsubscribe();
+          supabase.removeChannel(messageChannelRef.current);
+        } catch (cleanupError) {
+          console.warn('setupMessageSubscription: Warning during cleanup:', cleanupError);
+        }
+        messageChannelRef.current = null;
+      }
+
+      // Create unique channel name to avoid conflicts
+      const channelName = `messages_${userId}_${Date.now()}`;
+      console.log(`setupMessageSubscription: Creating channel: ${channelName}`);
       
-      const channel = supabase.channel(channelName);
+      const channel = supabase.channel(channelName, {
+        config: {
+          presence: { key: userId },
+        }
+      });
       
-      // Set up the subscription
+      // Set up the subscription with improved error handling
       channel
         .on(
           'postgres_changes',
@@ -196,7 +247,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           },
           (payload: any) => {
             try {
-              console.log('Received message payload:', payload);
+              console.log('setupMessageSubscription: Received message payload:', payload.eventType);
               if (payload.eventType === 'INSERT' && payload.new && isMountedRef.current) {
                 const formattedMessage: Message = {
                   id: payload.new.id,
@@ -219,29 +270,39 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                 }
               }
             } catch (error) {
-              console.warn('Error processing message:', error);
+              console.warn('setupMessageSubscription: Error processing message:', error);
             }
           }
         )
         .subscribe((status: string, error?: any) => {
-          console.log(`Subscription status: ${status}`);
+          console.log(`setupMessageSubscription: Subscription status: ${status}`);
           
           if (status === 'SUBSCRIBED') {
-            console.log('✅ Successfully subscribed to messages');
-            // Only set the ref after successful subscription
+            console.log('✅ setupMessageSubscription: Successfully subscribed to messages');
             messageChannelRef.current = channel;
             currentUserIdRef.current = userId;
           } else if (status === 'CHANNEL_ERROR') {
-            console.warn('❌ Channel subscription error:', error);
+            console.warn('❌ setupMessageSubscription: Channel subscription error:', error);
             if (error?.message?.includes('mismatch')) {
-              console.warn('Schema mismatch - this may indicate a database configuration issue');
+              console.warn('setupMessageSubscription: Schema mismatch - this may indicate a database configuration issue');
+              console.warn('💡 Consider checking your database schema and RLS policies');
+            } else if (error?.message?.includes('subscribe multiple times')) {
+              console.warn('setupMessageSubscription: Subscription issue:', error.message);
             }
-            cleanupMessageSubscription();
+            
+            // Clean up failed subscription
+            if (messageChannelRef.current === channel) {
+              messageChannelRef.current = null;
+              currentUserIdRef.current = null;
+            }
           } else if (status === 'TIMED_OUT') {
-            console.warn('⏱️ Channel subscription timed out');
-            cleanupMessageSubscription();
+            console.warn('⏱️ setupMessageSubscription: Channel subscription timed out');
+            if (messageChannelRef.current === channel) {
+              messageChannelRef.current = null;
+              currentUserIdRef.current = null;
+            }
           } else if (status === 'CLOSED') {
-            console.log('📴 Channel subscription closed');
+            console.log('📴 setupMessageSubscription: Channel subscription closed');
             if (messageChannelRef.current === channel) {
               messageChannelRef.current = null;
               currentUserIdRef.current = null;
@@ -249,18 +310,31 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           }
         });
 
-      console.log('Message subscription setup initiated');
+      console.log('setupMessageSubscription: Message subscription setup completed');
     } catch (error) {
-      console.error('Error setting up message subscription:', error);
-      cleanupMessageSubscription();
+      console.error('setupMessageSubscription: Error setting up message subscription:', error);
+      // Ensure cleanup on error
+      if (messageChannelRef.current) {
+        try {
+          messageChannelRef.current.unsubscribe();
+          supabase.removeChannel(messageChannelRef.current);
+        } catch (cleanupError) {
+          console.warn('setupMessageSubscription: Error during cleanup:', cleanupError);
+        }
+        messageChannelRef.current = null;
+        currentUserIdRef.current = null;
+      }
     }
-  }, [cleanupMessageSubscription]);
+  }, []);
 
-  // Initialize auth state
+  // Initialize auth state with improved cleanup
   useEffect(() => {
     const initializeAuth = async () => {
       try {
         console.log('Initializing auth state...');
+        
+        // Clean up any existing subscriptions first
+        cleanupAll();
         
         // Check if Supabase is connected
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -279,32 +353,40 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           await loadOrdersFromStorage();
         }
 
-        // Listen for auth changes
+        // Set up auth state listener with improved cleanup
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
           if (!isMountedRef.current) return;
           
           console.log('Auth state changed:', event, session?.user?.email);
           
-          if (session?.user) {
+          // Clean up existing subscriptions when auth state changes
+          if (messageChannelRef.current && event !== 'TOKEN_REFRESHED') {
+            console.log('Auth state change: cleaning up existing subscriptions');
+            try {
+              messageChannelRef.current.unsubscribe();
+              supabase.removeChannel(messageChannelRef.current);
+              messageChannelRef.current = null;
+              currentUserIdRef.current = null;
+            } catch (error) {
+              console.warn('Auth state change: cleanup warning:', error);
+            }
+          }
+          
+          if (session?.user && event !== 'TOKEN_REFRESHED') {
             await loadUserProfile(session.user.id);
-          } else {
+          } else if (!session?.user) {
             setUser(null);
             setOrders([]);
             setMessages([]);
             setUnreadMessagesCount(0);
-            
-            // Clean up message subscription
-            cleanupMessageSubscription();
-            
+            currentUserIdRef.current = null;
             await loadOrdersFromStorage();
           }
           
           setIsLoading(false);
         });
 
-        return () => {
-          subscription?.unsubscribe();
-        };
+        authSubscriptionRef.current = subscription;
       } catch (error) {
         console.error('Error initializing auth:', error);
         await loadOrdersFromStorage();
@@ -315,7 +397,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     initializeAuth();
   }, []);
 
-  // Load user profile and set up subscriptions
+  // Load user profile and set up subscriptions with debouncing
   const loadUserProfile = async (userId: string) => {
     try {
       const { data: profile, error } = await supabase
@@ -353,8 +435,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           loadUserMessages(userId),
         ]);
         
-        // Set up message subscription after loading data
-        await setupMessageSubscription(userId);
+        // Set up message subscription with debouncing to prevent multiple rapid calls
+        debouncedSetupMessageSubscription(userId);
       }
     } catch (error) {
       console.error('Error in loadUserProfile:', error);
@@ -364,7 +446,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   // Load orders from storage (fallback)
   const loadOrdersFromStorage = async () => {
     try {
-      console.log('Loaded orders from AsyncStorage fallback');
+      console.log('Loading orders from AsyncStorage fallback');
       const storedOrders = await AsyncStorage.getItem('@onolo_orders');
       if (storedOrders && isMountedRef.current) {
         setOrders(JSON.parse(storedOrders));
@@ -504,6 +586,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const loginAsGuest = async (): Promise<void> => {
     try {
+      // Clean up any existing subscriptions
+      cleanupAll();
+      
       const guestUser: User = {
         id: 'guest-' + Date.now(),
         name: 'Guest User',
@@ -563,8 +648,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async (): Promise<void> => {
     try {
-      // Clean up subscription
-      cleanupMessageSubscription();
+      // Clean up all subscriptions
+      cleanupAll();
       
       await supabase.auth.signOut();
       
