@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
 import { COLORS } from '../../constants/colors';
-import { MapPin, Flame } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import FuelTypeSelector from '../../components/FuelTypeSelector';
 import Animated, {
@@ -23,7 +23,8 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 
-const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
+const MAPBOX_TOKEN =
+  'pk.eyJ1Ijoia2tubWFsMDAzIiwiYSI6ImNtOWI2NGF1MjBjdWwya3M1Mmxua3hqaXgifQ._PMbFD1tTIq4zmjGCwnAHg';
 const ONOLO_COORDS = { latitude: -26.2041, longitude: 28.0473 }; // Johannesburg
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -115,7 +116,7 @@ export default function HomeScreen() {
           <View style={styles.mapOverlay} pointerEvents="none" />
           <View style={styles.locationCard}>
             <View style={styles.locationIconContainer}>
-              <MapPin size={24} color={COLORS.primary} />
+              <Ionicons name="location" size={24} color={COLORS.primary} />
             </View>
             <View style={styles.locationInfo}>
               <Text style={styles.locationTitle}>Onolo Gas</Text>

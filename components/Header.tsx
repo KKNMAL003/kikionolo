@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { COLORS } from '../constants/colors';
 import { COMPANY } from '../constants/company';
-import { ArrowLeft, Receipt, User } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter, usePathname } from 'expo-router';
 import { useUser } from '../context/UserContext';
 
@@ -78,7 +78,7 @@ export default function Header({ showBackButton = false, title }: HeaderProps) {
       <View style={styles.logoContainer}>
         {showBackButton ? (
           <TouchableOpacity onPress={handleBackPress} style={styles.backButton} activeOpacity={0.7}>
-            <ArrowLeft size={24} color={COLORS.text.white} />
+            <Ionicons name="arrow-back" size={24} color={COLORS.text.white} />
           </TouchableOpacity>
         ) : (
           <TouchableOpacity onPress={() => router.push('/welcome' as any)} activeOpacity={0.7}>
@@ -102,7 +102,7 @@ export default function Header({ showBackButton = false, title }: HeaderProps) {
             onPress={handleOrdersBadgePress}
             activeOpacity={0.7}
           >
-            <Receipt size={20} color={COLORS.primary} />
+            <Ionicons name="receipt-outline" size={20} color={COLORS.primary} />
             <View style={styles.ordersBadge}>
               <Text style={styles.ordersBadgeText}>{pendingOrdersCount}</Text>
             </View>
@@ -118,7 +118,7 @@ export default function Header({ showBackButton = false, title }: HeaderProps) {
           {user ? (
             <Text style={styles.profileInitial}>{getUserInitial()}</Text>
           ) : (
-            <User size={28} color={COLORS.text.white} />
+            <Ionicons name="person-circle-outline" size={28} color={COLORS.text.white} />
           )}
         </TouchableOpacity>
       </View>

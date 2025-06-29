@@ -5,8 +5,8 @@ import { StatusBar } from 'expo-status-bar';
 import { COLORS } from './constants/colors';
 import { CartProvider } from './context/CartContext';
 import { UserProvider } from './context/UserContext';
-import { useCallback, useEffect } from 'react';
-import { useFonts, SpaceMono_400Regular } from '@expo-google-fonts/space-mono';
+import { useCallback } from 'react';
+import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { View } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -24,23 +24,17 @@ SplashScreen.preventAutoHideAsync();
 import { ExpoRoot } from 'expo-router';
 
 export default function App() {
-  const [fontsLoaded, fontError] = useFonts({
-    'SpaceMono-Regular': SpaceMono_400Regular,
+  const [fontsLoaded] = useFonts({
+    'SpaceMono-Regular': require('./assets/fonts/SpaceMono-Regular.ttf'),
   });
 
   const onLayoutRootView = useCallback(async () => {
-    if (fontsLoaded || fontError) {
+    if (fontsLoaded) {
       await SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [fontsLoaded]);
 
-  useEffect(() => {
-    if (fontsLoaded || fontError) {
-      onLayoutRootView();
-    }
-  }, [fontsLoaded, fontError, onLayoutRootView]);
-
-  if (!fontsLoaded && !fontError) {
+  if (!fontsLoaded) {
     return null;
   }
 
