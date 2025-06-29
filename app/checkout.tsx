@@ -11,7 +11,6 @@ import {
   Platform,
   TouchableWithoutFeedback,
 } from 'react-native';
-import * as Linking from 'expo-linking';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../constants/colors';
@@ -28,18 +27,10 @@ import AddressAutocomplete from '../components/AddressAutocomplete';
 import DeliveryScheduler from '../components/DeliveryScheduler';
 
 import { sendOrderConfirmationEmail } from '../utils/email';
-import { createPayPalOrder, capturePayPalPayment } from '../utils/paypal';
-import { convertZARtoUSD } from '../utils/currency';
 import { initiatePayFastPayment } from '../utils/payfast';
 import { initiatePayFastPaymentDev } from '../utils/payfast-dev';
 
-type PaymentMethod =
-  | 'cash_on_delivery'
-  | 'card_on_delivery'
-  | 'card'
-  | 'payfast'
-  | 'paypal'
-  | 'eft';
+type PaymentMethod = 'cash_on_delivery' | 'card_on_delivery' | 'card' | 'payfast' | 'eft';
 type TimeSlot = 'morning' | 'afternoon' | 'evening';
 
 export default function CheckoutScreen() {
@@ -48,7 +39,6 @@ export default function CheckoutScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash_on_delivery');
-  const [paypalOrderId, setPaypalOrderId] = useState<string | null>(null);
 
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -69,7 +59,6 @@ export default function CheckoutScreen() {
       card_on_delivery: 'Card on Delivery',
       card: 'Card Payment',
       payfast: 'PayFast',
-      paypal: 'PayPal',
       eft: 'EFT / Bank Transfer',
     };
     return names[method] || 'Unknown';
@@ -180,88 +169,13 @@ export default function CheckoutScreen() {
     completeOrderRef.current = completeOrder;
   });
 
-  const handlePayPalCancel = useCallback(() => {
-    setLoading(false);
-    Toast.show({ type: 'info', text1: 'Payment Cancelled', position: 'bottom' });
-  }, []);
-
-  const handlePayPalSuccess = useCallback(async () => {
-    await AsyncStorage.removeItem('paypalOrderId');
-    Toast.show({ type: 'success', text1: 'Payment Successful!', position: 'bottom' });
-    await completeOrderRef.current('paypal');
-  }, []);
-
-  useEffect(() => {
-    const handleDeepLink = async ({ url }: { url: string }) => {
-      if (url.includes('paypal-cancel')) {
-        handlePayPalCancel();
-        await AsyncStorage.removeItem('paypalOrderId');
-        return;
-      }
-      if (url.includes('paypal-success')) {
-        setLoading(true);
-        const parsedUrl = Linking.parse(url);
-        const orderId =
-          (parsedUrl.queryParams?.token as string) || (await AsyncStorage.getItem('paypalOrderId'));
-        if (orderId) {
-          try {
-            await capturePayPalPayment(orderId);
-            await handlePayPalSuccess();
-          } catch (error) {
-            console.error('PayPal processing error:', error);
-            handlePayPalCancel();
-          } finally {
-            await AsyncStorage.removeItem('paypalOrderId');
-            setLoading(false);
-          }
-        } else {
-          handlePayPalCancel();
-          setLoading(false);
-        }
-      }
-    };
-
-    const subscription = Linking.addEventListener('url', handleDeepLink);
-    Linking.getInitialURL().then((url) => {
-      if (url) {
-        handleDeepLink({ url });
-      }
-    });
-    return () => subscription.remove();
-  }, [handlePayPalSuccess, handlePayPalCancel]);
-
   const handlePlaceOrder = async () => {
     if (!isFormValid()) {
       Alert.alert('Incomplete Information', 'Please fill in your name, phone, and address.');
       return;
     }
-    if (paymentMethod === 'paypal') {
-      try {
-        setLoading(true);
-        // Convert the total amount from ZAR to USD for PayPal processing.
-        const amountInUSD = await convertZARtoUSD(totalPrice + 50);
-        const createdOrderId = await createPayPalOrder(amountInUSD, 'USD');
-
-        if (createdOrderId) {
-          setPaypalOrderId(createdOrderId);
-          await AsyncStorage.setItem('paypalOrderId', createdOrderId);
-          const approvalUrl = `https://www.sandbox.paypal.com/checkoutnow?token=${createdOrderId}`;
-          await Linking.openURL(approvalUrl);
-          // The loading state will be handled by the deep link callbacks, so we don't turn it off here.
-        } else {
-          Toast.show({
-            type: 'error',
-            text1: 'PayPal Error',
-            text2: 'Could not create PayPal order. Please try again.',
-          });
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error('PayPal order creation failed:', error);
-        Alert.alert('Error', 'Could not connect to PayPal. Please try again.');
-        setLoading(false);
-      }
-    } else if (paymentMethod === 'payfast') {
+    
+    if (paymentMethod === 'payfast') {
       try {
         setLoading(true);
         
@@ -290,7 +204,12 @@ export default function CheckoutScreen() {
         } else if (result.redirectUrl) {
           // Store order data for completion after payment
           const orderData = {
-            items: orderItems,
+            items: items.map((item) => ({
+              productId: item.product.id,
+              productName: item.product.name,
+              quantity: item.quantity,
+              price: item.product.price,
+            })),
             totalAmount: totalPrice + 50,
             status: 'pending' as const,
             paymentMethod: 'payfast' as const,
@@ -330,13 +249,12 @@ export default function CheckoutScreen() {
     );
   }
 
-  // Add descriptions for each payment method
+  // Payment method descriptions
   const paymentMethodDescriptions: Record<PaymentMethod, string> = {
     cash_on_delivery: 'Pay the driver in cash when your order arrives.',
     card_on_delivery: 'Pay with your debit or credit card using our mobile POS on delivery.',
     card: 'Pay online with your debit or credit card.',
     payfast: 'Pay securely online via PayFast - South Africa\'s leading payment processor.',
-    paypal: 'Pay securely online with your PayPal account or card.',
     eft: 'Transfer funds directly from your bank. Proof of payment required.',
   };
 
@@ -395,7 +313,7 @@ export default function CheckoutScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Payment Method</Text>
               <View style={styles.paymentOptions}>
-                {(['cash_on_delivery', 'card_on_delivery', 'paypal', 'payfast', 'eft'] as PaymentMethod[]).map(
+                {(['cash_on_delivery', 'card_on_delivery', 'payfast', 'eft'] as PaymentMethod[]).map(
                   (method) => (
                     <TouchableOpacity
                       key={method}
@@ -409,15 +327,13 @@ export default function CheckoutScreen() {
                       <View style={styles.paymentCardIconRow}>
                         <Ionicons
                           name={
-                            method === 'paypal'
-                              ? 'logo-paypal'
-                              : method === 'eft'
-                                ? 'newspaper-outline'
-                                : method === 'payfast'
-                                  ? 'card'
-                                  : method === 'card_on_delivery'
-                                    ? 'card-outline'
-                                    : 'cash-outline'
+                            method === 'eft'
+                              ? 'newspaper-outline'
+                              : method === 'payfast'
+                                ? 'card'
+                                : method === 'card_on_delivery'
+                                  ? 'card-outline'
+                                  : 'cash-outline'
                           }
                           size={28}
                           color={paymentMethod === method ? COLORS.primary : COLORS.text.gray}
@@ -463,15 +379,6 @@ export default function CheckoutScreen() {
                   <Text style={styles.eftText}>
                     Please have your card ready. Our driver will have a mobile POS machine for
                     payment upon arrival.
-                  </Text>
-                </View>
-              )}
-
-              {paymentMethod === 'paypal' && (
-                <View style={styles.eftDetailsContainer}>
-                  <Text style={styles.eftTitle}>PayPal Payment</Text>
-                  <Text style={styles.eftText}>
-                    You will be redirected to PayPal to complete your payment securely online.
                   </Text>
                 </View>
               )}
