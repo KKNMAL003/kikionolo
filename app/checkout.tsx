@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback,
+  Linking,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -91,7 +92,13 @@ export default function CheckoutScreen() {
         price: item.product.price,
       }));
       const deliverySchedule = formatDeliverySchedule();
+      
+      if (!user) {
+        throw new Error('User is not authenticated');
+      }
+      
       const orderData = {
+        userId: user.id, // Make sure user ID is included for RLS
         customerName: formData.name,
         customerEmail: formData.email,
         customerPhone: formData.phone,
@@ -101,6 +108,8 @@ export default function CheckoutScreen() {
         items: orderItems,
         notes: formData.notes,
         deliverySchedule,
+        deliveryDate: selectedDate.toISOString().split('T')[0],
+        preferredDeliveryWindow: selectedTimeSlot,
       };
 
       console.log('Creating order with data:', orderData);
@@ -190,7 +199,7 @@ export default function CheckoutScreen() {
           itemDescription: `Gas delivery order with ${items.length} item(s)`,
         };
 
-        // Use development version in dev mode
+        // Use production version in production mode
         const result = __DEV__ 
           ? await initiatePayFastPaymentDev(paymentData)
           : await initiatePayFastPayment(paymentData);
@@ -220,6 +229,8 @@ export default function CheckoutScreen() {
             customerPhone: formData.phone,
             customerEmail: formData.email,
             notes: formData.notes,
+            deliveryDate: selectedDate.toISOString().split('T')[0],
+            preferredDeliveryWindow: selectedTimeSlot,
           };
           
           // Store order data in AsyncStorage for completion after payment

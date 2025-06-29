@@ -8,9 +8,9 @@ import { Platform } from 'react-native';
  */
 
 const PAYFAST_TESTING_CONFIG = {
-  merchantId: '10040008',
-  merchantKey: 'ph5ub7pps68v2',
-  saltPassphrase: 'gasmeupalready19',
+  merchantId: '30596897',
+  merchantKey: 'ygodvejftqxd4',
+  saltPassphrase: 'G4smeupalready',
   sandboxUrl: 'https://sandbox.payfast.co.za/eng/process',
 };
 
@@ -155,28 +155,28 @@ export function validatePayFastConfig() {
   const config = PAYFAST_TESTING_CONFIG;
   const issues: string[] = [];
   
-  if (!config.merchantId || config.merchantId === 'your_merchant_id') {
-    issues.push('Merchant ID not configured');
+  if (!config.merchantId || config.merchantId === '10040008') {
+    issues.push('Using test Merchant ID instead of production value');
   }
   
-  if (!config.merchantKey || config.merchantKey === 'your_merchant_key') {
-    issues.push('Merchant Key not configured');
+  if (!config.merchantKey || config.merchantKey === 'ph5ub7pps68v2') {
+    issues.push('Using test Merchant Key instead of production value');
   }
   
-  if (!config.saltPassphrase) {
-    issues.push('Salt Passphrase not configured');
+  if (!config.saltPassphrase || config.saltPassphrase === 'gasmeupalready19') {
+    issues.push('Using test Salt Passphrase instead of production value');
   }
   
   const isValid = issues.length === 0;
   
-  console.log('PayFast Configuration Validation:');
+  console.log('PayFast Production Configuration Validation:');
   console.log('Valid:', isValid);
   console.log('Issues:', issues);
   
   Toast.show({
     type: isValid ? 'success' : 'error',
     text1: 'PayFast Config',
-    text2: isValid ? 'Configuration valid' : `Issues: ${issues.join(', ')}`,
+    text2: isValid ? 'Production configuration valid' : `Issues: ${issues.join(', ')}`,
     position: 'bottom',
     visibilityTime: 4000,
   });
@@ -188,7 +188,7 @@ export function validatePayFastConfig() {
 export const PayFastDevUtils = {
   simulatePayment: initiatePayFastPaymentDev,
   advancedTest: initiatePayFastPaymentAdvancedTest,
-  testSignature: testPayFastSignature,
+  testSignature: testSignatureGeneration,
   validateConfig: validatePayFastConfig,
   createNgrokUrls: createNgrokTestUrls,
 };

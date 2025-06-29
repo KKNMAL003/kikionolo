@@ -2,16 +2,16 @@ import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';
 import CryptoJS from 'crypto-js';
 
-// PayFast configuration for testing
+// PayFast configuration for production
 const PAYFAST_CONFIG = {
-  // Sandbox credentials for testing
-  merchantId: '10040008',
-  merchantKey: 'ph5ub7pps68v2',
-  saltPassphrase: 'gasmeupalready19',
-  sandboxUrl: 'https://sandbox.payfast.co.za/eng/process',
+  // Production credentials
+  merchantId: '30596897',
+  merchantKey: 'ygodvejftqxd4',
+  saltPassphrase: 'G4smeupalready',
   productionUrl: 'https://www.payfast.co.za/eng/process',
-  // Always use sandbox for testing
-  useSandbox: true,
+  sandboxUrl: 'https://sandbox.payfast.co.za/eng/process',
+  // Set to false for production transactions
+  useSandbox: false,
 };
 
 export interface PayFastPaymentData {
@@ -87,22 +87,24 @@ function generateSignature(data: Record<string, string | number>, passphrase?: s
   return signature;
 }
 
-// Get testing URLs that work with the current environment
-function getPayFastTestingUrls() {
-  // For testing, we'll use a public testing service
-  // You can replace this with your own webhook.site URL
-  const webhookSiteId = 'unique-test-id-' + Date.now();
+// Get appropriate URLs based on environment
+function getPayFastUrls(orderId: string) {
+  // Get host URL for app - use Platform.OS to determine approach
+  let baseUrl = '';
   
-  // Alternative: Use httpbin.org for testing
-  const testingUrls = {
-    returnUrl: `https://httpbin.org/redirect-to?url=${encodeURIComponent('https://webhook.site/' + webhookSiteId + '/success')}`,
-    cancelUrl: `https://httpbin.org/redirect-to?url=${encodeURIComponent('https://webhook.site/' + webhookSiteId + '/cancel')}`,
-    notifyUrl: `https://webhook.site/${webhookSiteId}/notify`,
+  // For a production app
+  if (Platform.OS === 'web') {
+    baseUrl = window.location.origin;
+  } else {
+    // For mobile apps, generate a valid URL structure
+    baseUrl = 'https://app.onologroup.com';
+  }
+  
+  return {
+    returnUrl: `${baseUrl}/payfast-success?orderId=${orderId}`,
+    cancelUrl: `${baseUrl}/payfast-cancel?orderId=${orderId}`,
+    notifyUrl: `${baseUrl}/api/payfast-notify`,
   };
-
-  console.log('Using testing URLs:', testingUrls);
-  
-  return testingUrls;
 }
 
 // Create PayFast payment URL with exact field names and validation
@@ -125,8 +127,8 @@ export function createPayFastPayment(orderData: {
   const firstName = nameParts[0] || 'Customer';
   const lastName = nameParts.slice(1).join(' ') || 'User';
 
-  // Get testing URLs
-  const { returnUrl, cancelUrl, notifyUrl } = getPayFastTestingUrls();
+  // Get appropriate URLs based on environment
+  const { returnUrl, cancelUrl, notifyUrl } = getPayFastUrls(orderData.orderId);
 
   // Prepare payment data with EXACT field names required by PayFast
   const paymentData: Record<string, string | number> = {
@@ -273,7 +275,7 @@ export async function initiatePayFastPayment(orderData: {
   customerPhone?: string;
   itemName: string;
   itemDescription?: string;
-}): Promise<boolean> {
+}): Promise<{success: boolean; redirectUrl?: string}> {
   try {
     console.log('=== Initiating PayFast Payment ===');
     
@@ -300,43 +302,33 @@ export async function initiatePayFastPayment(orderData: {
     }
     
     console.log('PayFast payment initiated successfully');
-    return true;
+    return { success: true, redirectUrl: paymentUrl };
   } catch (error) {
     console.error('Error initiating PayFast payment:', error);
-    return false;
+    return { success: false };
   }
 }
 
-// Get PayFast configuration for debugging
-export function getPayFastConfig() {
-  return {
-    ...PAYFAST_CONFIG,
-    // Don't expose sensitive keys in logs
-    merchantKey: PAYFAST_CONFIG.merchantKey ? '***' + PAYFAST_CONFIG.merchantKey.slice(-4) : 'Not set',
-    saltPassphrase: PAYFAST_CONFIG.saltPassphrase ? '***' : 'Not set',
-  };
-}
-
-// Test signature generation with known values
+// Test signature generation with known values (only used for testing)
 export function testSignatureGeneration() {
   console.log('=== Testing PayFast Signature Generation ===');
   
-  // Test with PayFast's example data
+  // Test with production credentials
   const testData = {
-    merchant_id: '10040008',
-    merchant_key: 'ph5ub7pps68v2',
-    return_url: 'https://example.com/return',
-    cancel_url: 'https://example.com/cancel',
-    notify_url: 'https://example.com/notify',
-    name_first: 'John',
-    name_last: 'Doe',
+    merchant_id: PAYFAST_CONFIG.merchantId,
+    merchant_key: PAYFAST_CONFIG.merchantKey,
+    return_url: 'https://app.onologroup.com/payfast-success',
+    cancel_url: 'https://app.onologroup.com/payfast-cancel',
+    notify_url: 'https://app.onologroup.com/api/payfast-notify',
+    name_first: 'Test',
+    name_last: 'Customer',
     email_address: 'test@example.com',
-    m_payment_id: 'TEST123',
+    m_payment_id: 'TEST-' + Date.now(),
     amount: 100.00,
-    item_name: 'Test Item',
+    item_name: 'Test Payment',
   };
   
-  const signature = generateSignature(testData, 'gasmeupalready19');
+  const signature = generateSignature(testData, PAYFAST_CONFIG.saltPassphrase);
   console.log('Test signature result:', signature);
   console.log('=== End Test ===');
   

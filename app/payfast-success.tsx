@@ -41,7 +41,10 @@ export default function PayFastSuccessScreen() {
             const orderData = JSON.parse(pendingOrderData);
             
             // Create the order in the system
-            const newOrder = await createOrder(orderData);
+            const newOrder = await createOrder({
+              ...orderData,
+              paymentMethod: 'payfast', // Ensure correct payment method
+            });
             setOrderCreated(true);
             
             // Clear the pending order data
@@ -249,7 +252,7 @@ const styles = StyleSheet.create({
   debugText: {
     color: COLORS.text.gray,
     fontSize: 12,
-    fontFamily: 'monospace',
+    fontFamily: Platform.OS === 'android' ? 'monospace' : 'Courier',
     marginBottom: 4,
   },
   processingText: {
