@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { COLORS } from '../../constants/colors';
-import { useUser } from '../../context/UserContext';
+import { useOrders } from '../../contexts/OrdersContext';
 import Header from '../../components/Header';
 import OrderStatusTracker from '../../components/OrderStatusTracker';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,7 +13,7 @@ import Toast from 'react-native-toast-message';
 export default function OrderDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { getOrderById, cancelOrder } = useUser();
+  const { getOrderById, cancelOrder } = useOrders();
 
   const order = getOrderById(id);
 

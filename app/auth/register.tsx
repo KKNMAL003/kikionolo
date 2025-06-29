@@ -15,14 +15,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../../constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useUser } from '../../context/UserContext';
+import { useAuth } from '../../contexts/AuthContext';
 import CustomTextInput from '../../components/CustomTextInput';
 import Button from '../../components/Button';
 import Toast from 'react-native-toast-message';
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { register, isLoading } = useUser();
+  const { register, isLoading } = useAuth();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');

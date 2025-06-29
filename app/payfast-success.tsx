@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
-import { useUser } from '../context/UserContext';
+import { useOrders } from '../contexts/OrdersContext';
 import { useCart } from '../context/CartContext';
 import Toast from 'react-native-toast-message';
 import { sendOrderConfirmationEmail } from '../utils/email';
@@ -12,7 +12,7 @@ import Button from '../components/Button';
 export default function PayFastSuccessScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { addOrder } = useUser();
+  const { createOrder } = useOrders();
   const { clearCart } = useCart();
   const [isProcessing, setIsProcessing] = useState(true);
   const [orderCreated, setOrderCreated] = useState(false);
@@ -41,7 +41,7 @@ export default function PayFastSuccessScreen() {
             const orderData = JSON.parse(pendingOrderData);
             
             // Create the order in the system
-            const newOrder = await addOrder(orderData);
+            const newOrder = await createOrder(orderData);
             setOrderCreated(true);
             
             // Clear the pending order data

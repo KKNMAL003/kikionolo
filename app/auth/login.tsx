@@ -16,14 +16,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../../constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useUser } from '../../context/UserContext';
+import { useAuth } from '../../contexts/AuthContext';
 import CustomTextInput from '../../components/CustomTextInput';
 import Button from '../../components/Button';
 import Toast from 'react-native-toast-message';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login, loginAsGuest, isLoading } = useUser();
+  const { login, loginAsGuest, isLoading } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
