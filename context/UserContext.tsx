@@ -372,7 +372,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Set up safe message subscription
+  // Set up safe message subscription with improved error handling
   const setupUserMessageSubscription = async (userId: string) => {
     try {
       console.log('setupMessageSubscription: Setting up message subscription for user:', userId);
@@ -411,7 +411,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           }
         },
         (error) => {
-          console.error('setupMessageSubscription: Subscription error:', error);
+          // Only log critical errors, not timeouts or temporary connection issues
+          if (error?.message?.includes('timeout')) {
+            console.log('setupMessageSubscription: Connection timeout (will retry automatically)');
+          } else if (error?.message?.includes('mismatch')) {
+            console.warn('setupMessageSubscription: Schema mismatch - this may indicate a database configuration issue');
+          } else {
+            console.warn('setupMessageSubscription: Subscription issue:', error?.message || error);
+          }
         }
       );
 
@@ -419,10 +426,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         messageSubscriptionRef.current = subscription;
         console.log('setupMessageSubscription: Message subscription setup completed');
       } else {
-        console.warn('setupMessageSubscription: Failed to create subscription');
+        console.log('setupMessageSubscription: Failed to create subscription (will work without real-time updates)');
       }
     } catch (error) {
-      console.error('setupMessageSubscription: Error setting up subscription:', error);
+      console.log('setupMessageSubscription: Error setting up subscription (app will work without real-time messages):', error);
     }
   };
 
