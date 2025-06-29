@@ -194,7 +194,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     error: null,
   });
 
-  // Refs to track subscription state
+  // Refs for subscription management
   const messageChannelRef = useRef<any>(null);
   const isSubscribedRef = useRef(false);
 
@@ -330,111 +330,85 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Load user messages from Supabase
-  const loadUserMessages = useCallback(async () => {
-    if (!session?.user || !supabaseConnected) {
-      console.log('Cannot load messages: no user session or Supabase not connected');
+  // Setup message subscription
+  const setupMessageSubscription = useCallback(async () => {
+    // Validate prerequisites
+    if (!session?.user?.id) {
+      console.log('No user session available for message subscription');
       return;
     }
 
-    try {
-      console.log('Loading messages for user:', session.user.id);
-
-      const { data: messagesData, error } = await supabase
-        .from('communication_logs')
-        .select('*')
-        .eq('customer_id', session.user.id)
-        .in('log_type', ['user_message', 'staff_message', 'order_status_update'])
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching messages:', error);
-        return;
-      }
-
-      if (messagesData) {
-        console.log('Loaded messages from Supabase:', messagesData.length);
-        setMessages(messagesData);
-        
-        // Count unread messages
-        const unreadCount = messagesData.filter(msg => 
-          !msg.is_read && msg.sender_type === 'staff'
-        ).length;
-        setUnreadMessagesCount(unreadCount);
-      }
-    } catch (error: any) {
-      console.error('Error loading user messages:', error.message);
-    }
-  }, [session?.user?.id, supabaseConnected]);
-
-  // Set up message subscription
-  const setupMessageSubscription = useCallback(async () => {
-    // Clean up existing subscription first
-    if (messageChannelRef.current) {
-      console.log('Cleaning up existing message subscription');
-      try {
-        await supabase.removeChannel(messageChannelRef.current);
-      } catch (error) {
-        console.warn('Error removing existing channel:', error);
-      }
-      messageChannelRef.current = null;
-      isSubscribedRef.current = false;
+    if (!supabaseConnected) {
+      console.log('Supabase not connected, skipping message subscription');
+      return;
     }
 
-    // Only set up subscription if we have a user and Supabase is connected
-    if (!session?.user?.id || !supabaseConnected || isSubscribedRef.current) {
-      console.log('Message subscription setup skipped:', {
-        hasUser: !!session?.user?.id,
-        supabaseConnected,
-        alreadySubscribed: isSubscribedRef.current
-      });
+    if (isSubscribedRef.current) {
+      console.log('Already subscribed to messages, skipping duplicate subscription');
       return;
     }
 
     try {
       console.log('Setting up message subscription for user:', session.user.id);
 
+      // Clean up existing subscription if any
+      if (messageChannelRef.current) {
+        console.log('Cleaning up existing message subscription');
+        await supabase.removeChannel(messageChannelRef.current);
+        messageChannelRef.current = null;
+      }
+
+      // Create new channel for messages
       const channel = supabase
         .channel(`messages:${session.user.id}`)
         .on(
           'postgres_changes',
           {
-            event: '*',
+            event: 'INSERT',
             schema: 'public',
             table: 'communication_logs',
             filter: `customer_id=eq.${session.user.id}`,
           },
           (payload) => {
-            console.log('Message subscription received:', payload);
-            
-            if (payload.eventType === 'INSERT' && payload.new) {
+            console.log('New message received:', payload.new);
+            if (payload.new) {
               const newMessage = payload.new as Message;
-              setMessages(prev => {
+              setMessages((prevMessages) => {
                 // Avoid duplicates
-                if (prev.find(msg => msg.id === newMessage.id)) {
-                  return prev;
+                if (prevMessages.find((msg) => msg.id === newMessage.id)) {
+                  return prevMessages;
                 }
-                return [...prev, newMessage].sort(
-                  (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                return [...prevMessages, newMessage].sort(
+                  (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
                 );
               });
 
-              // Update unread count if it's from staff
-              if (newMessage.sender_type === 'staff' && !newMessage.is_read) {
-                setUnreadMessagesCount(prev => prev + 1);
-              }
-            } else if (payload.eventType === 'UPDATE' && payload.new) {
-              const updatedMessage = payload.new as Message;
-              setMessages(prev => 
-                prev.map(msg => msg.id === updatedMessage.id ? updatedMessage : msg)
-              );
-
-              // Update unread count
-              if (updatedMessage.is_read && updatedMessage.sender_type === 'staff') {
-                setUnreadMessagesCount(prev => Math.max(0, prev - 1));
+              // Update unread count if message is not from user
+              if (newMessage.sender_type !== 'customer' && !newMessage.is_read) {
+                setUnreadMessagesCount((prev) => prev + 1);
               }
             }
-          }
+          },
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'communication_logs',
+            filter: `customer_id=eq.${session.user.id}`,
+          },
+          (payload) => {
+            console.log('Message updated:', payload.new);
+            if (payload.new) {
+              const updatedMessage = payload.new as Message;
+              setMessages((prevMessages) =>
+                prevMessages.map((msg) =>
+                  msg.id === updatedMessage.id ? updatedMessage : msg,
+                ),
+              );
+            }
+          },
         )
         .subscribe((status) => {
           console.log('Message subscription status:', status);
@@ -448,10 +422,144 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         });
 
       messageChannelRef.current = channel;
-      
     } catch (error: any) {
-      console.error('Error setting up message subscription:', error.message);
+      console.error('Error setting up message subscription:', error?.message || 'undefined');
       isSubscribedRef.current = false;
+    }
+  }, [session?.user?.id, supabaseConnected]);
+
+  // Load user messages from Supabase
+  const loadUserMessages = useCallback(async () => {
+    if (!session?.user?.id || !supabaseConnected) {
+      console.log('Cannot load messages: no user session or Supabase not connected');
+      return;
+    }
+
+    try {
+      console.log('Loading messages for user:', session.user.id);
+
+      const { data: messagesData, error } = await supabase
+        .from('communication_logs')
+        .select('*')
+        .eq('customer_id', session.user.id)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error loading messages:', error);
+        return;
+      }
+
+      if (messagesData) {
+        console.log('Loaded messages:', messagesData.length);
+        setMessages(messagesData as Message[]);
+
+        // Count unread messages
+        const unreadCount = messagesData.filter(
+          (msg) => !msg.is_read && msg.sender_type !== 'customer',
+        ).length;
+        setUnreadMessagesCount(unreadCount);
+      }
+    } catch (error: any) {
+      console.error('Error loading messages:', error.message);
+    }
+  }, [session?.user?.id, supabaseConnected]);
+
+  // Send message function
+  const sendMessage = useCallback(
+    async (content: string) => {
+      if (!session?.user?.id || !supabaseConnected) {
+        throw new Error('Cannot send message: not authenticated or not connected');
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('communication_logs')
+          .insert({
+            user_id: session.user.id,
+            customer_id: session.user.id,
+            log_type: 'user_message',
+            subject: content,
+            message: content,
+            sender_type: 'customer',
+            is_read: true, // User's own messages are considered read
+          })
+          .select()
+          .single();
+
+        if (error) {
+          throw new Error(`Failed to send message: ${error.message}`);
+        }
+
+        console.log('Message sent successfully:', data);
+      } catch (error: any) {
+        console.error('Error sending message:', error.message);
+        throw error;
+      }
+    },
+    [session?.user?.id, supabaseConnected],
+  );
+
+  // Mark message as read
+  const markMessageAsRead = useCallback(
+    async (messageId: string) => {
+      if (!session?.user?.id || !supabaseConnected) {
+        return;
+      }
+
+      try {
+        const { error } = await supabase
+          .from('communication_logs')
+          .update({ is_read: true })
+          .eq('id', messageId)
+          .eq('customer_id', session.user.id);
+
+        if (error) {
+          console.error('Error marking message as read:', error);
+          return;
+        }
+
+        // Update local state
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg.id === messageId ? { ...msg, is_read: true } : msg,
+          ),
+        );
+
+        // Update unread count
+        setUnreadMessagesCount((prev) => Math.max(0, prev - 1));
+      } catch (error: any) {
+        console.error('Error marking message as read:', error.message);
+      }
+    },
+    [session?.user?.id, supabaseConnected],
+  );
+
+  // Mark all messages as read
+  const markAllMessagesAsRead = useCallback(async () => {
+    if (!session?.user?.id || !supabaseConnected) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('communication_logs')
+        .update({ is_read: true })
+        .eq('customer_id', session.user.id)
+        .eq('is_read', false);
+
+      if (error) {
+        console.error('Error marking all messages as read:', error);
+        return;
+      }
+
+      // Update local state
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) => ({ ...msg, is_read: true })),
+      );
+
+      setUnreadMessagesCount(0);
+    } catch (error: any) {
+      console.error('Error marking all messages as read:', error.message);
     }
   }, [session?.user?.id, supabaseConnected]);
 
@@ -643,91 +751,23 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     } else if (!session?.user) {
       // If no authenticated user, try to load guest orders from AsyncStorage
       loadOrdersFromStorage();
+      // Clear messages for guest users
       setMessages([]);
       setUnreadMessagesCount(0);
     }
   }, [session?.user?.id, isLoading, loadUserOrders, loadUserMessages, setupMessageSubscription]);
 
-  // Cleanup subscription on unmount
+  // Cleanup subscriptions on unmount
   useEffect(() => {
     return () => {
       if (messageChannelRef.current) {
         console.log('Cleaning up message subscription on unmount');
         supabase.removeChannel(messageChannelRef.current);
+        messageChannelRef.current = null;
+        isSubscribedRef.current = false;
       }
     };
   }, []);
-
-  // Send message function
-  const sendMessage = async (content: string): Promise<void> => {
-    if (!session?.user || !supabaseConnected) {
-      throw new Error('Cannot send message: not authenticated or not connected');
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('communication_logs')
-        .insert({
-          customer_id: session.user.id,
-          user_id: session.user.id,
-          log_type: 'user_message',
-          subject: content,
-          message: content,
-          sender_type: 'customer',
-          is_read: false,
-        })
-        .select()
-        .single();
-
-      if (error) {
-        throw new Error(`Failed to send message: ${error.message}`);
-      }
-
-      console.log('Message sent successfully:', data);
-    } catch (error: any) {
-      console.error('Error sending message:', error.message);
-      throw error;
-    }
-  };
-
-  // Mark message as read
-  const markMessageAsRead = async (messageId: string): Promise<void> => {
-    if (!supabaseConnected) return;
-
-    try {
-      const { error } = await supabase
-        .from('communication_logs')
-        .update({ is_read: true })
-        .eq('id', messageId);
-
-      if (error) {
-        console.error('Error marking message as read:', error);
-      }
-    } catch (error: any) {
-      console.error('Error marking message as read:', error.message);
-    }
-  };
-
-  // Mark all messages as read
-  const markAllMessagesAsRead = async (): Promise<void> => {
-    if (!session?.user || !supabaseConnected) return;
-
-    try {
-      const { error } = await supabase
-        .from('communication_logs')
-        .update({ is_read: true })
-        .eq('customer_id', session.user.id)
-        .eq('is_read', false);
-
-      if (error) {
-        console.error('Error marking all messages as read:', error);
-      } else {
-        setUnreadMessagesCount(0);
-      }
-    } catch (error: any) {
-      console.error('Error marking all messages as read:', error.message);
-    }
-  };
 
   // Login function with enhanced error handling
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -1787,7 +1827,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     closePasswordModal,
     submitNewPassword,
     submitOtp,
-    // Message-related exports
+    // Message-related functions
     messages,
     unreadMessagesCount,
     sendMessage,
