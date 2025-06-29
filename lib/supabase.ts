@@ -146,10 +146,36 @@ export const testOrderCreation = async () => {
   try {
     console.log('Testing order creation...');
     
-    // Test with minimal required data based on your schema
+    // First create a temporary profile to satisfy foreign key constraints
+    const tempProfile = {
+      // Don't need to specify id as it's auto-generated
+      role: 'customer' as const,
+      first_name: 'Test',
+      last_name: 'User'
+    };
+
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .insert(tempProfile)
+      .select('id')
+      .single();
+
+    if (profileError) {
+      console.error('Failed to create temporary profile for test:', {
+        message: profileError.message,
+        details: profileError.details,
+        hint: profileError.hint,
+        code: profileError.code,
+      });
+      return false;
+    }
+
+    console.log('Temporary profile created for test:', profileData.id);
+
+    // Now test with valid user_id and customer_id
     const testOrder = {
-      user_id: '00000000-0000-0000-0000-000000000000', // Placeholder UUID
-      customer_id: '00000000-0000-0000-0000-000000000000', // Placeholder UUID
+      user_id: profileData.id,
+      customer_id: profileData.id,
       total_amount: 100.00,
       delivery_address: 'Test Address',
       delivery_phone: '+1234567890',
@@ -173,16 +199,24 @@ export const testOrderCreation = async () => {
         hint: error.hint,
         code: error.code,
       });
+      
+      // Clean up the temporary profile even if order creation failed
+      await supabase.from('profiles').delete().eq('id', profileData.id);
+      console.log('Temporary profile cleaned up after order creation failure');
+      
       return false;
     }
 
     console.log('Order creation test successful:', data);
     
-    // Clean up test order
+    // Clean up test order and temporary profile
     if (data?.id) {
       await supabase.from('orders').delete().eq('id', data.id);
       console.log('Test order cleaned up');
     }
+    
+    await supabase.from('profiles').delete().eq('id', profileData.id);
+    console.log('Temporary profile cleaned up');
     
     return true;
   } catch (error: any) {
