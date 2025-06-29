@@ -7,13 +7,13 @@ export default function App() {
   useEffect(() => {
     // Run connection diagnostics on app startup
     const testConnection = async () => {
-      console.log('Running Supabase connection diagnostics...');
       const success = await initializeConnectionTest();
       
       if (!success) {
-        console.error('⚠️  Connection issues detected. Check the console for details.');
+        console.warn('⚠️  Some connection issues detected. App functionality may be limited.');
+        console.warn('For full functionality, configure CORS in your Supabase project settings.');
       } else {
-        console.log('✅ Supabase connection is working properly');
+        console.log('🎉 Supabase connection is working properly');
       }
     };
     
@@ -22,8 +22,9 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <Text style={styles.debugText}>Check console for Supabase connection status</Text>
+      <Text style={styles.title}>Welcome to Your App!</Text>
+      <Text style={styles.subtitle}>Your Supabase-powered mobile application</Text>
+      <Text style={styles.debugText}>Check console for connection status</Text>
       <StatusBar style="auto" />
     </View>
   );
@@ -36,10 +37,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
   debugText: {
     marginTop: 10,
     fontSize: 12,
-    color: '#666',
+    color: '#999',
     textAlign: 'center',
   },
 });
