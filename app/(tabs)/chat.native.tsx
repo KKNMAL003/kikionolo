@@ -125,6 +125,7 @@ export default function ChatScreen() {
     // Filter messages for the active conversation date
     if (!activeConversationDate) return [];
     
+    // Create a processed copy to ensure we have unique client-side IDs
     return messages.filter((msg) => {
       try {
         // Validate date before processing
@@ -136,7 +137,11 @@ export default function ChatScreen() {
         console.warn('Error filtering message by date:', error);
         return false;
       }
-    });
+    }).map(msg => ({
+      ...msg,
+      // Ensure each message has a unique client-side key
+      _clientKey: msg.id + '-' + (msg._clientKey || uuidv4().substring(0, 8))
+    }));
   }, [messages, activeConversationDate]);
 
   const startNewChat = () => {
@@ -227,7 +232,7 @@ export default function ChatScreen() {
               <FlatList
                 ref={flatListRef}
                 data={currentChatMessages}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item) => item._clientKey || item.id}
                 contentContainerStyle={{ flexGrow: 1, padding: 16 }}
                 renderItem={({ item }) => <MessageBubble message={item} />}
                 ListEmptyComponent={

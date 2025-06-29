@@ -9,6 +9,7 @@ export interface Message {
   senderType: SenderType;
   isRead: boolean;
   createdAt: string;
+  _clientKey?: string; // Optional client-side key for React rendering
 }
 
 export type MessageType = 'user_message' | 'staff_message' | 'order_status_update';

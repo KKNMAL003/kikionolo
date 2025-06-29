@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { messageService } from '../services/messages/MessageService';
 import { useAuth } from './AuthContext';
-import type { Message, MessageFilters } from '../services/interfaces/IMessageService';
+import type { Message, MessageFilters, CreateMessageRequest } from '../services/interfaces/IMessageService';
 
 // Messages Context Types
 interface MessagesContextType {
@@ -10,7 +10,7 @@ interface MessagesContextType {
   isLoading: boolean;
   
   // Message methods
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (request: CreateMessageRequest) => Promise<void>;
   markAsRead: (messageId: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   refreshMessages: () => Promise<void>;
@@ -32,6 +32,7 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
   // Refs for cleanup
   const isMountedRef = useRef(true);
   const unsubscribeFuncsRef = useRef<Array<() => void>>([]);
+  const messagesMapRef = useRef<Map<string, Message>>(new Map()); // For tracking duplicate messages
 
   // Cleanup on unmount
   useEffect(() => {
@@ -72,7 +73,17 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
       });
       
       if (isMountedRef.current) {
-        setMessages(fetchedMessages);
+        // Update messages map for duplicate tracking
+        messagesMapRef.current.clear();
+        fetchedMessages.forEach(msg => {
+          messagesMapRef.current.set(msg.id, {
+            ...msg,
+            _clientKey: msg.id + '-' + Date.now() // Ensure unique keys for rendering
+          });
+        });
+        
+        // Set state with messages from map to ensure unique objects
+        setMessages(Array.from(messagesMapRef.current.values()));
         console.log(`MessagesContext: Loaded ${fetchedMessages.length} messages`);
       }
     } catch (error) {
@@ -111,7 +122,23 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
       if (!isMountedRef.current) return;
       
       console.log('MessagesContext: New message received:', message.id);
-      setMessages(prev => [message, ...prev]);
+      
+      setMessages(prev => {
+        // Check if we already have this message
+        if (prev.some(msg => msg.id === message.id)) {
+          return prev;
+        }
+        
+        // Add to messages map with client key
+        const enhancedMessage = {
+          ...message,
+          _clientKey: message.id + '-' + Date.now() // Ensure unique keys
+        };
+        messagesMapRef.current.set(message.id, enhancedMessage);
+        
+        // Return a new array with the message added
+        return [enhancedMessage, ...prev];
+      });
       
       // Update unread count if it's from staff and unread
       if (message.senderType === 'staff' && !message.isRead) {
@@ -124,13 +151,20 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
       if (!isMountedRef.current) return;
       
       console.log('MessagesContext: Message updated:', messageId, updates);
+      
       setMessages(prev => 
         prev.map(msg => 
           msg.id === messageId 
-            ? { ...msg, ...updates }
+            ? { ...msg, ...updates, _clientKey: msg._clientKey } // Preserve client key
             : msg
         )
       );
+      
+      // Update message in map
+      const existingMsg = messagesMapRef.current.get(messageId);
+      if (existingMsg) {
+        messagesMapRef.current.set(messageId, { ...existingMsg, ...updates });
+      }
       
       // Update unread count if read status changed
       if (updates.isRead !== undefined) {
@@ -157,25 +191,41 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
   }, [user, loadUnreadCount]);
 
   // Message methods
-  const sendMessage = useCallback(async (content: string): Promise<void> => {
+  const sendMessage = useCallback(async (request: CreateMessageRequest): Promise<void> => {
     if (!user || user.isGuest) {
       throw new Error('User not authenticated');
     }
 
     try {
-      console.log('MessagesContext: Sending message:', content);
+      console.log('MessagesContext: Sending message:', request);
       
-      await messageService.sendMessage({
-        userId: user.id,
-        subject: content,
-        message: content,
-        logType: 'user_message',
-        senderType: 'customer',
+      // Send message via service
+      const newMessage = await messageService.sendMessage(request);
+      
+      console.log('MessagesContext: Message sent successfully', newMessage);
+      
+      // Update local state with the new message (real-time handler will also be triggered)
+      setMessages(prev => {
+        // Check if we already have this message to avoid duplicates
+        if (prev.some(msg => msg.id === newMessage.id)) {
+          return prev;
+        }
+        
+        // Add client key to message
+        const enhancedMessage = {
+          ...newMessage,
+          _clientKey: newMessage.id + '-' + Date.now()
+        };
+        
+        // Update messages map
+        messagesMapRef.current.set(newMessage.id, enhancedMessage);
+        
+        // Return new array with message added at beginning
+        return [enhancedMessage, ...prev];
       });
       
-      console.log('MessagesContext: Message sent successfully');
-    } catch (error) {
-      console.error('MessagesContext: Error sending message:', error);
+    } catch (error: any) {
+      console.error('MessagesContext: Error sending message:', error.message);
       throw error;
     }
   }, [user]);
@@ -187,8 +237,27 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
       await messageService.markAsRead(messageId);
       
       console.log('MessagesContext: Message marked as read successfully');
-    } catch (error) {
-      console.error('MessagesContext: Error marking message as read:', error);
+      
+      // Update local state (real-time handler will also be triggered)
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === messageId 
+            ? { ...msg, isRead: true, _clientKey: msg._clientKey }
+            : msg
+        )
+      );
+      
+      // Update message in map
+      const existingMsg = messagesMapRef.current.get(messageId);
+      if (existingMsg) {
+        messagesMapRef.current.set(messageId, { ...existingMsg, isRead: true });
+      }
+      
+      // Recalculate unread count
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      
+    } catch (error: any) {
+      console.error('MessagesContext: Error marking message as read:', error.message);
       throw error;
     }
   }, []);
@@ -202,8 +271,22 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
       await messageService.markAllAsRead(user.id);
       
       console.log('MessagesContext: All messages marked as read successfully');
-    } catch (error) {
-      console.error('MessagesContext: Error marking all messages as read:', error);
+      
+      // Update local state
+      setMessages(prev => 
+        prev.map(msg => ({ ...msg, isRead: true, _clientKey: msg._clientKey }))
+      );
+      
+      // Update all messages in map
+      messagesMapRef.current.forEach((msg, id) => {
+        messagesMapRef.current.set(id, { ...msg, isRead: true });
+      });
+      
+      // Reset unread count
+      setUnreadCount(0);
+      
+    } catch (error: any) {
+      console.error('MessagesContext: Error marking all messages as read:', error.message);
       throw error;
     }
   }, [user]);
@@ -224,9 +307,16 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
       const dateMessages = await messageService.getMessagesByDate(user.id, date);
       
       console.log(`MessagesContext: Found ${dateMessages.length} messages for date ${date}`);
-      return dateMessages;
-    } catch (error) {
-      console.error('MessagesContext: Error getting messages by date:', error);
+      
+      // Add client keys for rendering
+      const enhancedMessages = dateMessages.map(msg => ({
+        ...msg,
+        _clientKey: msg.id + '-' + Date.now()
+      }));
+      
+      return enhancedMessages;
+    } catch (error: any) {
+      console.error('MessagesContext: Error getting messages by date:', error.message);
       return [];
     }
   }, [user]);
@@ -240,14 +330,18 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
       if (success) {
         // Remove from local state
         setMessages(prev => prev.filter(msg => msg.id !== messageId));
+        
+        // Remove from messages map
+        messagesMapRef.current.delete(messageId);
+        
         // Refresh unread count
         await loadUnreadCount();
         console.log('MessagesContext: Message deleted successfully');
       }
       
       return success;
-    } catch (error) {
-      console.error('MessagesContext: Error deleting message:', error);
+    } catch (error: any) {
+      console.error('MessagesContext: Error deleting message:', error.message);
       return false;
     }
   }, [loadUnreadCount]);

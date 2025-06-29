@@ -4,7 +4,7 @@ import { COLORS } from '../constants/colors';
 import type { Message } from '../services/interfaces/IMessageService';
 
 interface MessageBubbleProps {
-  message: Message;
+  message: Message & { _clientKey?: string };
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {

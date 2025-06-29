@@ -61,7 +61,7 @@ export class MessageService implements IMessageService {
       const formattedMessage = this.formatMessage(newMessage);
       console.log('MessageService: Message sent successfully:', formattedMessage.id);
       
-      // Emit message event to listeners
+      // Emit message event to listeners immediately after sending
       this.emitMessageReceived(formattedMessage);
       
       return formattedMessage;
@@ -154,7 +154,7 @@ export class MessageService implements IMessageService {
 
       console.log('MessageService: Message marked as read successfully:', messageId);
       
-      // Emit update event
+      // Emit update event to listeners
       this.emitMessageUpdated(messageId, { isRead: true });
     } catch (error: any) {
       console.error('MessageService: Error in markAsRead:', error);
