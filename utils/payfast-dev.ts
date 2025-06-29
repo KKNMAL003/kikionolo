@@ -1,6 +1,7 @@
 import * as Linking from 'expo-linking';
 import Toast from 'react-native-toast-message';
 import { Platform } from 'react-native';
+import { testSignatureGeneration } from './payfast';
 
 /**
  * Development-friendly PayFast integration
@@ -133,9 +134,6 @@ export function createNgrokTestUrls(ngrokUrl: string, orderId: string) {
 // Test signature generation with known values
 export function testPayFastSignature() {
   console.log('=== Testing PayFast Signature ===');
-  
-  // Import the actual signature function for testing
-  const { testSignatureGeneration } = require('./payfast');
   
   const result = testSignatureGeneration();
   
