@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { v4 as uuidv4 } from 'uuid';
@@ -36,8 +37,10 @@ export default function ChatScreen() {
     unreadCount, 
     markAsRead, 
     markAllAsRead, 
-    sendMessage 
+    sendMessage,
+    isLoading,
   } = useMessages();
+  
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [isLiveChatVisible, setLiveChatVisible] = useState(false);
@@ -70,8 +73,27 @@ export default function ChatScreen() {
     setInput('');
 
     try {
-      await sendMessage(messageContent);
+      if (!user.id) {
+        throw new Error('User ID is required to send a message');
+      }
+      
+      await sendMessage({
+        userId: user.id,
+        subject: messageContent,
+        message: messageContent,
+        logType: 'user_message',
+        senderType: 'customer'
+      });
+      
       console.log('Message sent successfully');
+      
+      // Scroll to bottom after a short delay to ensure new message is rendered
+      setTimeout(() => {
+        if (flatListRef.current) {
+          flatListRef.current.scrollToEnd({ animated: true });
+        }
+      }, 300);
+      
     } catch (error: any) {
       console.error('Error sending message:', error.message);
       // Restore input on error
@@ -81,27 +103,39 @@ export default function ChatScreen() {
     }
   };
 
+  // Safely filter and process dates
   const conversationDates = useMemo(() => {
     // Group messages by date for conversation history
     const dates = new Set<string>();
     messages.forEach((msg) => {
       // Validate date before processing
-      if (msg.createdAt && !isNaN(new Date(msg.createdAt).getTime())) {
-        dates.add(new Date(msg.createdAt).toISOString().split('T')[0]);
+      try {
+        if (msg.createdAt && !isNaN(new Date(msg.createdAt).getTime())) {
+          dates.add(new Date(msg.createdAt).toISOString().split('T')[0]);
+        }
+      } catch (error) {
+        console.warn('Invalid date in message:', error);
       }
     });
     return Array.from(dates).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
   }, [messages]);
 
+  // Safely filter messages by date
   const currentChatMessages = useMemo(() => {
     // Filter messages for the active conversation date
     if (!activeConversationDate) return [];
+    
     return messages.filter((msg) => {
-      // Validate date before processing
-      if (!msg.createdAt || isNaN(new Date(msg.createdAt).getTime())) {
+      try {
+        // Validate date before processing
+        if (!msg.createdAt || isNaN(new Date(msg.createdAt).getTime())) {
+          return false;
+        }
+        return new Date(msg.createdAt).toISOString().split('T')[0] === activeConversationDate;
+      } catch (error) {
+        console.warn('Error filtering message by date:', error);
         return false;
       }
-      return new Date(msg.createdAt).toISOString().split('T')[0] === activeConversationDate;
     });
   }, [messages, activeConversationDate]);
 
@@ -184,21 +218,30 @@ export default function ChatScreen() {
             style={{ flex: 1 }}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           >
-            <FlatList
-              ref={flatListRef}
-              data={currentChatMessages}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={{ flexGrow: 1, padding: 16 }}
-              renderItem={({ item }) => <MessageBubble message={item} />}
-              ListEmptyComponent={
-                <View style={styles.placeholder}>
-                  <Text style={styles.placeholderText}>
-                    Send a message to start the conversation with our support team.
-                  </Text>
-                </View>
-              }
-              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-            />
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={COLORS.primary} />
+                <Text style={styles.loadingText}>Loading messages...</Text>
+              </View>
+            ) : (
+              <FlatList
+                ref={flatListRef}
+                data={currentChatMessages}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={{ flexGrow: 1, padding: 16 }}
+                renderItem={({ item }) => <MessageBubble message={item} />}
+                ListEmptyComponent={
+                  <View style={styles.placeholder}>
+                    <Text style={styles.placeholderText}>
+                      Send a message to start the conversation with our support team.
+                    </Text>
+                  </View>
+                }
+                onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+                onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+              />
+            )}
+            
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.input}
@@ -297,6 +340,15 @@ const styles = StyleSheet.create({
   activeThreadButton: { backgroundColor: COLORS.primary },
   threadButtonText: { color: COLORS.text.white, fontSize: 12 },
 
+  loadingContainer: {
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center'
+  },
+  loadingText: {
+    color: COLORS.text.gray,
+    marginTop: 12,
+  },
   placeholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   placeholderText: { color: COLORS.text.gray, fontSize: 16, textAlign: 'center' },
 

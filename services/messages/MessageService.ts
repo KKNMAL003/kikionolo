@@ -61,6 +61,9 @@ export class MessageService implements IMessageService {
       const formattedMessage = this.formatMessage(newMessage);
       console.log('MessageService: Message sent successfully:', formattedMessage.id);
       
+      // Emit message event to listeners
+      this.emitMessageReceived(formattedMessage);
+      
       return formattedMessage;
     } catch (error: any) {
       console.error('MessageService: Error sending message:', error);
@@ -150,6 +153,9 @@ export class MessageService implements IMessageService {
       }
 
       console.log('MessageService: Message marked as read successfully:', messageId);
+      
+      // Emit update event
+      this.emitMessageUpdated(messageId, { isRead: true });
     } catch (error: any) {
       console.error('MessageService: Error in markAsRead:', error);
       throw error;
@@ -163,11 +169,12 @@ export class MessageService implements IMessageService {
     try {
       console.log('MessageService: Marking all messages as read for user:', userId);
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('communication_logs')
         .update({ is_read: true })
         .eq('customer_id', userId)
-        .eq('is_read', false);
+        .eq('is_read', false)
+        .select('id');
 
       if (error) {
         console.error('MessageService: Error marking all messages as read:', error);
@@ -175,6 +182,16 @@ export class MessageService implements IMessageService {
       }
 
       console.log('MessageService: All messages marked as read successfully');
+      
+      // Emit events for each updated message
+      if (data && data.length > 0) {
+        data.forEach(msg => {
+          this.emitMessageUpdated(msg.id, { isRead: true });
+        });
+      }
+      
+      // Update unread count
+      this.emitUnreadCountChanged(0);
     } catch (error: any) {
       console.error('MessageService: Error in markAllAsRead:', error);
       throw error;

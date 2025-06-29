@@ -1,15 +1,31 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { COLORS } from '../constants/colors';
-import type { Message } from '../context/UserContext';
+import type { Message } from '../services/interfaces/IMessageService';
 
 interface MessageBubbleProps {
   message: Message;
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
-  const isFromUser = message.sender_type === 'customer';
-  const isOrderUpdate = message.log_type === 'order_status_update';
+  // Handle potential invalid dates
+  const formattedTime = (() => {
+    try {
+      if (message.createdAt && !isNaN(new Date(message.createdAt).getTime())) {
+        return new Date(message.createdAt).toLocaleTimeString([], { 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        });
+      }
+      return '';
+    } catch (error) {
+      console.warn('Invalid date format:', error);
+      return '';
+    }
+  })();
+
+  const isFromUser = message.senderType === 'customer';
+  const isOrderUpdate = message.logType === 'order_status_update';
 
   if (isOrderUpdate) {
     return (
@@ -17,12 +33,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
         <View style={styles.orderUpdateBubble}>
           <Text style={styles.orderUpdateTitle}>📦 Order Update</Text>
           <Text style={styles.orderUpdateText}>{message.subject}</Text>
-          <Text style={styles.timestamp}>
-            {new Date(message.created_at).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </Text>
+          <Text style={styles.timestamp}>{formattedTime}</Text>
         </View>
       </View>
     );
@@ -35,15 +46,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
         isFromUser ? styles.userBubble : styles.staffBubble,
       ]}
     >
-      <Text style={styles.messageText}>{message.subject}</Text>
+      <Text style={styles.messageText}>{message.subject || message.message}</Text>
       <View style={styles.messageFooter}>
-        <Text style={styles.timestamp}>
-          {new Date(message.created_at).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
-        </Text>
-        {!message.is_read && !isFromUser && (
+        <Text style={styles.timestamp}>{formattedTime}</Text>
+        {!message.isRead && !isFromUser && (
           <View style={styles.unreadDot} />
         )}
       </View>

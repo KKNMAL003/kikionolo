@@ -8,6 +8,7 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../../constants/colors';
@@ -15,6 +16,7 @@ import Header from '../../components/Header';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMessages } from '../../contexts/MessagesContext';
 import { Ionicons } from '@expo/vector-icons';
+import MessageBubble from '../../components/MessageBubble';
 
 export default function ChatScreen() {
   const { user } = useAuth();
@@ -23,7 +25,8 @@ export default function ChatScreen() {
     sendMessage, 
     refreshMessages,
     markAllAsRead,
-    unreadCount 
+    unreadCount,
+    isLoading,
   } = useMessages();
   
   const [input, setInput] = React.useState('');
@@ -57,8 +60,27 @@ export default function ChatScreen() {
     setInput('');
 
     try {
-      await sendMessage(messageContent);
+      if (!user.id) {
+        throw new Error('User ID is required to send a message');
+      }
+      
+      await sendMessage({
+        userId: user.id,
+        subject: messageContent,
+        message: messageContent,
+        logType: 'user_message',
+        senderType: 'customer'
+      });
+      
       console.log('Message sent successfully');
+      
+      // Scroll to bottom after a short delay to ensure new message is rendered
+      setTimeout(() => {
+        if (flatListRef.current) {
+          flatListRef.current.scrollToOffset({ offset: 0, animated: true });
+        }
+      }, 300);
+      
     } catch (error: any) {
       console.error('Error sending message:', error.message);
       // Restore input on error
@@ -76,6 +98,22 @@ export default function ChatScreen() {
     }
   };
 
+  // Safely format timestamp
+  const formatTimestamp = (dateStr: string) => {
+    try {
+      if (!dateStr || isNaN(new Date(dateStr).getTime())) {
+        return '';
+      }
+      return new Date(dateStr).toLocaleTimeString([], { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+    } catch (error) {
+      console.warn('Error formatting timestamp:', error);
+      return '';
+    }
+  };
+
   const renderItem = ({ item }: { item: any }) => {
     // Safely format timestamp
     let timeString = '';
@@ -88,7 +126,7 @@ export default function ChatScreen() {
       }
     } catch (error) {
       console.warn('Error formatting message timestamp:', error);
-      timeString = 'Unknown time';
+      timeString = '';
     }
 
     return (
@@ -104,7 +142,7 @@ export default function ChatScreen() {
             <Text style={styles.orderUpdateLabel}>Order Update</Text>
           </View>
         )}
-        <Text style={styles.messageText}>{item.subject}</Text>
+        <Text style={styles.messageText}>{item.subject || item.message}</Text>
         <View style={styles.messageFooter}>
           <Text style={styles.timestamp}>{timeString}</Text>
           {!item.isRead && item.senderType === 'staff' && (
@@ -131,29 +169,36 @@ export default function ChatScreen() {
         style={styles.flex1}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.messagesList}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="chatbubbles-outline" size={64} color={COLORS.text.gray} />
-              <Text style={styles.emptyText}>
-                No messages yet. Send a message to start the conversation!
-              </Text>
-              <Text style={styles.emptySubtext}>
-                Our support team will respond as soon as possible.
-              </Text>
-            </View>
-          }
-          inverted={false}
-          // Data is already sorted by created_at desc in MessagesContext
-          showsVerticalScrollIndicator={false}
-          onRefresh={handleRefresh}
-          refreshing={false}
-        />
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.loadingText}>Loading messages...</Text>
+          </View>
+        ) : (
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={renderItem}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.messagesList}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Ionicons name="chatbubbles-outline" size={64} color={COLORS.text.gray} />
+                <Text style={styles.emptyText}>
+                  No messages yet. Send a message to start the conversation!
+                </Text>
+                <Text style={styles.emptySubtext}>
+                  Our support team will respond as soon as possible.
+                </Text>
+              </View>
+            }
+            inverted={false}
+            // Data is already sorted by created_at desc in MessagesContext
+            showsVerticalScrollIndicator={false}
+            onRefresh={handleRefresh}
+            refreshing={false}
+          />
+        )}
         
         <View style={styles.inputContainer}>
           <TextInput
@@ -210,6 +255,15 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontSize: 12,
     marginLeft: 4,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: COLORS.text.gray,
+    marginTop: 12,
   },
   messagesList: {
     padding: 16,
