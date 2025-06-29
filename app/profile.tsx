@@ -23,8 +23,8 @@ import Button from '../components/Button';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrders } from '../contexts/OrdersContext';
+import { useMessages } from '../contexts/MessagesContext';
 import { useNotifications } from '../contexts/NotificationsContext';
-import { ProfileUpdateProgress as IProfileUpdateProgress } from '../services/interfaces/IProfileService';
 import { NotificationsSettings } from '../components/settings/NotificationsSettings';
 import { PrivacySecuritySettings } from '../components/settings/PrivacySecuritySettings';
 import Toast from 'react-native-toast-message';
@@ -53,23 +53,45 @@ interface FormData {
   country: string;
 }
 
+interface ProfileUpdateProgress {
+  step: string;
+  status: 'pending' | 'inProgress' | 'completed' | 'error';
+  message?: string;
+  error?: string;
+}
+
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, logout, isAuthenticated } = useAuth();
-  const { orders, cancelOrder } = useOrders();
+  const {
+    user,
+    logout,
+    isAuthenticated,
+    refreshUser,
+  } = useAuth();
   const { 
-    notificationSettings, 
-    notificationPreferences, 
-    updateNotificationPreferences, 
-    registerForPushNotifications, 
-    fetchNotificationPreferences 
+    orders,
+    cancelOrder,
+    getOrderStats,
+  } = useOrders();
+  const { 
+    unreadCount,
+    markAllAsRead,
+  } = useMessages();
+  const {
+    notificationSettings,
+    notificationPreferences,
+    updateNotificationSettings,
+    updateNotificationPreferences,
+    updateBothSettings,
+    registerForPushNotifications,
+    refreshSettings,
   } = useNotifications();
-
+  
   const [activeTab, setActiveTab] = useState<TabType>('orders');
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
-  const [updateProgress, setUpdateProgress] = useState<IProfileUpdateProgress[]>([]);
+  const [updateProgress, setUpdateProgress] = useState<ProfileUpdateProgress[]>([]);
   const [formData, setFormData] = useState<FormData>({
     name: '',
     email: '',
@@ -96,7 +118,7 @@ export default function ProfileScreen() {
 
   // Update form data when user changes
   useEffect(() => {
-    if (user) {
+    if (user && !user.isGuest) {
       // Parse existing address or use empty values
       const existingAddress = user.address || '';
       const addressParts = parseAddress(existingAddress);
@@ -208,66 +230,6 @@ export default function ProfileScreen() {
     return true;
   }, [formData]);
 
-  // Simplified profile update function
-  const updateUserProfile = useCallback(async (profileData: any) => {
-    console.log('updateUserProfile: Starting profile update');
-    
-    const steps: IProfileUpdateProgress[] = [
-      { step: 'validation', status: 'pending' },
-      { step: 'database_update', status: 'pending' },
-      { step: 'cache_refresh', status: 'pending' },
-    ];
-
-    try {
-      // Start validation
-      steps[0].status = 'inProgress';
-      setUpdateProgress([...steps]);
-      
-      // Validate data
-      if (!profileData.name || !profileData.phone) {
-        steps[0].status = 'error';
-        steps[0].error = 'Name and phone are required';
-        setUpdateProgress([...steps]);
-        return { success: false, progress: steps, error: 'Validation failed' };
-      }
-      
-      steps[0].status = 'completed';
-      steps[1].status = 'inProgress';
-      setUpdateProgress([...steps]);
-
-      // Update database (placeholder for actual implementation)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      steps[1].status = 'completed';
-      steps[2].status = 'inProgress';
-      setUpdateProgress([...steps]);
-
-      // Cache refresh (placeholder)
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      steps[2].status = 'completed';
-      setUpdateProgress([...steps]);
-
-      Toast.show({
-        type: 'success',
-        text1: 'Profile Updated',
-        text2: 'Your profile has been updated successfully.',
-        position: 'bottom',
-      });
-
-      return { success: true, progress: steps };
-    } catch (error) {
-      console.error('Profile update error:', error);
-      const failedStepIndex = steps.findIndex(s => s.status === 'inProgress');
-      if (failedStepIndex >= 0) {
-        steps[failedStepIndex].status = 'error';
-        steps[failedStepIndex].error = 'Update failed';
-      }
-      setUpdateProgress([...steps]);
-      return { success: false, progress: steps, error: 'Update failed' };
-    }
-  }, []);
-
   // Simplified and more robust handleSaveProfile
   const handleSaveProfile = useCallback(async () => {
     console.log('handleSaveProfile: Starting profile update');
@@ -299,27 +261,40 @@ export default function ProfileScreen() {
         return;
       }
 
-      // Prepare cleaned data for submission - map form data to User interface
+      // Update progress
+      setUpdateProgress([
+        { step: 'validation', status: 'completed', message: 'Form validation passed' },
+        { step: 'updating_profile', status: 'inProgress', message: 'Updating profile...' },
+      ]);
+
+      // Prepare cleaned data for submission
       const cleanedData = {
-        name: formData.name.trim(),
-        email: formData.email.trim(),
+        first_name: formData.name.split(' ')[0]?.trim() || '',
+        last_name: formData.name.split(' ').slice(1).join(' ').trim() || '',
         phone: formData.phone.trim(),
         address: combineAddress(formData),
-        // Include individual address fields for validation
-        streetAddress: formData.streetAddress.trim(),
-        city: formData.city.trim(),
-        state: formData.state.trim(),
-        postalCode: formData.postalCode.trim(),
-        country: formData.country.trim(),
       };
 
       console.log('handleSaveProfile: Cleaned data prepared:', cleanedData);
 
-      // Call the simplified update function with better timeout handling
-      const result = await updateUserProfile(cleanedData);
+      // Update profile in Supabase
+      const { error } = await supabase
+        .from('profiles')
+        .update(cleanedData)
+        .eq('id', user?.id);
 
-      // Update progress state
-      setUpdateProgress(result.progress);
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      // Update progress
+      setUpdateProgress([
+        { step: 'validation', status: 'completed', message: 'Form validation passed' },
+        { step: 'updating_profile', status: 'completed', message: 'Profile updated successfully' },
+      ]);
+
+      // Refresh user data
+      await refreshUser();
 
       // Check if component is still mounted before updating state
       if (!isMountedRef.current) {
@@ -327,24 +302,25 @@ export default function ProfileScreen() {
         return;
       }
 
-      if (result.success) {
-        console.log('handleSaveProfile: Profile updated successfully.');
-        setIsEditing(false);
-        setShowProgress(false);
-      } else {
-        console.log('handleSaveProfile: Profile update failed:', result.error);
-
-        // Keep progress visible for user to see what went wrong
-        setTimeout(() => {
-          if (isMountedRef.current) {
-            setShowProgress(false);
-          }
-        }, 5000);
-      }
+      console.log('handleSaveProfile: Profile updated successfully.');
+      setIsEditing(false);
+      setShowProgress(false);
+      
+      Toast.show({
+        type: 'success',
+        text1: 'Profile Updated',
+        text2: 'Your profile has been updated successfully.',
+        position: 'bottom',
+      });
     } catch (error: any) {
       console.error('handleSaveProfile: Error caught in outer catch block:', error.message);
 
       if (isMountedRef.current) {
+        setUpdateProgress([
+          { step: 'validation', status: 'completed', message: 'Form validation passed' },
+          { step: 'updating_profile', status: 'error', error: error.message },
+        ]);
+
         setShowProgress(false);
 
         let errorMessage = 'An unexpected error occurred. Please try again.';
@@ -374,7 +350,7 @@ export default function ProfileScreen() {
       }
       console.log('handleSaveProfile: End of finally block.');
     }
-  }, [formData, updateUserProfile, validateForm, combineAddress, dismissKeyboard, isSaving]);
+  }, [formData, validateForm, combineAddress, dismissKeyboard, isSaving, user, refreshUser]);
 
   const handleCancelEdit = useCallback(() => {
     // Prevent canceling while saving
@@ -812,7 +788,7 @@ export default function ProfileScreen() {
   const handleUpdateSettings = async (updates: any) => {
     // Split settings
     const { notificationSettings: ns, notificationPreferences: np } = updates;
-    await updateNotificationPreferences(ns, np);
+    await updateBothSettings(ns, np);
     // If push notifications are enabled, register for push notifications
     if (ns.push) {
       await registerForPushNotifications();
@@ -837,6 +813,7 @@ export default function ProfileScreen() {
             securitySettings={user?.securitySettings}
             onBack={() => setSettingsScreen('main')}
             onUpdateSettings={handleUpdateSettings}
+            onChangePassword={handleSetUpTwoFactor}
             onSetUpTwoFactor={handleSetUpTwoFactor}
           />
         );
@@ -918,12 +895,12 @@ export default function ProfileScreen() {
     ]);
   };
 
-  // Add this at the top level of the component, after useState/useAuth declarations
+  // Add this at the top level of the component, after useState/useUser declarations
   useEffect(() => {
     if (settingsScreen === 'notifications') {
-      fetchNotificationPreferences();
+      refreshSettings();
     }
-  }, [settingsScreen, fetchNotificationPreferences]);
+  }, [settingsScreen, refreshSettings]);
 
   return (
     <SafeAreaView style={styles.container}>
