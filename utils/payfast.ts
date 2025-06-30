@@ -275,7 +275,7 @@ export async function initiatePayFastPayment(orderData: {
   customerPhone?: string;
   itemName: string;
   itemDescription?: string;
-}): Promise<{success: boolean; redirectUrl?: string}> {
+}): Promise<{ success: boolean; redirectUrl?: string }> {
   try {
     console.log('=== Initiating PayFast Payment ===');
     
@@ -287,19 +287,6 @@ export async function initiatePayFastPayment(orderData: {
     
     console.log('Opening PayFast payment URL...');
     console.log('PayFast URL:', paymentUrl);
-    
-    if (Platform.OS === 'web') {
-      // On web, open in the same window
-      window.location.href = paymentUrl;
-    } else {
-      // On mobile, open in external browser
-      const canOpen = await Linking.canOpenURL(paymentUrl);
-      if (canOpen) {
-        await Linking.openURL(paymentUrl);
-      } else {
-        throw new Error('Cannot open PayFast payment URL');
-      }
-    }
     
     console.log('PayFast payment initiated successfully');
     return { success: true, redirectUrl: paymentUrl };

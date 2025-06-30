@@ -4,6 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/colors';
 import { useOrders } from '../contexts/OrdersContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../context/CartContext';
 import Toast from 'react-native-toast-message';
 import { sendOrderConfirmationEmail } from '../utils/email';
@@ -12,6 +13,7 @@ import Button from '../components/Button';
 export default function PayFastSuccessScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { user } = useAuth();
   const { createOrder } = useOrders();
   const { clearCart } = useCart();
   const [isProcessing, setIsProcessing] = useState(true);
@@ -34,6 +36,19 @@ export default function PayFastSuccessScreen() {
         // Simulate processing time
         await new Promise(resolve => setTimeout(resolve, 1500));
 
+        if (!user || user.isGuest) {
+          console.error('User is not authenticated or is a guest');
+          Toast.show({
+            type: 'error',
+            text1: 'Authentication Error',
+            text2: 'You need to be logged in to complete your order.',
+            position: 'bottom',
+            visibilityTime: 5000,
+          });
+          setIsProcessing(false);
+          return;
+        }
+
         if (status === 'simulated' || status === 'COMPLETE' || status === 'advanced_test') {
           // Retrieve and complete the pending order
           const pendingOrderData = await AsyncStorage.getItem('@onolo_pending_order');
@@ -43,6 +58,7 @@ export default function PayFastSuccessScreen() {
             // Create the order in the system
             const newOrder = await createOrder({
               ...orderData,
+              userId: user.id, // Ensure user ID is included for RLS
               paymentMethod: 'payfast', // Ensure correct payment method
             });
             setOrderCreated(true);

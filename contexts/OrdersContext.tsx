@@ -144,7 +144,7 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
       
       console.log('OrdersContext: Order created successfully:', newOrder.id);
       return newOrder;
-    } catch (error) {
+    } catch (error: any) {
       console.error('OrdersContext: Error creating order:', error);
       throw error;
     } finally {
@@ -186,7 +186,7 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
       }
       
       return success;
-    } catch (error) {
+    } catch (error: any) {
       console.error('OrdersContext: Error cancelling order:', error);
       return false;
     }
