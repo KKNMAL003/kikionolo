@@ -30,7 +30,6 @@ import DeliveryScheduler from '../components/DeliveryScheduler';
 
 import { sendOrderConfirmationEmail } from '../utils/email';
 import { initiatePayFastPayment } from '../utils/payfast';
-import { initiatePayFastPaymentDev } from '../utils/payfast-dev';
 
 type PaymentMethod = 'cash_on_delivery' | 'card_on_delivery' | 'card' | 'payfast' | 'eft';
 type TimeSlot = 'morning' | 'afternoon' | 'evening';
@@ -199,10 +198,8 @@ export default function CheckoutScreen() {
           itemDescription: `Gas delivery order with ${items.length} item(s)`,
         };
 
-        // Use production version in production mode
-        const result = __DEV__ 
-          ? await initiatePayFastPaymentDev(paymentData)
-          : await initiatePayFastPayment(paymentData);
+        // Always use production PayFast - no more development simulation
+        const result = await initiatePayFastPayment(paymentData);
         
         if (!result.success) {
           Toast.show({
@@ -398,16 +395,8 @@ export default function CheckoutScreen() {
               {paymentMethod === 'payfast' && (
                 <View style={styles.eftDetailsContainer}>
                   <Text style={styles.eftTitle}>PayFast Payment</Text>
-                  {__DEV__ && (
-                    <Text style={styles.eftText}>
-                      <Text style={{ color: COLORS.primary }}>Development Mode:</Text> PayFast payment will be simulated for testing.
-                    </Text>
-                  )}
                   <Text style={styles.eftText}>
-                    {__DEV__ 
-                      ? 'In production, you will be redirected to PayFast to complete your payment securely.'
-                      : 'You will be redirected to PayFast to complete your payment securely. PayFast supports all major South African banks and payment methods.'
-                    }
+                    You will be redirected to PayFast to complete your payment securely. PayFast supports all major South African banks and payment methods.
                   </Text>
                 </View>
               )}
