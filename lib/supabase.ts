@@ -27,6 +27,65 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
+// Enhanced error handler for network requests
+const handleNetworkError = (error: any, context: string) => {
+  console.error(`Network error in ${context}:`, error);
+  
+  if (error.message?.includes('Failed to fetch') || error.message?.includes('Network request failed')) {
+    if (Platform.OS === 'web') {
+      console.error('🌐 CORS CONFIGURATION REQUIRED!');
+      console.error('This error occurs because your development URL is not configured in Supabase CORS settings.');
+      console.error('');
+      console.error('TO FIX THIS ISSUE:');
+      console.error('1. Go to your Supabase Dashboard (https://app.supabase.com)');
+      console.error('2. Select your project');
+      console.error('3. Go to "Settings" → "API" → "Configuration"');
+      console.error('4. Under "Web origins (CORS)", add these URLs:');
+      console.error('   - http://localhost:8081');
+      console.error('   - http://localhost:19006');
+      console.error('   - http://localhost:3000');
+      console.error('   - Your current development URL');
+      console.error('5. Save the changes and refresh your app');
+      console.error('');
+      console.error('Current development URL might be:', window?.location?.origin || 'Unknown');
+    } else {
+      console.error('Network connectivity issue detected. Please check your internet connection.');
+    }
+  }
+  
+  // Return a user-friendly error object
+  return {
+    message: Platform.OS === 'web' 
+      ? 'CORS configuration required. Please add your development URL to Supabase CORS settings.'
+      : 'Network connection failed. Please check your internet connection.',
+    isNetworkError: true,
+    isCorsError: Platform.OS === 'web' && (error.message?.includes('Failed to fetch') || error.message?.includes('Network request failed')),
+    originalError: error
+  };
+};
+
+// Retry logic for network requests
+const retryRequest = async (requestFn: () => Promise<any>, maxRetries = 3, delay = 1000) => {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await requestFn();
+    } catch (error: any) {
+      if (attempt === maxRetries) {
+        throw handleNetworkError(error, 'retryRequest');
+      }
+      
+      // Don't retry CORS errors
+      if (error.message?.includes('Failed to fetch') && Platform.OS === 'web') {
+        throw handleNetworkError(error, 'retryRequest');
+      }
+      
+      console.log(`Request attempt ${attempt} failed, retrying in ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delay *= 2; // Exponential backoff
+    }
+  }
+};
+
 // Supabase client setup for React Native/Expo app.
 // Handles environment variable loading, error handling, and connection testing.
 // Usage: Import and use the exported supabase client throughout the app.
@@ -41,6 +100,33 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Content-Type': 'application/json',
+    },
+    fetch: async (url, options) => {
+      try {
+        // Add timeout to requests
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+        
+        const response = await fetch(url, {
+          ...options,
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
+        return response;
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          throw new Error('Request timeout - please check your connection');
+        }
+        
+        // Handle network errors with better messaging
+        if (error.message?.includes('Failed to fetch') || error.message?.includes('Network request failed')) {
+          const errorDetails = handleNetworkError(error, 'supabase-client');
+          throw new Error(errorDetails.message);
+        }
+        
+        throw error;
+      }
     },
   },
   db: {
@@ -68,32 +154,26 @@ export const testSupabaseConnection = async () => {
   try {
     console.log('Testing Supabase connection to:', supabaseUrl);
 
-    // First, test basic connectivity with a simple query that doesn't modify data
-    const { data, error } = await supabase.from('profiles').select('count', { count: 'exact' }).limit(1);
+    return await retryRequest(async () => {
+      // First, test basic connectivity with a simple query that doesn't modify data
+      const { data, error } = await supabase.from('profiles').select('count', { count: 'exact' }).limit(1);
 
-    if (error) {
-      console.log('Supabase query error (this may be expected):', error.message);
-      // For RLS or permission errors, the connection is actually working
-      if (error.code === 'PGRST116' || error.message.includes('permission denied')) {
-        console.log('✅ Connection successful (permission error is expected without RLS policies)');
-        return true;
+      if (error) {
+        console.log('Supabase query error (this may be expected):', error.message);
+        // For RLS or permission errors, the connection is actually working
+        if (error.code === 'PGRST116' || error.message.includes('permission denied')) {
+          console.log('✅ Connection successful (permission error is expected without RLS policies)');
+          return true;
+        }
+        throw error;
       }
-      return false;
-    }
 
-    console.log('✅ Supabase connection test successful');
-    return true;
+      console.log('✅ Supabase connection test successful');
+      return true;
+    });
   } catch (error: any) {
-    if (error.message?.includes('Failed to fetch')) {
-      console.warn('🌐 CORS issue detected. This is common in web development.');
-      console.warn('To fix this, add your development URL to Supabase CORS settings:');
-      console.warn('1. Go to your Supabase Dashboard');
-      console.warn('2. Project Settings → API → Configuration');
-      console.warn('3. Add "http://localhost:8081" to "Web origins (CORS)"');
-      console.warn('4. Also add "http://localhost:19006" if using Expo web');
-    } else {
-      console.error('Connection test failed:', error.message);
-    }
+    const errorDetails = handleNetworkError(error, 'testSupabaseConnection');
+    console.error('Connection test failed:', errorDetails.message);
     return false;
   }
 };
@@ -102,31 +182,27 @@ export const testSupabaseConnection = async () => {
 export const testRawConnection = async () => {
   try {
     console.log('Testing raw connection to Supabase REST API...');
-    const response = await fetch(`${supabaseUrl}/rest/v1/`, {
-      method: 'GET',
-      headers: {
-        apikey: supabaseAnonKey,
-        Authorization: `Bearer ${supabaseAnonKey}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    
+    return await retryRequest(async () => {
+      const response = await fetch(`${supabaseUrl}/rest/v1/`, {
+        method: 'GET',
+        headers: {
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${supabaseAnonKey}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-    if (!response.ok) {
-      console.log(`Raw connection failed: ${response.status} ${response.statusText}`);
-      return false;
-    }
-
-    console.log('✅ Raw connection successful');
-    return response.ok;
-  } catch (error: any) {
-    if (error.message?.includes('Failed to fetch')) {
-      console.warn('🌐 CORS issue detected during raw connection test');
-      if (Platform.OS === 'web') {
-        console.warn('This is expected on web without proper CORS configuration');
+      if (!response.ok) {
+        throw new Error(`Raw connection failed: ${response.status} ${response.statusText}`);
       }
-    } else {
-      console.log('Raw connection failed:', error.message);
-    }
+
+      console.log('✅ Raw connection successful');
+      return response.ok;
+    });
+  } catch (error: any) {
+    const errorDetails = handleNetworkError(error, 'testRawConnection');
+    console.error('Raw connection failed:', errorDetails.message);
     return false;
   }
 };
@@ -136,34 +212,29 @@ export const testDatabaseOperations = async () => {
   try {
     console.log('Testing database read operations...');
     
-    // Test a safe read operation that doesn't create data
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id')
-      .limit(1);
+    return await retryRequest(async () => {
+      // Test a safe read operation that doesn't create data
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id')
+        .limit(1);
 
-    if (error) {
-      console.log('Database read test result:', error.message);
-      // Even permission errors indicate the database is accessible
-      if (error.code === 'PGRST116' || error.message.includes('permission denied')) {
-        console.log('✅ Database is accessible (RLS working as expected)');
-        return true;
+      if (error) {
+        console.log('Database read test result:', error.message);
+        // Even permission errors indicate the database is accessible
+        if (error.code === 'PGRST116' || error.message.includes('permission denied')) {
+          console.log('✅ Database is accessible (RLS working as expected)');
+          return true;
+        }
+        throw error;
       }
-      return false;
-    }
 
-    console.log('✅ Database read test successful');
-    return true;
+      console.log('✅ Database read test successful');
+      return true;
+    });
   } catch (error: any) {
-    if (error.message?.includes('Failed to fetch')) {
-      console.warn('🌐 CORS issue detected during database test');
-      if (Platform.OS === 'web') {
-        console.warn('This is expected on web without proper CORS configuration');
-        console.warn('Supabase client will still work for authenticated requests');
-      }
-    } else {
-      console.log('Database read test failed:', error.message);
-    }
+    const errorDetails = handleNetworkError(error, 'testDatabaseOperations');
+    console.error('Database read test failed:', errorDetails.message);
     return false;
   }
 };
@@ -233,6 +304,7 @@ export const runConnectionDiagnostics = async () => {
     // Skip some tests on web platform if CORS is not configured
     if (Platform.OS === 'web') {
       console.log('🌐 Running web-optimized diagnostics...');
+      console.log('Current URL:', window?.location?.origin || 'Unknown');
     }
     
     const rawTest = await testRawConnection();
@@ -265,6 +337,7 @@ export const runConnectionDiagnostics = async () => {
         console.log('   - http://localhost:8081');
         console.log('   - http://localhost:19006');
         console.log('   - Your production domain');
+        console.log('   - Current URL:', window?.location?.origin || 'Unknown');
       } else {
         console.log('❌ Connection issues detected');
       }
@@ -279,10 +352,8 @@ export const runConnectionDiagnostics = async () => {
       platform: Platform.OS,
     };
   } catch (error: any) {
-    console.warn('Connection diagnostics encountered an error:', error.message);
-    if (error.message?.includes('Failed to fetch') && Platform.OS === 'web') {
-      console.warn('This is a CORS issue. Supabase client will still work once CORS is configured.');
-    }
+    const errorDetails = handleNetworkError(error, 'runConnectionDiagnostics');
+    console.warn('Connection diagnostics encountered an error:', errorDetails.message);
     
     return {
       environmentVariables: !!(supabaseUrl && supabaseAnonKey),
@@ -291,7 +362,27 @@ export const runConnectionDiagnostics = async () => {
       realtimeConnection: false,
       databaseOperations: false,
       platform: Platform.OS,
-      error: error.message,
+      error: errorDetails.message,
+    };
+  }
+};
+
+// Enhanced wrapper for Supabase operations with automatic error handling
+export const supabaseRequest = async <T>(
+  operation: () => Promise<{ data: T | null; error: any }>
+): Promise<{ data: T | null; error: any }> => {
+  try {
+    return await retryRequest(operation);
+  } catch (error: any) {
+    const errorDetails = handleNetworkError(error, 'supabaseRequest');
+    return {
+      data: null,
+      error: {
+        message: errorDetails.message,
+        isNetworkError: errorDetails.isNetworkError,
+        isCorsError: errorDetails.isCorsError,
+        originalError: errorDetails.originalError
+      }
     };
   }
 };
