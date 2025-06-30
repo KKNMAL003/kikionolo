@@ -2,6 +2,7 @@ import 'react-native-get-random-values';
 import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -118,7 +119,14 @@ export const testRawConnection = async () => {
     console.log('✅ Raw connection successful');
     return response.ok;
   } catch (error: any) {
-    console.log('Raw connection failed:', error.message);
+    if (error.message?.includes('Failed to fetch')) {
+      console.warn('🌐 CORS issue detected during raw connection test');
+      if (Platform.OS === 'web') {
+        console.warn('This is expected on web without proper CORS configuration');
+      }
+    } else {
+      console.log('Raw connection failed:', error.message);
+    }
     return false;
   }
 };
@@ -147,7 +155,15 @@ export const testDatabaseOperations = async () => {
     console.log('✅ Database read test successful');
     return true;
   } catch (error: any) {
-    console.log('Database read test failed:', error.message);
+    if (error.message?.includes('Failed to fetch')) {
+      console.warn('🌐 CORS issue detected during database test');
+      if (Platform.OS === 'web') {
+        console.warn('This is expected on web without proper CORS configuration');
+        console.warn('Supabase client will still work for authenticated requests');
+      }
+    } else {
+      console.log('Database read test failed:', error.message);
+    }
     return false;
   }
 };
@@ -207,42 +223,75 @@ export const testRealtimeConnection = async (): Promise<boolean> => {
   });
 };
 
-// Comprehensive connection diagnostics
+// Comprehensive connection diagnostics with improved error handling
 export const runConnectionDiagnostics = async () => {
-  console.log('🔍 Running Supabase connection diagnostics...');
-  
-  console.log('Environment Variables:', supabaseUrl ? '✅' : '❌', supabaseAnonKey ? '✅' : '❌');
-  
-  const rawTest = await testRawConnection();
-  
-  const clientTest = await testSupabaseConnection();
-  
-  // Test realtime connection
-  const realtimeTest = await testRealtimeConnection();
-  
-  // Test database operations safely
-  const databaseTest = await testDatabaseOperations();
-  
-  const allPassed = !!(supabaseUrl && supabaseAnonKey) && rawTest && clientTest && realtimeTest && databaseTest;
-  
-  if (allPassed) {
-    console.log('✅ All connection tests passed');
-  } else if (clientTest && !realtimeTest) {
-    console.log('⚠️  Basic connection works, but realtime features may not work');
-    console.log('💡 This is likely a CORS configuration issue. Add your development URL to Supabase CORS settings:');
-    console.log('   1. Go to Supabase Dashboard → Project Settings → API → Configuration');
-    console.log('   2. Add your development URL (e.g., http://localhost:19006) to "Web origins (CORS)"');
-  } else if (clientTest) {
-    console.log('⚠️  Basic connection works, but some advanced features may not work');
-  } else {
-    console.log('❌ Connection issues detected - likely CORS configuration needed');
+  try {
+    console.log('🔍 Running Supabase connection diagnostics...');
+    
+    console.log('Environment Variables:', supabaseUrl ? '✅' : '❌', supabaseAnonKey ? '✅' : '❌');
+    
+    // Skip some tests on web platform if CORS is not configured
+    if (Platform.OS === 'web') {
+      console.log('🌐 Running web-optimized diagnostics...');
+    }
+    
+    const rawTest = await testRawConnection();
+    
+    const clientTest = await testSupabaseConnection();
+    
+    // Test realtime connection
+    const realtimeTest = await testRealtimeConnection();
+    
+    // Test database operations safely
+    const databaseTest = await testDatabaseOperations();
+    
+    const allPassed = !!(supabaseUrl && supabaseAnonKey) && rawTest && clientTest && realtimeTest && databaseTest;
+    
+    if (allPassed) {
+      console.log('✅ All connection tests passed');
+    } else if (clientTest && !realtimeTest) {
+      console.log('⚠️  Basic connection works, but realtime features may not work');
+      if (Platform.OS === 'web') {
+        console.log('💡 This is likely a CORS configuration issue. Add your development URL to Supabase CORS settings:');
+        console.log('   1. Go to Supabase Dashboard → Project Settings → API → Configuration');
+        console.log('   2. Add your development URL (e.g., http://localhost:8081) to "Web origins (CORS)"');
+      }
+    } else if (clientTest) {
+      console.log('⚠️  Basic connection works, but some advanced features may not work');
+    } else {
+      if (Platform.OS === 'web') {
+        console.log('⚠️  CORS configuration needed for web platform');
+        console.log('💡 Add your development URLs to Supabase CORS settings:');
+        console.log('   - http://localhost:8081');
+        console.log('   - http://localhost:19006');
+        console.log('   - Your production domain');
+      } else {
+        console.log('❌ Connection issues detected');
+      }
+    }
+    
+    return {
+      environmentVariables: !!(supabaseUrl && supabaseAnonKey),
+      rawConnection: rawTest,
+      supabaseClient: clientTest,
+      realtimeConnection: realtimeTest,
+      databaseOperations: databaseTest,
+      platform: Platform.OS,
+    };
+  } catch (error: any) {
+    console.warn('Connection diagnostics encountered an error:', error.message);
+    if (error.message?.includes('Failed to fetch') && Platform.OS === 'web') {
+      console.warn('This is a CORS issue. Supabase client will still work once CORS is configured.');
+    }
+    
+    return {
+      environmentVariables: !!(supabaseUrl && supabaseAnonKey),
+      rawConnection: false,
+      supabaseClient: false,
+      realtimeConnection: false,
+      databaseOperations: false,
+      platform: Platform.OS,
+      error: error.message,
+    };
   }
-  
-  return {
-    environmentVariables: !!(supabaseUrl && supabaseAnonKey),
-    rawConnection: rawTest,
-    supabaseClient: clientTest,
-    realtimeConnection: realtimeTest,
-    databaseOperations: databaseTest,
-  };
 };
