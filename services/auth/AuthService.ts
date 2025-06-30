@@ -1,4 +1,4 @@
-import { supabase } from '../../lib/supabase';
+import { supabase, supabaseRequest } from '../../lib/supabase';
 import type { 
   IAuthService, 
   AuthResult, 
@@ -231,21 +231,31 @@ export class AuthService implements IAuthService {
   }
 
   /**
-   * Load user profile from database
+   * Load user profile from database with enhanced error handling
    * @private
    */
   private async loadUserProfile(userId: string): Promise<User | null> {
     try {
       console.log('AuthService: Loading profile for user:', userId);
       
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      // Use enhanced error handling wrapper
+      const { data: profile, error } = await supabaseRequest(async () => 
+        await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single()
+      );
 
       if (error) {
-        console.error('AuthService: Error loading profile:', error);
+        // Check for CORS error and provide clearer guidance
+        if (error.isCorsError) {
+          console.error('AuthService: CORS error loading profile. Please configure CORS in Supabase dashboard.');
+          // Return fallback profile with limited data
+          return this.createFallbackProfile(userId);
+        }
+        
+        console.error('AuthService: Error loading profile:', error.message);
         return null;
       }
 
@@ -254,8 +264,12 @@ export class AuthService implements IAuthService {
         return null;
       }
 
-      // Get email from auth user
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      // Get email from auth user with enhanced error handling
+      const authResult = await supabaseRequest(async () => 
+        await supabase.auth.getUser()
+      );
+      
+      const authUser = authResult.data?.user;
       const email = authUser?.email || '';
 
       const user: User = {
@@ -271,8 +285,30 @@ export class AuthService implements IAuthService {
       return user;
     } catch (error: any) {
       console.error('AuthService: Error in loadUserProfile:', error);
-      return null;
+      
+      // Create a fallback profile with minimal data to prevent app crashes
+      return this.createFallbackProfile(userId);
     }
+  }
+  
+  /**
+   * Create a fallback profile when profile loading fails
+   * @private
+   */
+  private createFallbackProfile(userId: string): User {
+    console.log('AuthService: Creating fallback profile for:', userId);
+    
+    // Create a minimal user object to prevent app crashes
+    return {
+      id: userId,
+      name: 'User',
+      email: '',
+      phone: '',
+      address: '',
+      isGuest: false,
+      // Flag indicating this is a fallback profile that should be refreshed
+      _fallback: true,
+    };
   }
 
   /**

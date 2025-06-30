@@ -10,7 +10,7 @@ const PAYFAST_CONFIG = {
   saltPassphrase: 'G4smeupalready',
   productionUrl: 'https://www.payfast.co.za/eng/process',
   sandboxUrl: 'https://sandbox.payfast.co.za/eng/process',
-  // Set to false for production transactions
+  // Always set to false for production transactions
   useSandbox: false,
 };
 
@@ -120,7 +120,7 @@ export function createPayFastPayment(orderData: {
   console.log('=== Creating PayFast Payment ===');
   console.log('Order data:', orderData);
 
-  const baseUrl = PAYFAST_CONFIG.useSandbox ? PAYFAST_CONFIG.sandboxUrl : PAYFAST_CONFIG.productionUrl;
+  const baseUrl = PAYFAST_CONFIG.productionUrl;
   
   // Split customer name properly
   const nameParts = orderData.customerName.trim().split(/\s+/);
@@ -155,7 +155,7 @@ export function createPayFastPayment(orderData: {
     
     // Custom fields for tracking
     custom_str1: 'onolo-gas-app',
-    custom_str2: __DEV__ ? 'development' : 'production',
+    custom_str2: 'production',
   };
 
   // Add optional phone number if provided and valid

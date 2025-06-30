@@ -34,6 +34,8 @@ export interface AuthError {
   message: string;
   status?: number;
   code?: string;
+  isCorsError?: boolean;
+  isNetworkError?: boolean;
 }
 
 export type AuthEventType = 

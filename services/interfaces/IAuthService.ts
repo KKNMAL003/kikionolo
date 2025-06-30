@@ -15,6 +15,7 @@ export interface User {
     biometricLogin?: boolean;
     twoFactorAuth?: boolean;
   };
+  _fallback?: boolean; // Flag for profiles loaded with fallback mechanism
 }
 
 export interface LoginRequest {

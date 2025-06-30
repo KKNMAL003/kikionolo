@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Keyboard,
   TouchableWithoutFeedback,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../../constants/colors';
@@ -28,6 +29,14 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [networkError, setNetworkError] = useState<string | null>(null);
+
+  // Clear network error when inputs change
+  useEffect(() => {
+    if (networkError) {
+      setNetworkError(null);
+    }
+  }, [email, password]);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -40,22 +49,58 @@ export default function LoginScreen() {
       return;
     }
 
-    const success = await login(email, password);
-    if (success) {
-      router.replace('/(tabs)');
-    } else {
-      Toast.show({
-        type: 'error',
-        text1: 'Login Failed',
-        text2: 'Invalid email or password. Please try again.',
-        position: 'bottom',
-      });
+    // Clear any previous errors
+    setNetworkError(null);
+
+    try {
+      const success = await login(email, password);
+      if (success) {
+        router.replace('/(tabs)');
+      } else {
+        // Display error in toast
+        Toast.show({
+          type: 'error',
+          text1: 'Login Failed',
+          text2: 'Invalid email or password. Please try again.',
+          position: 'bottom',
+        });
+      }
+    } catch (error: any) {
+      console.error('Login screen error:', error);
+      
+      // Check if the error is a network error
+      if (error.message?.includes('Network request failed') || 
+          error.message?.includes('Failed to fetch') ||
+          error.message?.includes('CORS')) {
+        // Set network error to display the CORS help banner
+        setNetworkError(
+          'Connection issue detected. If you\'re in development mode, please configure CORS in your Supabase dashboard.'
+        );
+      } else {
+        // Show regular error toast
+        Toast.show({
+          type: 'error',
+          text1: 'Login Error',
+          text2: error.message || 'An unexpected error occurred',
+          position: 'bottom',
+        });
+      }
     }
   };
 
   const handleGuestLogin = async () => {
-    await loginAsGuest();
-    router.replace('/(tabs)');
+    try {
+      await loginAsGuest();
+      router.replace('/(tabs)');
+    } catch (error: any) {
+      console.error('Guest login error:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Guest Login Failed',
+        text2: error.message || 'Failed to login as guest',
+        position: 'bottom',
+      });
+    }
   };
 
   const handleRegister = () => {
@@ -95,6 +140,14 @@ export default function LoginScreen() {
 
             <Text style={styles.title}>Login</Text>
             <Text style={styles.subtitle}>Welcome back! Please sign in to continue.</Text>
+
+            {/* Network Error Banner */}
+            {networkError && (
+              <View style={styles.errorBanner}>
+                <Ionicons name="warning-outline" size={20} color="#FFD700" />
+                <Text style={styles.errorBannerText}>{networkError}</Text>
+              </View>
+            )}
 
             <View style={styles.form}>
               <CustomTextInput
@@ -261,5 +314,21 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 215, 0, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.5)',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 20,
+  },
+  errorBannerText: {
+    color: COLORS.text.white,
+    fontSize: 14,
+    marginLeft: 8,
+    flex: 1,
   },
 });
