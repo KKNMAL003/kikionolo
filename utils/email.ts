@@ -304,7 +304,7 @@ export const sendOrderConfirmationEmail = async (orderData: OrderEmailData): Pro
     `;
 
     // Send email via Netlify function instead of direct API call
-    const response = await fetch('/.netlify/functions/send-email', {
+    const response = await fetch('https://mellifluous-valkyrie-f9877a.netlify.app/.netlify/functions/send-email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -319,12 +319,25 @@ export const sendOrderConfirmationEmail = async (orderData: OrderEmailData): Pro
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch (parseError) {
+        const text = await response.text();
+        console.error('Error sending email - non-JSON response:', text);
+        errorData = { error: 'Server returned non-JSON response' };
+      }
       console.error('Error sending email:', errorData);
       return false;
     }
 
-    const result = await response.json();
+    let result;
+    try {
+      result = await response.json();
+    } catch (parseError) {
+      console.error('Error parsing response:', parseError);
+      return false;
+    }
     console.log('Email sent successfully:', result);
     return true;
   } catch (error) {
@@ -435,7 +448,7 @@ export const sendOrderStatusUpdateEmail = async (
     `;
 
     // Send email via Netlify function instead of direct API call
-    const response = await fetch('/.netlify/functions/send-email', {
+    const response = await fetch('https://mellifluous-valkyrie-f9877a.netlify.app/.netlify/functions/send-email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -450,12 +463,25 @@ export const sendOrderStatusUpdateEmail = async (
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch (parseError) {
+        const text = await response.text();
+        console.error('Error sending status update email - non-JSON response:', text);
+        errorData = { error: 'Server returned non-JSON response' };
+      }
       console.error('Error sending status update email:', errorData);
       return false;
     }
 
-    const result = await response.json();
+    let result;
+    try {
+      result = await response.json();
+    } catch (parseError) {
+      console.error('Error parsing status update response:', parseError);
+      return false;
+    }
     console.log('Status update email sent successfully:', result);
     return true;
   } catch (error) {
