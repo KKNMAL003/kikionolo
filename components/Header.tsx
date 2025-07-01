@@ -91,12 +91,7 @@ export default function Header({ showBackButton = false, title }: HeaderProps) {
           </TouchableOpacity>
         ) : (
           <TouchableOpacity 
-            onPress={() => {
-              // Only navigate to welcome if not already there and not authenticated
-              if (pathname !== '/welcome' && !user) {
-                router.replace('/welcome');
-              }
-            }} 
+            onPress={() => router.replace('/(tabs)')} 
             activeOpacity={0.7}
           >
             <View style={styles.logoWrapper}>

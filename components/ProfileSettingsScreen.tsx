@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 import { NotificationsSettings } from './settings/NotificationsSettings';
 import { PrivacySecuritySettings } from './settings/PrivacySecuritySettings';
+import { useRouter } from 'expo-router';
 
 export default function ProfileSettingsScreen({
   settingsScreen,
@@ -24,6 +25,8 @@ export default function ProfileSettingsScreen({
   onSetUpTwoFactor: () => void;
   onLogout?: () => void;
 }) {
+  const router = useRouter();
+
   switch (settingsScreen) {
     case 'notifications':
       return (
@@ -119,7 +122,7 @@ export default function ProfileSettingsScreen({
             </TouchableOpacity>
             <TouchableOpacity
               style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}
-              onPress={() => setSettingsScreen('help')}
+              onPress={() => router.push('/(tabs)/chat')}
             >
               <Ionicons name="help-circle-outline" size={24} color={COLORS.text.white} />
               <Text style={{ color: COLORS.text.white, fontSize: 16, marginLeft: 12 }}>Help & Support</Text>
