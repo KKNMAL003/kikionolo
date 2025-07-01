@@ -781,6 +781,7 @@ export default function ProfileScreen() {
             onUpdateSettings={handleUpdateSettings}
             user={user}
             onSetUpTwoFactor={handleSetUpTwoFactor}
+            onLogout={isAuthenticated ? handleLogout : undefined}
           />
         );
 

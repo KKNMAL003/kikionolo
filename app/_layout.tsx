@@ -49,7 +49,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
           router.replace('/(tabs)');
         }
       }
-    }, 100);
+    }, 50);
 
     return () => clearTimeout(timeoutId);
   }, [user, segments, router, isLoading]);

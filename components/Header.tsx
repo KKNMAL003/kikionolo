@@ -90,7 +90,7 @@ export default function Header({ showBackButton = false, title }: HeaderProps) {
             <Ionicons name="arrow-back" size={24} color={COLORS.text.white} />
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity onPress={() => router.push('/welcome' as any)} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => router.replace('/welcome')} activeOpacity={0.7}>
             <View style={styles.logoWrapper}>
               <Image
                 source={require('../assets/images/onolo-logo-new.png')}
