@@ -1,6 +1,7 @@
 import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';
 import CryptoJS from 'crypto-js';
+import MD5 from 'crypto-js/md5';
 
 // PayFast configuration for production
 const PAYFAST_CONFIG = {
@@ -73,13 +74,7 @@ function generateSignature(data: Record<string, string | number>, passphrase?: s
   // Debug log
   console.log('--- PAYFAST DEBUG ---');
   console.log('String to hash:', getString);
-  let signature;
-  if (Platform.OS === 'web') {
-    signature = CryptoJS.MD5(getString).toString().toLowerCase();
-  } else {
-    const crypto = require('crypto');
-    signature = crypto.createHash('md5').update(getString).digest('hex');
-  }
+  let signature = MD5(getString).toString();
   console.log('Signature:', signature);
   console.log('---------------------');
   return signature;
