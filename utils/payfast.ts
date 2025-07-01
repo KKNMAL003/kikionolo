@@ -164,13 +164,11 @@ export function createPayFastPayment(orderData: {
 
   console.log('Final payment data with signature:', paymentData);
 
-  // Create URL with parameters
-  const queryString = Object.keys(paymentData)
-    .map(key => {
-      const value = paymentData[key].toString();
-      return `${key}=${encodeURIComponent(value)}`;
-    })
-    .join('&');
+  // Create URL with parameters using the same order and encoding as the signature
+  const queryString = PAYFAST_FIELD_ORDER
+    .filter(key => paymentData[key] !== undefined && paymentData[key] !== '')
+    .map(key => `${key}=${encodeURIComponent(paymentData[key].toString().trim()).replace(/%20/g, "+")}`)
+    .join('&') + `&signature=${paymentData.signature}`;
 
   const finalUrl = `${baseUrl}?${queryString}`;
   console.log('Final PayFast URL:', finalUrl);
