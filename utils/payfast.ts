@@ -31,7 +31,7 @@ export interface PayFastPaymentData {
   signature: string;
 }
 
-// PayFast field order as per documentation
+// PayFast field order as per documentation (minimal required fields)
 const PAYFAST_FIELD_ORDER = [
   'merchant_id',
   'merchant_key',
@@ -45,11 +45,6 @@ const PAYFAST_FIELD_ORDER = [
   'amount',
   'item_name',
   'item_description',
-  'payment_method',
-  'custom_str1',
-  'custom_str2',
-  'cell_number',
-  // Add/remove fields as per your actual data
 ];
 
 // Polyfill for Python's urllib.parse.quote_plus
@@ -107,7 +102,6 @@ export function createPayFastPayment(orderData: {
   amount: number;
   customerName: string;
   customerEmail: string;
-  customerPhone?: string;
   itemName: string;
   itemDescription?: string;
 }): string {
@@ -126,46 +120,19 @@ export function createPayFastPayment(orderData: {
 
   // Prepare payment data with EXACT field names required by PayFast
   const paymentData: Record<string, string | number> = {
-    // Required fields - EXACT case and names as per PayFast API
     merchant_id: PAYFAST_CONFIG.merchantId,
     merchant_key: PAYFAST_CONFIG.merchantKey,
     return_url: returnUrl,
     cancel_url: cancelUrl,
     notify_url: notifyUrl,
-    
-    // Customer details
     name_first: firstName,
     name_last: lastName,
     email_address: orderData.customerEmail,
-    
-    // Order details
     m_payment_id: orderData.orderId,
-    amount: orderData.amount.toFixed(2), // Always two decimal places as string
+    amount: orderData.amount.toFixed(2),
     item_name: orderData.itemName,
     item_description: orderData.itemDescription || `Gas delivery order ${orderData.orderId}`,
-    
-    // Additional PayFast fields for better processing
-    payment_method: 'cc',
-    
-    // Custom fields for tracking
-    custom_str1: 'onolo-gas-app',
-    custom_str2: 'production',
   };
-
-  // Add optional phone number if provided and valid
-  if (orderData.customerPhone) {
-    const cleanPhone = orderData.customerPhone.replace(/\D/g, '');
-    if (cleanPhone.length >= 10) {
-      // Format for South African numbers
-      if (cleanPhone.startsWith('0')) {
-        paymentData.cell_number = cleanPhone;
-      } else if (cleanPhone.startsWith('27')) {
-        paymentData.cell_number = '0' + cleanPhone.substring(2);
-      } else {
-        paymentData.cell_number = cleanPhone;
-      }
-    }
-  }
 
   console.log('Payment data before signature:', paymentData);
 
