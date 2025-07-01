@@ -23,49 +23,37 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Don't perform navigation logic while loading
     if (isLoading) {
       return;
     }
 
     const inAuthGroup = segments[0] === 'auth';
     const inTabsGroup = segments[0] === '(tabs)';
+    const inWelcome = segments[0] === 'welcome';
 
-    console.log('Auth guard check:', {
-      user: !!user,
-      isGuest: user?.isGuest,
-      inAuthGroup,
-      inTabsGroup,
-      segments: segments.join('/'),
-    });
-
-    // Add a small delay to ensure router is fully mounted
+    // Enhanced logic: show /welcome for unauthenticated users
     const timeoutId = setTimeout(() => {
-    try {
-      if (!user && !inAuthGroup) {
-        // If no user and not in auth group, redirect to login
-        console.log('Redirecting to login - no user');
-        router.replace('/auth/login');
-      } else if (user && inAuthGroup) {
-        // If user is logged in and in auth group, redirect to home
-        console.log('Redirecting to tabs - user authenticated');
-        router.replace('/(tabs)');
+      try {
+        if (!user && !inAuthGroup && !inWelcome) {
+          // If not authenticated and not on /auth or /welcome, go to welcome
+          router.replace('/welcome');
+        } else if (user && (inAuthGroup || inWelcome)) {
+          // If authenticated and on /auth or /welcome, go to home
+          router.replace('/(tabs)');
+        }
+      } catch (error) {
+        console.error('Navigation error in AuthGuard:', error);
+        if (!user) {
+          router.replace('/welcome');
+        } else {
+          router.replace('/(tabs)');
+        }
       }
-    } catch (error) {
-      console.error('Navigation error in AuthGuard:', error);
-      // Fallback navigation
-      if (!user) {
-        router.replace('/auth/login');
-      } else {
-        router.replace('/(tabs)');
-      }
-    }
-    }, 100); // Small delay to ensure router is mounted
+    }, 100);
 
     return () => clearTimeout(timeoutId);
   }, [user, segments, router, isLoading]);
 
-  // Don't render children until user state is loaded to prevent early navigation
   if (isLoading) {
     return null;
   }

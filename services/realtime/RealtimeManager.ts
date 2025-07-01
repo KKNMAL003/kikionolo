@@ -59,29 +59,9 @@ export class RealtimeManager {
    */
   private setupConnectionMonitoring(): void {
     console.log('RealtimeManager: Setting up connection monitoring');
-    
-    // Monitor Supabase realtime connection status
-    supabase.realtime.onOpen(() => {
-      console.log('RealtimeManager: Realtime connection opened');
-      this.isConnected = true;
-      this.reconnectAttempts = 0;
-      this.reconnectDelay = 1000;
-      this.notifyConnectionHandlers(true);
-    });
-
-    supabase.realtime.onClose(() => {
-      console.log('RealtimeManager: Realtime connection closed');
-      this.isConnected = false;
-      this.notifyConnectionHandlers(false);
-      this.handleReconnection();
-    });
-
-    supabase.realtime.onError((error) => {
-      console.error('RealtimeManager: Realtime connection error:', error);
-      this.isConnected = false;
-      this.notifyErrorHandlers(error);
-      this.notifyConnectionHandlers(false);
-    });
+    // Remove supabase.realtime.onOpen, onClose, onError usage (not available in v2)
+    // Use channel events and error handling for connection status instead
+    // This function can be left empty or used for custom monitoring if needed
   }
 
   /**

@@ -1,7 +1,4 @@
-import { Resend } from 'resend';
-
-// Initialize Resend with the provided API key
-const resend = new Resend('re_ZKquAjEF_L8WJyLRbHr9JnM9nKJ95A2E5');
+// Email sending is now handled by Netlify serverless functions to avoid CORS issues
 
 interface OrderEmailData {
   customerName: string;
@@ -306,20 +303,29 @@ export const sendOrderConfirmationEmail = async (orderData: OrderEmailData): Pro
       </html>
     `;
 
-    // Send email to the customer
-    const { data, error } = await resend.emails.send({
-      from: 'Onolo Gas <orders@orders-onologroup.online>',
-      to: [orderData.customerEmail],
-      subject: `🔥 Order Confirmation #${orderData.orderId} - Onolo Gas`,
-      html: emailHtml,
+    // Send email via Netlify function instead of direct API call
+    const response = await fetch('/.netlify/functions/send-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        emailData: {
+          customerEmail: orderData.customerEmail,
+          subject: `🔥 Order Confirmation #${orderData.orderId} - Onolo Gas`,
+          html: emailHtml,
+        },
+      }),
     });
 
-    if (error) {
-      console.error('Error sending email:', error);
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Error sending email:', errorData);
       return false;
     }
 
-    console.log('Email sent successfully:', data);
+    const result = await response.json();
+    console.log('Email sent successfully:', result);
     return true;
   } catch (error) {
     console.error('Error sending order confirmation email:', error);
@@ -428,19 +434,29 @@ export const sendOrderStatusUpdateEmail = async (
       </html>
     `;
 
-    const { data, error } = await resend.emails.send({
-      from: 'Onolo Gas <orders@orders-onologroup.online>',
-      to: [orderData.customerEmail],
-      subject: `Order Update #${orderData.orderId} - ${orderData.status.replace('_', ' ').toUpperCase()}`,
-      html: emailHtml,
+    // Send email via Netlify function instead of direct API call
+    const response = await fetch('/.netlify/functions/send-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        emailData: {
+          customerEmail: orderData.customerEmail,
+          subject: `Order Update #${orderData.orderId} - ${orderData.status.replace('_', ' ').toUpperCase()}`,
+          html: emailHtml,
+        },
+      }),
     });
 
-    if (error) {
-      console.error('Error sending status update email:', error);
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Error sending status update email:', errorData);
       return false;
     }
 
-    console.log('Status update email sent successfully:', data);
+    const result = await response.json();
+    console.log('Status update email sent successfully:', result);
     return true;
   } catch (error) {
     console.error('Error sending order status update email:', error);

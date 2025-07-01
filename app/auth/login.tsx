@@ -108,11 +108,14 @@ export default function LoginScreen() {
   };
 
   const handleBack = () => {
-    router.back();
+    router.replace('/welcome');
   };
 
   return (
     <SafeAreaView style={styles.container}>
+      <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+        <Ionicons name="arrow-back" size={24} color={COLORS.text.white} />
+      </TouchableOpacity>
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -123,10 +126,6 @@ export default function LoginScreen() {
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
           >
-            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-              <Ionicons name="arrow-back" size={24} color={COLORS.text.white} />
-            </TouchableOpacity>
-
             <View style={styles.logoContainer}>
               <View style={styles.logoWrapper}>
                 <Image
