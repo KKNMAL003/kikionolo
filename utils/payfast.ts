@@ -52,17 +52,28 @@ const PAYFAST_FIELD_ORDER = [
   // Add/remove fields as per your actual data
 ];
 
+// Polyfill for Python's urllib.parse.quote_plus
+function quotePlus(str: string): string {
+  return encodeURIComponent(str)
+    .replace(/%20/g, '+')
+    .replace(/!/g, '%21')
+    .replace(/'/g, '%27')
+    .replace(/\(/g, '%28')
+    .replace(/\)/g, '%29')
+    .replace(/\*/g, '%2A');
+}
+
 function generateSignature(data: Record<string, string | number>, passphrase?: string): string {
   let pfOutput = '';
   for (const key of PAYFAST_FIELD_ORDER) {
     if (data[key] !== undefined && data[key] !== '') {
-      pfOutput += `${key}=${encodeURIComponent(data[key].toString().trim()).replace(/%20/g, "+")}&`;
+      pfOutput += `${key}=${quotePlus(data[key].toString().trim())}&`;
     }
   }
   // Remove last ampersand
   let getString = pfOutput.slice(0, -1);
   if (passphrase) {
-    getString += `&passphrase=${encodeURIComponent(passphrase.trim()).replace(/%20/g, "+")}`;
+    getString += `&passphrase=${quotePlus(passphrase.trim())}`;
   }
   // Debug log
   console.log('--- PAYFAST DEBUG ---');
@@ -167,7 +178,7 @@ export function createPayFastPayment(orderData: {
   // Create URL with parameters using the same order and encoding as the signature
   const queryString = PAYFAST_FIELD_ORDER
     .filter(key => paymentData[key] !== undefined && paymentData[key] !== '')
-    .map(key => `${key}=${encodeURIComponent(paymentData[key].toString().trim()).replace(/%20/g, "+")}`)
+    .map(key => `${key}=${quotePlus(paymentData[key].toString().trim())}`)
     .join('&') + `&signature=${paymentData.signature}`;
 
   const finalUrl = `${baseUrl}?${queryString}`;
