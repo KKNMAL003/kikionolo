@@ -53,7 +53,7 @@ export class OrderService implements IOrderService {
 
       if (orderError || !newOrder) {
         console.error('OrderService: Order creation failed:', orderError);
-        throw new Error(orderError?.message || 'Failed to create order');
+        throw new Error(orderError?.message || 'Failed to create order. Please check your internet connection or try again later.');
       }
 
       // Create order items
@@ -74,7 +74,7 @@ export class OrderService implements IOrderService {
 
       if (itemsError) {
         console.error('OrderService: Order items creation failed:', itemsError);
-        throw new Error(itemsError.message);
+        throw new Error(itemsError.message || 'Failed to add items to your order. Please try again.');
       }
 
       // Return formatted order
@@ -84,7 +84,7 @@ export class OrderService implements IOrderService {
       return formattedOrder;
     } catch (error: any) {
       console.error('OrderService: Error creating order:', error);
-      throw error;
+      throw new Error(error.message || 'An unexpected error occurred while creating your order. Please try again.');
     }
   }
 
@@ -242,7 +242,7 @@ export class OrderService implements IOrderService {
       return order;
     } catch (error: any) {
       console.error('OrderService: Error updating order:', error);
-      throw error;
+      throw new Error(error.message || 'An unexpected error occurred while updating your order. Please try again.');
     }
   }
 
@@ -270,7 +270,7 @@ export class OrderService implements IOrderService {
       return true;
     } catch (error: any) {
       console.error('OrderService: Error cancelling order:', error);
-      return false;
+      throw new Error(error.message || 'An unexpected error occurred while cancelling your order. Please try again.');
     }
   }
 

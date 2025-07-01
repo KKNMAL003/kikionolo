@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useMessages } from '../../contexts/MessagesContext';
 import { Ionicons } from '@expo/vector-icons';
 import MessageBubble from '../../components/MessageBubble';
+import { addRealtimeErrorListener, removeRealtimeErrorListener } from '../../services/realtime/RealtimeManager';
 
 export default function ChatScreen() {
   const { user } = useAuth();
@@ -32,6 +33,8 @@ export default function ChatScreen() {
   const [input, setInput] = React.useState('');
   const [sending, setSending] = React.useState(false);
   const flatListRef = useRef<FlatList>(null);
+  const [realtimeError, setRealtimeError] = useState<string | null>(null);
+  const [showRealtimeBanner, setShowRealtimeBanner] = useState(true);
 
   // Mark messages as read when screen is focused
   useEffect(() => {
@@ -49,6 +52,15 @@ export default function ChatScreen() {
       }, 100);
     }
   }, [messages]);
+
+  useEffect(() => {
+    function handleRealtimeError(error: any) {
+      setRealtimeError(error?.message || 'Chat features are currently unavailable.');
+      setShowRealtimeBanner(true);
+    }
+    addRealtimeErrorListener(handleRealtimeError);
+    return () => removeRealtimeErrorListener(handleRealtimeError);
+  }, []);
 
   const handleSendMessage = async () => {
     if (!input.trim() || !user || sending) {
@@ -156,6 +168,15 @@ export default function ChatScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Header />
+      {realtimeError && showRealtimeBanner && (
+        <View style={styles.realtimeBanner}>
+          <Ionicons name="warning-outline" size={18} color="#FFD700" style={{ marginRight: 8 }} />
+          <Text style={styles.realtimeBannerText}>{realtimeError}</Text>
+          <TouchableOpacity onPress={() => setShowRealtimeBanner(false)}>
+            <Ionicons name="close" size={18} color="#FFD700" />
+          </TouchableOpacity>
+        </View>
+      )}
       
       {/* Pull to refresh header */}
       <View style={styles.refreshHeader}>
@@ -363,5 +384,20 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  realtimeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 215, 0, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.5)',
+    borderRadius: 8,
+    padding: 10,
+    margin: 12,
+  },
+  realtimeBannerText: {
+    color: COLORS.text.white,
+    fontSize: 14,
+    flex: 1,
   },
 });

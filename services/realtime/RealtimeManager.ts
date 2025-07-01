@@ -39,6 +39,9 @@ export class RealtimeManager {
   private connectionHandlers: Set<(connected: boolean) => void> = new Set();
   private errorHandlers: Set<(error: any) => void> = new Set();
 
+  // Add a simple event emitter for realtime errors
+  private static realtimeErrorListeners: ((error: any) => void)[] = [];
+
   // Singleton pattern
   public static getInstance(): RealtimeManager {
     if (!RealtimeManager.instance) {
@@ -188,6 +191,8 @@ export class RealtimeManager {
         console.error(`RealtimeManager: Channel ${config.name} error:`, error);
         config.onError?.(error);
         this.notifyErrorHandlers(error);
+        // Notify UI listeners
+        RealtimeManager.realtimeErrorListeners.forEach(fn => fn(error));
       } else {
         channelInfo.error = undefined;
       }
@@ -200,14 +205,20 @@ export class RealtimeManager {
         case 'CHANNEL_ERROR':
           console.error(`RealtimeManager: Channel error for ${config.name}:`, error);
           config.onError?.(error);
+          // Notify UI listeners
+          RealtimeManager.realtimeErrorListeners.forEach(fn => fn(error));
           break;
         case 'TIMED_OUT':
           console.error(`RealtimeManager: Channel timeout for ${config.name}`);
           config.onError?.(new Error('Channel subscription timed out'));
+          // Notify UI listeners
+          RealtimeManager.realtimeErrorListeners.forEach(fn => fn(new Error('Channel subscription timed out')));
           break;
         case 'CLOSED':
           console.log(`RealtimeManager: Channel ${config.name} closed`);
           config.onClosed?.();
+          // Notify UI listeners
+          RealtimeManager.realtimeErrorListeners.forEach(fn => fn(new Error('Realtime connection closed')));
           break;
       }
     });
@@ -373,3 +384,13 @@ export class RealtimeManager {
 
 // Export singleton instance
 export const realtimeManager = RealtimeManager.getInstance();
+
+// Add a simple event emitter for realtime errors
+export function addRealtimeErrorListener(listener: (error: any) => void) {
+  RealtimeManager.realtimeErrorListeners.push(listener);
+}
+
+export function removeRealtimeErrorListener(listener: (error: any) => void) {
+  const idx = RealtimeManager.realtimeErrorListeners.indexOf(listener);
+  if (idx !== -1) RealtimeManager.realtimeErrorListeners.splice(idx, 1);
+}

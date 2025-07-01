@@ -33,6 +33,7 @@ import AddressAutocomplete from '../components/AddressAutocomplete';
 import ProfileUpdateProgress from '../components/ProfileUpdateProgress';
 import { ProfileUpdateSchema, validateData, getValidationErrors } from '../validation/schemas/index';
 import { supabase } from '../lib/supabase';
+import ProfileSettingsScreen from '../components/ProfileSettingsScreen';
 
 type TabType = 'orders' | 'profile' | 'settings';
 type SettingsScreenType = 'main' | 'notifications' | 'privacy' | 'payment' | 'help';
@@ -771,7 +772,17 @@ export default function ProfileScreen() {
         );
 
       case 'settings':
-        return renderSettingsScreen();
+        return (
+          <ProfileSettingsScreen
+            settingsScreen={settingsScreen}
+            setSettingsScreen={setSettingsScreen}
+            notificationSettings={notificationSettings}
+            notificationPreferences={notificationPreferences}
+            onUpdateSettings={handleUpdateSettings}
+            user={user}
+            onSetUpTwoFactor={handleSetUpTwoFactor}
+          />
+        );
 
       default:
         return null;
@@ -789,98 +800,6 @@ export default function ProfileScreen() {
     // If push notifications are enabled, register for push notifications
     if (ns.push) {
       await registerForPushNotifications();
-    }
-  };
-
-  // Render the appropriate settings screen
-  const renderSettingsScreen = () => {
-    switch (settingsScreen) {
-      case 'notifications':
-        return (
-          <NotificationsSettings
-            notificationSettings={notificationSettings}
-            notificationPreferences={notificationPreferences}
-            onBack={() => setSettingsScreen('main')}
-            onUpdateSettings={handleUpdateSettings}
-          />
-        );
-      case 'privacy':
-        return (
-          <PrivacySecuritySettings
-            securitySettings={user?.securitySettings}
-            onBack={() => setSettingsScreen('main')}
-            onUpdateSettings={handleUpdateSettings}
-            onChangePassword={handleSetUpTwoFactor}
-            onSetUpTwoFactor={handleSetUpTwoFactor}
-          />
-        );
-      case 'main':
-      default:
-        return (
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            <Text style={styles.sectionTitle}>Settings</Text>
-            <View style={styles.settingsSection}>
-              <TouchableOpacity
-                style={styles.settingItem}
-                onPress={() => setSettingsScreen('notifications')}
-              >
-                <Ionicons name="notifications-outline" size={24} color={COLORS.text.white} />
-                <Text style={styles.settingText}>Notifications</Text>
-                <Ionicons
-                  name="chevron-forward"
-                  size={20}
-                  color={COLORS.text.gray}
-                  style={styles.settingArrow}
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.settingItem}
-                onPress={() => setSettingsScreen('privacy')}
-              >
-                <Ionicons name="lock-closed-outline" size={24} color={COLORS.text.white} />
-                <Text style={styles.settingText}>Privacy & Security</Text>
-                <Ionicons
-                  name="chevron-forward"
-                  size={20}
-                  color={COLORS.text.gray}
-                  style={styles.settingArrow}
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.settingItem}
-                onPress={() => router.replace('/(tabs)/chat')}
-              >
-                <Ionicons name="help-circle-outline" size={24} color={COLORS.text.white} />
-                <Text style={styles.settingText}>Help & Support</Text>
-                <Ionicons
-                  name="chevron-forward"
-                  size={20}
-                  color={COLORS.text.gray}
-                  style={styles.settingArrow}
-                />
-              </TouchableOpacity>
-
-              {user ? (
-                <TouchableOpacity style={styles.settingItem} onPress={handleLogout}>
-                  <Ionicons name="log-out-outline" size={24} color={COLORS.error} />
-                  <Text style={[styles.settingText, { color: COLORS.error }]}>Sign Out</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity style={styles.settingItem} onPress={handleLogin}>
-                  <Ionicons name="log-in-outline" size={24} color={COLORS.primary} />
-                  <Text style={[styles.settingText, { color: COLORS.primary }]}>Sign In</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </ScrollView>
-        );
     }
   };
 
