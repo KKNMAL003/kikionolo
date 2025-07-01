@@ -31,75 +31,58 @@ export interface PayFastPaymentData {
   signature: string;
 }
 
-// Generate PayFast signature using the EXACT algorithm from PayFast documentation
+// PayFast field order as per documentation
+const PAYFAST_FIELD_ORDER = [
+  'merchant_id',
+  'merchant_key',
+  'return_url',
+  'cancel_url',
+  'notify_url',
+  'name_first',
+  'name_last',
+  'email_address',
+  'm_payment_id',
+  'amount',
+  'item_name',
+  'item_description',
+  'payment_method',
+  'custom_str1',
+  'custom_str2',
+  'cell_number',
+  // Add/remove fields as per your actual data
+];
+
 function generateSignature(data: Record<string, string | number>, passphrase?: string): string {
-  console.log('=== PayFast Signature Generation ===');
-  console.log('Input data:', data);
-  
-  // Step 1: Remove signature field and empty/null values
-  const filteredData: Record<string, string> = {};
-  
-  Object.keys(data).forEach(key => {
-    const value = data[key];
-    // PayFast specific: exclude signature field and empty values
-    if (key !== 'signature' && value !== undefined && value !== null && value !== '') {
-      filteredData[key] = value.toString();
+  let pfOutput = '';
+  for (const key of PAYFAST_FIELD_ORDER) {
+    if (data[key] !== undefined && data[key] !== '') {
+      pfOutput += `${key}=${encodeURIComponent(data[key].toString().trim()).replace(/%20/g, "+")}&`;
     }
-  });
-
-  console.log('Filtered data:', filteredData);
-
-  // Step 2: Sort keys alphabetically (case sensitive)
-  const sortedKeys = Object.keys(filteredData).sort();
-  console.log('Sorted keys:', sortedKeys);
-
-  // Step 3: Build the query string exactly as PayFast expects
-  const pairs: string[] = [];
-  
-  sortedKeys.forEach(key => {
-    const value = filteredData[key];
-    // PayFast expects URL encoding but with specific handling
-    const encodedValue = encodeURIComponent(value)
-      .replace(/!/g, '%21')
-      .replace(/'/g, '%27')
-      .replace(/\(/g, '%28')
-      .replace(/\)/g, '%29')
-      .replace(/\*/g, '%2A');
-    
-    pairs.push(`${key}=${encodedValue}`);
-  });
-
-  let queryString = pairs.join('&');
-  console.log('Query string (before passphrase):', queryString);
-
-  // Step 4: Append passphrase if provided
-  if (passphrase && passphrase.trim() !== '') {
-    queryString += `&passphrase=${encodeURIComponent(passphrase)}`;
   }
-  
-  console.log('Final string to hash:', queryString);
-
-  // Step 5: Generate MD5 hash
-  const signature = CryptoJS.MD5(queryString).toString().toLowerCase();
-  console.log('Generated signature:', signature);
-  console.log('=== End Signature Generation ===');
-  
+  // Remove last ampersand
+  let getString = pfOutput.slice(0, -1);
+  if (passphrase) {
+    getString += `&passphrase=${encodeURIComponent(passphrase.trim()).replace(/%20/g, "+")}`;
+  }
+  // Debug log
+  console.log('--- PAYFAST DEBUG ---');
+  console.log('String to hash:', getString);
+  let signature;
+  if (Platform.OS === 'web') {
+    signature = CryptoJS.MD5(getString).toString().toLowerCase();
+  } else {
+    const crypto = require('crypto');
+    signature = crypto.createHash('md5').update(getString).digest('hex');
+  }
+  console.log('Signature:', signature);
+  console.log('---------------------');
   return signature;
 }
 
 // Get appropriate URLs based on environment
 function getPayFastUrls(orderId: string) {
-  // Get host URL for app - use Platform.OS to determine approach
-  let baseUrl = '';
-  
-  // For a production app
-  if (Platform.OS === 'web') {
-    baseUrl = window.location.origin;
-  } else {
-    // For mobile apps, generate a valid URL structure
-    baseUrl = 'https://app.onologroup.com';
-  }
-  
+  // Use your Netlify production URL for both web and mobile
+  const baseUrl = 'https://mellifluous-valkyrie-f9877a.netlify.app';
   return {
     returnUrl: `${baseUrl}/payfast-success?orderId=${orderId}`,
     cancelUrl: `${baseUrl}/payfast-cancel?orderId=${orderId}`,
@@ -146,7 +129,7 @@ export function createPayFastPayment(orderData: {
     
     // Order details
     m_payment_id: orderData.orderId,
-    amount: parseFloat(orderData.amount.toFixed(2)),
+    amount: orderData.amount.toFixed(2), // Always two decimal places as string
     item_name: orderData.itemName,
     item_description: orderData.itemDescription || `Gas delivery order ${orderData.orderId}`,
     
