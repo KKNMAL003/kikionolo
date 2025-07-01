@@ -21,18 +21,6 @@ interface OrderEmailData {
 
 export const sendOrderConfirmationEmail = async (orderData: OrderEmailData): Promise<boolean> => {
   try {
-    // Check if email is the verified testing email
-    const isTestingEmail = orderData.customerEmail.includes('info19music@gmail.com');
-
-    // For demo purposes, if not testing email, return true but don't actually send
-    if (!isTestingEmail) {
-      console.log(
-        `Email would be sent to: ${orderData.customerEmail} (Demo mode - not actually sent)`,
-      );
-      // Simulate successful email send for demo
-      return true;
-    }
-
     // Generate HTML for order items
     const orderItemsHtml = orderData.orderItems
       .map(
@@ -318,9 +306,9 @@ export const sendOrderConfirmationEmail = async (orderData: OrderEmailData): Pro
       </html>
     `;
 
-    // Send email only to verified testing address
+    // Send email to the customer
     const { data, error } = await resend.emails.send({
-      from: 'Onolo Gas <onboarding@resend.dev>',
+      from: 'Onolo Gas <orders@orders-onologroup.online>',
       to: [orderData.customerEmail],
       subject: `🔥 Order Confirmation #${orderData.orderId} - Onolo Gas`,
       html: emailHtml,
@@ -343,12 +331,6 @@ export const sendOrderStatusUpdateEmail = async (
   orderData: OrderEmailData & { status: string },
 ): Promise<boolean> => {
   try {
-    // For demo purposes, only send to verified testing email
-    if (!orderData.customerEmail.includes('info19music@gmail.com')) {
-      console.log(`Status update email would be sent to: ${orderData.customerEmail} (Demo mode)`);
-      return true;
-    }
-
     const statusMessages = {
       confirmed: 'Your order has been confirmed and is being prepared.',
       preparing: 'Your order is currently being prepared for delivery.',
@@ -447,7 +429,7 @@ export const sendOrderStatusUpdateEmail = async (
     `;
 
     const { data, error } = await resend.emails.send({
-      from: 'Onolo Gas <onboarding@resend.dev>',
+      from: 'Onolo Gas <orders@orders-onologroup.online>',
       to: [orderData.customerEmail],
       subject: `Order Update #${orderData.orderId} - ${orderData.status.replace('_', ' ').toUpperCase()}`,
       html: emailHtml,
