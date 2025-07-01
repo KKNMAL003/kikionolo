@@ -1,23 +1,9 @@
 import { Platform } from 'react-native';
-import structuredClone from '@ungap/structured-clone';
+// import structuredClone from '@ungap/structured-clone';
 
 if (Platform.OS !== 'web') {
-  const setupPolyfills = async () => {
-    const { polyfillGlobal } = await import('react-native/Libraries/Utilities/PolyfillFunctions');
-
-    const { TextEncoderStream, TextDecoderStream } = await import(
-      '@stardazed/streams-text-encoding'
-    );
-
-    if (!('structuredClone' in global)) {
-      polyfillGlobal('structuredClone', () => structuredClone);
-    }
-
-    polyfillGlobal('TextEncoderStream', () => TextEncoderStream);
-    polyfillGlobal('TextDecoderStream', () => TextDecoderStream);
-  };
-
-  setupPolyfills();
+  // Remove all code related to @stardazed/streams-text-encoding
+  // Polyfills for TextEncoderStream/TextDecoderStream are not needed for most Expo/React Native apps
 }
 
 export {};
