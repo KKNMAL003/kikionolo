@@ -1,11 +1,7 @@
 const { Resend } = require('resend');
 
-// Check if API key is available
-if (!process.env.RESEND_API_KEY) {
-  console.error('RESEND_API_KEY environment variable is not set');
-}
-
-const resend = new Resend(process.env.RESEND_API_KEY || '');
+// Use the API key directly
+const resend = new Resend('re_ZKquAjEF_L8WJyLRbHr9JnM9nKJ95A2E5');
 
 exports.handler = async (event, context) => {
   // Enable CORS
@@ -33,18 +29,6 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // Check if API key is available
-    if (!process.env.RESEND_API_KEY) {
-      return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({ 
-          error: 'Email service not configured. Please contact support.',
-          details: 'RESEND_API_KEY environment variable is missing'
-        })
-      };
-    }
-
     const { emailData } = JSON.parse(event.body);
 
     const { data, error } = await resend.emails.send({
