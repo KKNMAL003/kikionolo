@@ -23,7 +23,7 @@ export default function Welcome() {
       <TouchableOpacity
         style={styles.button}
         activeOpacity={0.8}
-        onPress={() => router.replace('/(tabs)')}
+        onPress={() => router.replace('/auth/login')}
       >
         <Text style={styles.btnTxt}>Get Started →</Text>
       </TouchableOpacity>

@@ -31,15 +31,19 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     const inTabsGroup = segments[0] === '(tabs)';
     const inWelcome = segments[0] === 'welcome';
 
-    // Enhanced logic: show /welcome for unauthenticated users
+    // Improved logic: prevent navigation conflicts
     const timeoutId = setTimeout(() => {
       try {
-        if (!user && !inAuthGroup && !inWelcome) {
-          // If not authenticated and not on /auth or /welcome, go to welcome
-          router.replace('/welcome');
-        } else if (user && (inAuthGroup || inWelcome)) {
-          // If authenticated and on /auth or /welcome, go to home
-          router.replace('/(tabs)');
+        if (!user) {
+          // Not authenticated - only redirect if not already on welcome or auth
+          if (!inWelcome && !inAuthGroup) {
+            router.replace('/welcome');
+          }
+        } else {
+          // Authenticated - only redirect if on welcome or auth pages
+          if (inWelcome || inAuthGroup) {
+            router.replace('/(tabs)');
+          }
         }
       } catch (error) {
         console.error('Navigation error in AuthGuard:', error);
@@ -49,7 +53,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
           router.replace('/(tabs)');
         }
       }
-    }, 50);
+    }, 100);
 
     return () => clearTimeout(timeoutId);
   }, [user, segments, router, isLoading]);

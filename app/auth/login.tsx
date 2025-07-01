@@ -16,7 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../../constants/colors';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import CustomTextInput from '../../components/CustomTextInput';
 import Button from '../../components/Button';
@@ -24,6 +24,7 @@ import Toast from 'react-native-toast-message';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const pathname = usePathname();
   const { login, loginAsGuest, isLoading } = useAuth();
 
   const [email, setEmail] = useState('');
@@ -108,7 +109,12 @@ export default function LoginScreen() {
   };
 
   const handleBack = () => {
-    router.replace('/welcome');
+    // If user came from welcome page, go back there, otherwise go to tabs
+    if (pathname === '/auth/login') {
+      router.replace('/welcome');
+    } else {
+      router.replace('/(tabs)');
+    }
   };
 
   return (
