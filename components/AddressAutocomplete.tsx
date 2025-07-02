@@ -10,10 +10,12 @@ import {
   TouchableOpacity,
   Keyboard,
   Platform,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { COLORS } from '../constants/colors';
 
-const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
+// Use env variable if available, otherwise fallback to the provided public token
+const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || 'pk.eyJ1Ijoia2tubWFsMDAzIiwiYSI6ImNtOWI2NGF1MjBjdWwya3M1Mmxua3hqaXgifQ._PMbFD1tTIq4zmjGCwnAHg';
 
 interface AddressAutocompleteProps {
   label?: string;
@@ -34,6 +36,7 @@ export default function AddressAutocomplete({
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef<TextInput>(null);
+  const suggestionsContainerRef = useRef<View>(null);
 
   useEffect(() => {
     setQuery(value);
@@ -72,8 +75,14 @@ export default function AddressAutocomplete({
     onAddressSelect(text); // keep parent in sync
   };
 
+  // Only hide suggestions if focus is lost from both input and dropdown
   const handleBlur = () => {
     setTimeout(() => setShowSuggestions(false), 200); // allow tap
+  };
+
+  // Prevent dropdown from closing when tapping/scrolling inside
+  const handleSuggestionsPressIn = () => {
+    // Do nothing, prevents blur
   };
 
   return (
@@ -96,17 +105,19 @@ export default function AddressAutocomplete({
         autoCapitalize="none"
       />
       {showSuggestions && suggestions.length > 0 && (
-        <View style={styles.suggestionsContainer}>
-          {suggestions.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.suggestionItem}
-              onPress={() => handleSelect(item)}
-            >
-              <Text style={styles.suggestionText}>{item.place_name}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <TouchableWithoutFeedback onPressIn={handleSuggestionsPressIn}>
+          <View style={styles.suggestionsContainer} ref={suggestionsContainerRef}>
+            {suggestions.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.suggestionItem}
+                onPress={() => handleSelect(item)}
+              >
+                <Text style={styles.suggestionText}>{item.place_name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableWithoutFeedback>
       )}
     </View>
   );

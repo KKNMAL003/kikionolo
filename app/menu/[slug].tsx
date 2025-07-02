@@ -76,7 +76,7 @@ export default function MenuDetailScreen() {
 
           <Button
             title="Contact Us"
-            onPress={() => router.push('/menu/contact')}
+            onPress={() => router.push('/contact')}
             style={{ marginTop: 16 }}
           />
         </ScrollView>
@@ -220,10 +220,10 @@ export default function MenuDetailScreen() {
               We currently deliver to all areas within Johannesburg and surrounding suburbs. Our
               service area includes:
             </Text>
-            {['Sandton', 'Randburg', 'Midrand', 'Roodepoort', 'Soweto'].map((area) => (
-              <View key={area} style={styles.bulletPoint}>
-                <View style={styles.dot} />
-                <Text style={styles.bulletText}>{area}</Text>
+            {['Sandton', 'Randburg', 'Midrand'].map((area) => (
+              <View key={area} style={styles.bulletPointAligned}>
+                <View style={styles.dotAligned} />
+                <Text style={styles.bulletText}>{area} (and surrounding areas)</Text>
               </View>
             ))}
             <Text style={styles.description}>
@@ -421,5 +421,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     color: COLORS.text.gray,
+  },
+  bulletPointAligned: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    marginBottom: 8,
+    paddingLeft: 8,
+  },
+  dotAligned: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.primary,
+    marginRight: 12,
   },
 });

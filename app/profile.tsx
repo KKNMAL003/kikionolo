@@ -828,14 +828,6 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Global Keyboard Dismiss Button - Only show when editing */}
-      {isEditing && (
-        <TouchableOpacity style={styles.keyboardDismissButton} onPress={dismissKeyboard}>
-          <Ionicons name="close-circle" size={20} color={COLORS.text.white} />
-          <Text style={styles.keyboardDismissText}>Done</Text>
-        </TouchableOpacity>
-      )}
-
       <View style={styles.content}>
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
@@ -1276,21 +1268,6 @@ const styles = StyleSheet.create({
   },
   settingArrow: {
     marginLeft: 'auto',
-  },
-  keyboardDismissButton: {
-    position: 'absolute',
-    top: 12,
-    right: 16,
-    zIndex: 10,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.card,
-  },
-  keyboardDismissText: {
-    color: COLORS.text.white,
-    fontSize: 14,
-    fontWeight: 'bold',
   },
   modalOverlay: {
     flex: 1,

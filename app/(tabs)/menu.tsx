@@ -49,11 +49,6 @@ export default function MenuScreen() {
           <Text style={styles.sectionTitle}>Contact</Text>
 
           <View style={styles.contactInfo}>
-            <Text style={styles.contactText}>{COMPANY.location.fullAddress.company}</Text>
-            <Text style={styles.contactText}>{COMPANY.location.fullAddress.street}</Text>
-            <Text style={styles.contactText}>{COMPANY.location.fullAddress.unit}</Text>
-            <Text style={styles.contactText}>{COMPANY.location.fullAddress.area}</Text>
-
             <View style={styles.contactItem}>
               <Ionicons
                 name="mail-outline"
@@ -97,26 +92,23 @@ export default function MenuScreen() {
                 color={COLORS.primary}
                 style={styles.contactIcon}
               />
-              <Text style={styles.contactText}>Fax: {COMPANY.contact.fax}</Text>
+              <Text style={styles.contactTextAligned}>Fax: {COMPANY.contact.fax}</Text>
             </View>
 
-            <View style={styles.divider} />
-
-            <Text style={styles.contactSubtitle}>Secondary Address</Text>
-            <Text style={styles.contactText}>{COMPANY.location.secondaryAddress.street}</Text>
-            <Text style={styles.contactText}>{COMPANY.location.secondaryAddress.unit}</Text>
-            <Text style={styles.contactText}>{COMPANY.location.secondaryAddress.area}</Text>
-
-            <View style={styles.divider} />
-
-            <Text style={styles.contactSubtitle}>Business Information</Text>
-            <Text style={styles.contactText}>
-              Registration Number: {COMPANY.business.registrationNumber}
-            </Text>
-            <Text style={styles.contactText}>Tax Number: {COMPANY.business.taxNumber}</Text>
-            <Text style={styles.contactText}>
-              Banking Details: {COMPANY.business.bankingDetails}
-            </Text>
+            <View style={styles.contactItem}>
+              <Ionicons
+                name="logo-whatsapp"
+                size={20}
+                color="#25D366"
+                style={styles.contactIcon}
+              />
+              <Text
+                style={[styles.contactTextAligned, { color: '#25D366' }]}
+                onPress={() => Linking.openURL('https://wa.me/27717703063')}
+              >
+                WhatsApp: +27 71 770-3063
+              </Text>
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -167,10 +159,10 @@ const styles = StyleSheet.create({
   contactItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   contactIcon: {
-    marginRight: 8,
+    marginRight: 12,
   },
   contactEmail: {
     color: COLORS.primary,
@@ -187,5 +179,12 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: COLORS.border,
     marginVertical: 16,
+  },
+  contactTextAligned: {
+    color: COLORS.text.gray,
+    fontSize: 16,
+    textAlignVertical: 'center',
+    includeFontPadding: false,
+    flex: 1,
   },
 });
