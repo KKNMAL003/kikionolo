@@ -16,10 +16,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS } from '../constants/colors';
+import { colors } from '../theme/colors';
 import Header from '../components/Header';
 import { Ionicons } from '@expo/vector-icons';
-import Button from '../components/Button';
+import { BaseButton } from '../components/base/BaseButton';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrders } from '../contexts/OrdersContext';
@@ -453,7 +453,7 @@ export default function ProfileScreen() {
       case 'cancelled':
         return '#F44336'; // Red
       default:
-        return COLORS.text.gray;
+        return colors.text.gray;
     }
   };
 
@@ -499,7 +499,7 @@ export default function ProfileScreen() {
             onPress={() => handleViewOrderDetails(item.id)}
           >
             <Text style={styles.viewDetailsText}>View Details</Text>
-            <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+            <Ionicons name="chevron-forward" size={16} color={colors.primary} />
           </TouchableOpacity>
 
           {item.status === 'pending' && (
@@ -518,9 +518,9 @@ export default function ProfileScreen() {
   // Empty state for orders
   const renderOrdersEmptyState = () => (
     <View style={styles.emptyStateContainer}>
-      <Ionicons name="document-text-outline" size={64} color={COLORS.text.gray} />
+      <Ionicons name="document-text-outline" size={64} color={colors.text.gray} />
       <Text style={styles.emptyStateText}>You have no orders yet.</Text>
-      <Button
+      <BaseButton
         title="Browse Products"
         onPress={() => router.replace('/(tabs)/order')}
         style={styles.browseButton}
@@ -723,14 +723,14 @@ export default function ProfileScreen() {
                     </Text>
 
                     <View style={styles.buttonRow}>
-                      <Button
+                      <BaseButton
                         title="Cancel"
                         onPress={handleCancelEdit}
                         style={[styles.button, styles.cancelButtonStyle]}
                         variant="outline"
                         disabled={isSaving}
                       />
-                      <Button
+                      <BaseButton
                         title={isSaving ? 'Saving...' : 'Save Changes'}
                         onPress={handleSaveProfile}
                         style={[styles.button, styles.saveButton]}
@@ -758,7 +758,7 @@ export default function ProfileScreen() {
                       <Text style={styles.profileValue}>{user?.address || 'Not set'}</Text>
                     </View>
 
-                    <Button
+                    <BaseButton
                       title="Edit Profile"
                       onPress={() => setIsEditing(true)}
                       style={styles.editButton}
@@ -824,14 +824,14 @@ export default function ProfileScreen() {
       <View style={styles.headerWrapper}>
         <Header showBackButton />
         <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-          <Ionicons name="close" size={24} color={COLORS.text.white} />
+          <Ionicons name="close" size={24} color={colors.text.white} />
         </TouchableOpacity>
       </View>
 
       <View style={styles.content}>
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
-            <Ionicons name="person" size={40} color={COLORS.text.white} />
+            <Ionicons name="person" size={40} color={colors.text.white} />
           </View>
           <Text style={styles.userName}>{user?.name || 'Guest User'}</Text>
 
@@ -908,7 +908,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
@@ -925,7 +925,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -937,13 +937,13 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
   },
   userName: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 20,
     fontWeight: 'bold',
   },
@@ -951,11 +951,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingVertical: 4,
     paddingHorizontal: 12,
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: colors.primary + '20',
     borderRadius: 16,
   },
   orderBadgeText: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 14,
     fontWeight: 'bold',
   },
@@ -963,11 +963,11 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingVertical: 8,
     paddingHorizontal: 20,
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
     borderRadius: 20,
   },
   loginButtonText: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 14,
     fontWeight: 'bold',
   },
@@ -986,14 +986,14 @@ const styles = StyleSheet.create({
     borderRadius: 30,
   },
   activeTab: {
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
   tabText: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 16,
   },
   activeTabText: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontWeight: 'bold',
   },
   tabContentWrapper: {
@@ -1001,7 +1001,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tabBadge: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -1011,14 +1011,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   tabBadgeText: {
-    color: COLORS.text.white,
+    color: colors.text.white,
   },
   tabContent: {
     flex: 1,
     padding: 16,
   },
   errorText: {
-    color: COLORS.error,
+    color: colors.error,
     fontSize: 14,
     marginTop: 8,
     textAlign: 'center',
@@ -1043,14 +1043,14 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   sectionTitle: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 20,
     paddingHorizontal: 16,
   },
   emptyStateContainer: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 24,
     alignItems: 'center',
@@ -1058,7 +1058,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   emptyStateText: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 16,
     marginTop: 16,
     marginBottom: 24,
@@ -1074,7 +1074,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   orderCard: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -1087,12 +1087,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   orderNumber: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 16,
     fontWeight: 'bold',
   },
   orderDate: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 14,
     marginTop: 4,
   },
@@ -1114,16 +1114,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   orderItemName: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 14,
     flex: 1,
   },
   orderItemPrice: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 14,
   },
   moreItemsText: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 12,
     fontStyle: 'italic',
   },
@@ -1134,15 +1134,15 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    borderTopColor: colors.border,
   },
   orderTotal: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 16,
     fontWeight: 'bold',
   },
   orderPayment: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 12,
     marginTop: 4,
   },
@@ -1154,30 +1154,30 @@ const styles = StyleSheet.create({
   viewDetailsButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: colors.primary + '20',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
   },
   viewDetailsText: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 12,
     fontWeight: 'bold',
     marginRight: 4,
   },
   cancelButton: {
-    backgroundColor: COLORS.error + '20',
+    backgroundColor: colors.error + '20',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
   },
   cancelButtonText: {
-    color: COLORS.error,
+    color: colors.error,
     fontSize: 12,
     fontWeight: 'bold',
   },
   profileSection: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
@@ -1186,12 +1186,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   profileLabel: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 14,
     marginBottom: 4,
   },
   profileValue: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 16,
   },
   editButton: {
@@ -1204,13 +1204,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 16,
     padding: 16,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
   },
   addressSectionTitle: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 16,
@@ -1225,7 +1225,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   helperText: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 12,
     marginTop: 4,
     fontStyle: 'italic',
@@ -1241,13 +1241,13 @@ const styles = StyleSheet.create({
   },
   cancelButtonStyle: {
     backgroundColor: 'transparent',
-    borderColor: COLORS.error,
+    borderColor: colors.error,
   },
   saveButton: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
   },
   settingsSection: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 8,
     marginBottom: 20,
@@ -1258,10 +1258,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: colors.border,
   },
   settingText: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 16,
     marginLeft: 16,
     flex: 1,
@@ -1276,28 +1276,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 24,
     width: '85%',
     maxWidth: 400,
   },
   modalTitle: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 24,
     textAlign: 'center',
   },
   modalSubtitle: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 15,
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 22,
   },
   modalError: {
-    color: COLORS.error,
+    color: colors.error,
     textAlign: 'center',
     marginTop: 16,
     fontSize: 14,

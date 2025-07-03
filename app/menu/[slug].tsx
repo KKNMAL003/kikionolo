@@ -2,10 +2,10 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../../constants/colors';
+import { colors } from '../../theme/colors';
 import { COMPANY } from '../../constants/company';
 import Header from '../../components/Header';
-import Button from '../../components/Button';
+import { BaseButton } from '../../components/base/BaseButton';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 export default function MenuDetailScreen() {
@@ -74,7 +74,7 @@ export default function MenuDetailScreen() {
             ))}
           </View>
 
-          <Button
+          <BaseButton
             title="Contact Us"
             onPress={() => router.push('/contact')}
             style={{ marginTop: 16 }}
@@ -133,7 +133,7 @@ export default function MenuDetailScreen() {
           {sections.map((section) => (
             <View key={section.title} style={styles.card}>
               <View style={styles.cardHeader}>
-                <Ionicons name={section.icon as any} size={28} color={COLORS.primary} />
+                <Ionicons name={section.icon as any} size={28} color={colors.primary} />
                 <Text style={styles.cardTitle}>{section.title}</Text>
               </View>
               {section.items.map((line) => (
@@ -141,7 +141,7 @@ export default function MenuDetailScreen() {
                   <Ionicons
                     name="checkmark"
                     size={18}
-                    color={COLORS.primary}
+                    color={colors.primary}
                     style={styles.checkIcon}
                   />
                   <Text style={styles.safetyText}>{line}</Text>
@@ -178,7 +178,7 @@ export default function MenuDetailScreen() {
 
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <Ionicons name="alert-circle-outline" size={28} color={COLORS.primary} />
+              <Ionicons name="alert-circle-outline" size={28} color={colors.primary} />
               <Text style={styles.cardTitle}>Safety Guidelines</Text>
             </View>
             {safetyLines.map((line) => (
@@ -186,7 +186,7 @@ export default function MenuDetailScreen() {
                 <Ionicons
                   name="checkmark-outline"
                   size={20}
-                  color={COLORS.primary}
+                  color={colors.primary}
                   style={styles.checkIcon}
                 />
                 <Text style={styles.safetyText}>{line.replace(/^\d+\.\s*/, '')}</Text>
@@ -213,7 +213,7 @@ export default function MenuDetailScreen() {
           {/* Delivery Areas */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <Ionicons name="cube-outline" size={28} color={COLORS.primary} />
+              <Ionicons name="cube-outline" size={28} color={colors.primary} />
               <Text style={styles.cardTitle}>Delivery Areas</Text>
             </View>
             <Text style={styles.description}>
@@ -234,7 +234,7 @@ export default function MenuDetailScreen() {
           {/* Delivery Times */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <Ionicons name="time-outline" size={28} color={COLORS.primary} />
+              <Ionicons name="time-outline" size={28} color={colors.primary} />
               <Text style={styles.cardTitle}>Delivery Times</Text>
             </View>
             <Text style={styles.description}>
@@ -249,7 +249,7 @@ export default function MenuDetailScreen() {
           {/* Important Information */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <Ionicons name="alert-circle-outline" size={28} color={COLORS.primary} />
+              <Ionicons name="alert-circle-outline" size={28} color={colors.primary} />
               <Text style={styles.cardTitle}>Important Information</Text>
             </View>
             {[
@@ -264,7 +264,7 @@ export default function MenuDetailScreen() {
             ))}
           </View>
 
-          <Button
+          <BaseButton
             title="Order Now"
             onPress={() => router.push('/order')}
             style={{ marginTop: 8 }}
@@ -322,20 +322,20 @@ export default function MenuDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
     padding: 16,
   },
   title: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 24,
   },
   card: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 16,
     padding: 20,
     marginBottom: 24,
@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: COLORS.primary,
+    color: colors.primary,
     marginBottom: 12,
   },
   cardHeader: {
@@ -357,12 +357,12 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: COLORS.text.white,
+    color: colors.text.white,
     marginLeft: 12,
   },
   description: {
     flex: 1,
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 16,
     lineHeight: 24,
     marginBottom: 16,
@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
     marginRight: 12,
     marginTop: 6,
   },
@@ -387,7 +387,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     width: 0,
     fontSize: 16,
-    color: COLORS.text.gray,
+    color: colors.text.gray,
   },
   rememberCard: {
     backgroundColor: '#38221c',
@@ -396,13 +396,13 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   rememberTitle: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontWeight: 'bold',
     fontSize: 18,
     marginBottom: 8,
   },
   rememberText: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 16,
     lineHeight: 24,
   },
@@ -420,7 +420,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     lineHeight: 24,
-    color: COLORS.text.gray,
+    color: colors.text.gray,
   },
   bulletPointAligned: {
     flexDirection: 'row',
@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
     marginRight: 12,
   },
 });

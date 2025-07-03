@@ -12,9 +12,12 @@ import type {
   MessageUpdateHandler, 
   UnreadCountHandler 
 } from './types';
+import { messageApiService } from './MessageApiService';
+import { messageCacheService } from './MessageCacheService';
+import { messageRealtimeService } from './MessageRealtimeService';
 
-export class MessageService implements IMessageService {
-  private static instance: MessageService;
+export class MessageFacadeService implements IMessageService {
+  private static instance: MessageFacadeService;
   
   // Event handlers for real-time updates
   private messageHandlers: Set<MessageEventHandler> = new Set();
@@ -22,143 +25,42 @@ export class MessageService implements IMessageService {
   private unreadCountHandlers: Set<UnreadCountHandler> = new Set();
   
   // Singleton pattern to ensure one instance
-  public static getInstance(): MessageService {
-    if (!MessageService.instance) {
-      MessageService.instance = new MessageService();
+  public static getInstance(): MessageFacadeService {
+    if (!MessageFacadeService.instance) {
+      MessageFacadeService.instance = new MessageFacadeService();
     }
-    return MessageService.instance;
+    return MessageFacadeService.instance;
   }
 
   /**
    * Send a new message
    */
   async sendMessage(request: CreateMessageRequest): Promise<Message> {
-    try {
-      console.log('MessageService: Sending message:', request);
-
-      const messageRecord = {
-        user_id: request.userId,
-        customer_id: request.userId,
-        staff_id: request.senderType === 'staff' ? request.userId : null,
-        log_type: request.logType || 'user_message',
-        subject: request.subject,
-        message: request.message,
-        sender_type: request.senderType || 'customer',
-        is_read: false,
-      };
-
-      const { data: newMessage, error } = await supabase
-        .from('communication_logs')
-        .insert(messageRecord)
-        .select()
-        .single();
-
-      if (error || !newMessage) {
-        console.error('MessageService: Message creation failed:', error);
-        throw new Error(error?.message || 'Failed to send message');
-      }
-
-      const formattedMessage = this.formatMessage(newMessage);
-      console.log('MessageService: Message sent successfully:', formattedMessage.id);
-      
-      // Emit message event to listeners immediately after sending
-      this.emitMessageReceived(formattedMessage);
-      
-      return formattedMessage;
-    } catch (error: any) {
-      console.error('MessageService: Error sending message:', error);
-      throw error;
-    }
+    const message = await messageApiService.sendMessage(request);
+    messageCacheService.set(message.id, message);
+    messageRealtimeService.emitMessageReceived(message);
+    return message;
   }
 
   /**
    * Get all messages for a user
    */
   async getMessages(userId: string, filters?: MessageFilters): Promise<Message[]> {
-    try {
-      console.log('MessageService: Fetching messages for user:', userId, filters);
-
-      let query = supabase
-        .from('communication_logs')
-        .select('*')
-        .eq('customer_id', userId);
-
-      // Apply filters
-      if (filters?.logType) {
-        query = query.eq('log_type', filters.logType);
-      }
-
-      if (filters?.senderType) {
-        query = query.eq('sender_type', filters.senderType);
-      }
-
-      if (filters?.isRead !== undefined) {
-        query = query.eq('is_read', filters.isRead);
-      }
-
-      if (filters?.dateFrom) {
-        query = query.gte('created_at', filters.dateFrom);
-      }
-
-      if (filters?.dateTo) {
-        query = query.lte('created_at', filters.dateTo);
-      }
-
-      // Apply pagination
-      if (filters?.limit) {
-        query = query.limit(filters.limit);
-      }
-
-      if (filters?.offset) {
-        query = query.range(filters.offset, (filters.offset + (filters.limit || 50)) - 1);
-      }
-
-      // Order by creation date (newest first)
-      query = query.order('created_at', { ascending: false });
-
-      const { data: messagesData, error } = await query;
-
-      if (error) {
-        console.error('MessageService: Error fetching messages:', error);
-        throw new Error(error.message);
-      }
-
-      const formattedMessages = messagesData?.map(msg => this.formatMessage(msg)) || [];
-      console.log(`MessageService: Fetched ${formattedMessages.length} messages`);
-      
-      return formattedMessages;
-    } catch (error: any) {
-      console.error('MessageService: Error in getMessages:', error);
-      throw error;
-    }
+    const messages = await messageApiService.getMessages(userId, filters);
+    messageCacheService.setAll(messages);
+    return messages;
   }
 
   /**
    * Mark a specific message as read
    */
   async markAsRead(messageId: string): Promise<void> {
-    try {
-      console.log('MessageService: Marking message as read:', messageId);
-
-      const { error } = await supabase
-        .from('communication_logs')
-        .update({ 
-          is_read: true,
-        })
-        .eq('id', messageId);
-
-      if (error) {
-        console.error('MessageService: Error marking message as read:', error);
-        throw new Error(error.message);
-      }
-
-      console.log('MessageService: Message marked as read successfully:', messageId);
-      
-      // Emit update event to listeners
-      this.emitMessageUpdated(messageId, { isRead: true });
-    } catch (error: any) {
-      console.error('MessageService: Error in markAsRead:', error);
-      throw error;
+    await messageApiService.markAsRead(messageId);
+    const msg = messageCacheService.get(messageId);
+    if (msg) {
+      msg.isRead = true;
+      messageCacheService.set(messageId, msg);
+      messageRealtimeService.emitMessageUpdated(messageId, { isRead: true });
     }
   }
 
@@ -166,174 +68,48 @@ export class MessageService implements IMessageService {
    * Mark all messages as read for a user
    */
   async markAllAsRead(userId: string): Promise<void> {
-    try {
-      console.log('MessageService: Marking all messages as read for user:', userId);
-
-      const { data, error } = await supabase
-        .from('communication_logs')
-        .update({ is_read: true })
-        .eq('customer_id', userId)
-        .eq('is_read', false)
-        .select('id');
-
-      if (error) {
-        console.error('MessageService: Error marking all messages as read:', error);
-        throw new Error(error.message);
+    await messageApiService.markAllAsRead(userId);
+    messageCacheService.getAll().forEach(msg => {
+      if (!msg.isRead) {
+        msg.isRead = true;
+        messageCacheService.set(msg.id, msg);
+        messageRealtimeService.emitMessageUpdated(msg.id, { isRead: true });
       }
-
-      console.log('MessageService: All messages marked as read successfully');
-      
-      // Emit events for each updated message
-      if (data && data.length > 0) {
-        data.forEach(msg => {
-          this.emitMessageUpdated(msg.id, { isRead: true });
-        });
-      }
-      
-      // Update unread count
-      this.emitUnreadCountChanged(0);
-    } catch (error: any) {
-      console.error('MessageService: Error in markAllAsRead:', error);
-      throw error;
-    }
+    });
+    messageRealtimeService.emitUnreadCountChanged(0);
   }
 
   /**
    * Get unread message count for user
    */
   async getUnreadCount(userId: string): Promise<number> {
-    try {
-      console.log('MessageService: Getting unread count for user:', userId);
-
-      const { count, error } = await supabase
-        .from('communication_logs')
-        .select('*', { count: 'exact', head: true })
-        .eq('customer_id', userId)
-        .eq('is_read', false)
-        .eq('sender_type', 'staff');
-
-      if (error) {
-        console.error('MessageService: Error getting unread count:', error);
-        throw new Error(error.message);
-      }
-
-      const unreadCount = count || 0;
-      console.log(`MessageService: Unread count: ${unreadCount}`);
-      
-      return unreadCount;
-    } catch (error: any) {
-      console.error('MessageService: Error in getUnreadCount:', error);
-      throw error;
-    }
+    return messageApiService.getUnreadCount(userId);
   }
 
   /**
    * Get conversation summary for user
    */
   async getConversationSummary(userId: string): Promise<ConversationSummary> {
-    try {
-      console.log('MessageService: Getting conversation summary for user:', userId);
-
-      // Get total message count
-      const { count: totalCount, error: totalError } = await supabase
-        .from('communication_logs')
-        .select('*', { count: 'exact', head: true })
-        .eq('customer_id', userId);
-
-      if (totalError) {
-        throw new Error(totalError.message);
-      }
-
-      // Get unread count
-      const unreadCount = await this.getUnreadCount(userId);
-
-      // Get last message
-      const { data: lastMessage, error: lastError } = await supabase
-        .from('communication_logs')
-        .select('created_at, sender_type')
-        .eq('customer_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (lastError && lastError.code !== 'PGRST116') {
-        throw new Error(lastError.message);
-      }
-
-      const summary: ConversationSummary = {
-        totalMessages: totalCount || 0,
-        unreadCount,
-        lastMessageDate: lastMessage?.created_at || new Date().toISOString(),
-        lastMessageSender: (lastMessage?.sender_type as any) || 'customer',
-      };
-
-      console.log('MessageService: Conversation summary:', summary);
-      return summary;
-    } catch (error: any) {
-      console.error('MessageService: Error in getConversationSummary:', error);
-      throw error;
-    }
+    return messageApiService.getConversationSummary(userId);
   }
 
   /**
    * Delete a message
    */
   async deleteMessage(messageId: string): Promise<boolean> {
-    try {
-      console.log('MessageService: Deleting message:', messageId);
-
-      const { error } = await supabase
-        .from('communication_logs')
-        .delete()
-        .eq('id', messageId);
-
-      if (error) {
-        console.error('MessageService: Error deleting message:', error);
-        return false;
-      }
-
-      console.log('MessageService: Message deleted successfully:', messageId);
-      return true;
-    } catch (error: any) {
-      console.error('MessageService: Error in deleteMessage:', error);
-      return false;
+    const result = await messageApiService.deleteMessage(messageId);
+    if (result) {
+      messageCacheService.remove(messageId);
+      messageRealtimeService.emitMessageUpdated(messageId, { deleted: true });
     }
+    return result;
   }
 
   /**
    * Get messages by conversation date
    */
   async getMessagesByDate(userId: string, date: string): Promise<Message[]> {
-    try {
-      console.log('MessageService: Getting messages by date:', userId, date);
-
-      const startDate = new Date(date);
-      startDate.setHours(0, 0, 0, 0);
-      
-      const endDate = new Date(date);
-      endDate.setHours(23, 59, 59, 999);
-
-      const { data: messagesData, error } = await supabase
-        .from('communication_logs')
-        .select('*')
-        .eq('customer_id', userId)
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString())
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        console.error('MessageService: Error getting messages by date:', error);
-        throw new Error(error.message);
-      }
-
-      const formattedMessages = messagesData?.map(msg => this.formatMessage(msg)) || [];
-      console.log(`MessageService: Fetched ${formattedMessages.length} messages for date ${date}`);
-      
-      return formattedMessages;
-    } catch (error: any) {
-      console.error('MessageService: Error in getMessagesByDate:', error);
-      throw error;
-    }
+    return messageApiService.getMessagesByDate(userId, date);
   }
 
   /**
@@ -430,8 +206,9 @@ export class MessageService implements IMessageService {
     this.messageHandlers.clear();
     this.updateHandlers.clear();
     this.unreadCountHandlers.clear();
+    messageRealtimeService.clearAll();
   }
 }
 
 // Export singleton instance
-export const messageService = MessageService.getInstance();
+export const messageFacadeService = MessageFacadeService.getInstance();

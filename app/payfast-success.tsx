@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Platform } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { COLORS } from '../constants/colors';
+import { colors } from '../theme/colors';
 import { useOrders } from '../contexts/OrdersContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../context/CartContext';
 import Toast from 'react-native-toast-message';
 import { sendOrderConfirmationEmail } from '../utils/email';
-import Button from '../components/Button';
+import { BaseButton } from '../components/base/BaseButton';
+import { BaseText } from '../components/base/BaseText';
 
 export default function PayFastSuccessScreen() {
   const router = useRouter();
@@ -135,9 +136,9 @@ export default function PayFastSuccessScreen() {
   if (isProcessing) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={styles.processingText}>Processing your payment...</Text>
-        <Text style={styles.processingSubtext}>Please wait while we verify your payment with PayFast</Text>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <BaseText style={styles.processingText}>Processing your payment...</BaseText>
+        <BaseText style={styles.processingSubtext}>Please wait while we verify your payment with PayFast</BaseText>
       </View>
     );
   }
@@ -145,24 +146,24 @@ export default function PayFastSuccessScreen() {
   if (error) {
     return (
       <View style={styles.container}>
-        <Ionicons name="alert-circle-outline" size={64} color={COLORS.error} />
-        <Text style={styles.title}>Payment Issue</Text>
-        <Text style={styles.subtitle}>{error}</Text>
+        <Ionicons name="alert-circle-outline" size={64} color={colors.error} />
+        <BaseText style={styles.title}>Payment Issue</BaseText>
+        <BaseText style={styles.subtitle}>{error}</BaseText>
         
         {params.orderId && (
           <View style={styles.orderInfo}>
-            <Text style={styles.orderLabel}>Reference:</Text>
-            <Text style={styles.orderValue}>#{String(params.orderId).slice(-6)}</Text>
+            <BaseText style={styles.orderLabel}>Reference:</BaseText>
+            <BaseText style={styles.orderValue}>#{String(params.orderId).slice(-6)}</BaseText>
           </View>
         )}
 
         <View style={styles.buttonContainer}>
-          <Button
+          <BaseButton
             title="Contact Support"
             onPress={() => router.push('/(tabs)/chat')}
             style={styles.button}
           />
-          <Button
+          <BaseButton
             title="Go Home"
             onPress={handleGoHome}
             variant="outline"
@@ -175,36 +176,36 @@ export default function PayFastSuccessScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.successIcon}>✅</Text>
-      <Text style={styles.title}>Payment Successful!</Text>
-      <Text style={styles.subtitle}>
+      <BaseText style={styles.successIcon}>✅</BaseText>
+      <BaseText style={styles.title}>Payment Successful!</BaseText>
+      <BaseText style={styles.subtitle}>
         {orderCreated 
           ? 'Your PayFast payment has been processed and your order has been created successfully. Your order is now being prepared for delivery.'
           : 'Your PayFast payment has been processed successfully.'
         }
-      </Text>
+      </BaseText>
       
       {params.orderId && (
         <View style={styles.orderInfo}>
-          <Text style={styles.orderLabel}>Order ID:</Text>
-          <Text style={styles.orderValue}>#{String(params.orderId).slice(-6)}</Text>
+          <BaseText style={styles.orderLabel}>Order ID:</BaseText>
+          <BaseText style={styles.orderValue}>#{String(params.orderId).slice(-6)}</BaseText>
         </View>
       )}
 
       {params.amount && (
         <View style={styles.orderInfo}>
-          <Text style={styles.orderLabel}>Amount Paid:</Text>
-          <Text style={styles.orderValue}>R {params.amount}</Text>
+          <BaseText style={styles.orderLabel}>Amount Paid:</BaseText>
+          <BaseText style={styles.orderValue}>R {params.amount}</BaseText>
         </View>
       )}
 
       <View style={styles.buttonContainer}>
-        <Button
+        <BaseButton
           title={orderCreated ? "View My Orders" : "Go to Profile"}
           onPress={handleViewOrders}
           style={styles.button}
         />
-        <Button
+        <BaseButton
           title="Continue Shopping"
           onPress={handleGoHome}
           variant="outline"
@@ -220,18 +221,18 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     padding: 20,
   },
   title: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 16,
     textAlign: 'center',
   },
   subtitle: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 16,
     marginBottom: 30,
     textAlign: 'center',
@@ -247,17 +248,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   orderLabel: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 16,
     marginRight: 8,
   },
   orderValue: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 16,
     fontWeight: 'bold',
   },
   debugInfo: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 8,
     padding: 12,
     marginTop: 20,
@@ -265,26 +266,26 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   debugLabel: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 14,
     fontWeight: 'bold',
     marginBottom: 8,
   },
   debugText: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 12,
     fontFamily: Platform.OS === 'android' ? 'monospace' : 'Courier',
     marginBottom: 4,
   },
   processingText: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 18,
     fontWeight: 'bold',
     marginTop: 20,
     textAlign: 'center',
   },
   processingSubtext: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 14,
     marginTop: 8,
     textAlign: 'center',

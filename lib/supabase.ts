@@ -3,9 +3,10 @@ import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
+import { apiConfig } from '../config/api';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = apiConfig.supabaseUrl;
+const supabaseAnonKey = apiConfig.supabaseKey;
 
 // Debug logging for environment variables
 console.log('Supabase Environment Variables:', {
@@ -28,10 +29,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Enhanced error handler for network requests
-const handleNetworkError = (error: any, context: string) => {
+const handleNetworkError = (error: unknown, context: string) => {
   console.error(`Network error in ${context}:`, error);
   
-  if (error.message?.includes('Failed to fetch') || error.message?.includes('Network request failed')) {
+  if (error instanceof Error && (error.message?.includes('Failed to fetch') || error.message?.includes('Network request failed'))) {
     if (Platform.OS === 'web') {
       console.error('🌐 CORS CONFIGURATION REQUIRED!');
       console.error('This error occurs because your development URL is not configured in Supabase CORS settings.');
@@ -59,8 +60,8 @@ const handleNetworkError = (error: any, context: string) => {
       ? 'CORS configuration required. Please add your development URL to Supabase CORS settings.'
       : 'Network connection failed. Please check your internet connection.',
     isNetworkError: true,
-    isCorsError: Platform.OS === 'web' && (error.message?.includes('Failed to fetch') || error.message?.includes('Network request failed')),
-    originalError: error
+    isCorsError: Platform.OS === 'web' && (error instanceof Error && (error.message?.includes('Failed to fetch') || error.message?.includes('Network request failed'))),
+    originalError: error instanceof Error ? error : undefined
   };
 };
 
@@ -69,13 +70,13 @@ const retryRequest = async (requestFn: () => Promise<any>, maxRetries = 3, delay
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       return await requestFn();
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (attempt === maxRetries) {
         throw handleNetworkError(error, 'retryRequest');
       }
       
       // Don't retry CORS errors
-      if (error.message?.includes('Failed to fetch') && Platform.OS === 'web') {
+      if (error instanceof Error && error.message?.includes('Failed to fetch') && Platform.OS === 'web') {
         throw handleNetworkError(error, 'retryRequest');
       }
       
@@ -114,13 +115,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         
         clearTimeout(timeoutId);
         return response;
-      } catch (error: any) {
-        if (error.name === 'AbortError') {
+      } catch (error: unknown) {
+        if (error instanceof Error && error.name === 'AbortError') {
           throw new Error('Request timeout - please check your connection');
         }
         
         // Handle network errors with better messaging
-        if (error.message?.includes('Failed to fetch') || error.message?.includes('Network request failed')) {
+        if (error instanceof Error && (error.message?.includes('Failed to fetch') || error.message?.includes('Network request failed'))) {
           const errorDetails = handleNetworkError(error, 'supabase-client');
           throw new Error(errorDetails.message);
         }
@@ -171,7 +172,7 @@ export const testSupabaseConnection = async () => {
       console.log('✅ Supabase connection test successful');
       return true;
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     const errorDetails = handleNetworkError(error, 'testSupabaseConnection');
     console.error('Connection test failed:', errorDetails.message);
     return false;
@@ -200,7 +201,7 @@ export const testRawConnection = async () => {
       console.log('✅ Raw connection successful');
       return response.ok;
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     const errorDetails = handleNetworkError(error, 'testRawConnection');
     console.error('Raw connection failed:', errorDetails.message);
     return false;
@@ -232,7 +233,7 @@ export const testDatabaseOperations = async () => {
       console.log('✅ Database read test successful');
       return true;
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     const errorDetails = handleNetworkError(error, 'testDatabaseOperations');
     console.error('Database read test failed:', errorDetails.message);
     return false;
@@ -351,7 +352,7 @@ export const runConnectionDiagnostics = async () => {
       databaseOperations: databaseTest,
       platform: Platform.OS,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     const errorDetails = handleNetworkError(error, 'runConnectionDiagnostics');
     console.warn('Connection diagnostics encountered an error:', errorDetails.message);
     
@@ -373,7 +374,7 @@ export const supabaseRequest = async <T>(
 ): Promise<{ data: T | null; error: any }> => {
   try {
     return await retryRequest(operation);
-  } catch (error: any) {
+  } catch (error: unknown) {
     const errorDetails = handleNetworkError(error, 'supabaseRequest');
     return {
       data: null,

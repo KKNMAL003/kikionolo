@@ -1,10 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
+import { BaseButton } from './base/BaseButton';
+import { BaseText } from './base/BaseText';
 
-import { COLORS } from '../constants/colors';
+import { colors } from '../theme/colors';
 import { useCart } from '../context/CartContext';
 
 interface Tab {
@@ -53,27 +55,28 @@ export default function BottomNavBar() {
         {tabs.map((tab) => {
           const active = isActive(tab.path);
           return (
-            <TouchableOpacity
+            <BaseButton
               key={tab.name}
               style={styles.tab}
               onPress={() => navigate(tab.path)}
               activeOpacity={0.7}
+              variant="ghost"
             >
               <View style={[styles.tabInner, active && styles.activeTab]}>
                 {/* @ts-ignore  – Ionicons typings don\'t include all names */}
                 <Ionicons
                   name={active ? tab.activeIcon : tab.icon}
                   size={24}
-                  color={active ? COLORS.primary : COLORS.text.gray}
+                  color={active ? colors.primary : colors.text.gray}
                 />
-                <Text style={[styles.tabText, active && styles.activeTabText]}>{tab.name}</Text>
+                <BaseText style={[styles.tabText, active && styles.activeTabText]}>{tab.name}</BaseText>
               </View>
               {tab.badge && (
                 <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{tab.badge}</Text>
+                  <BaseText style={styles.badgeText}>{tab.badge}</BaseText>
                 </View>
               )}
-            </TouchableOpacity>
+            </BaseButton>
           );
         })}
       </View>
@@ -83,46 +86,67 @@ export default function BottomNavBar() {
 
 const styles = StyleSheet.create({
   safeArea: {
-    backgroundColor: COLORS.background,
-    marginBottom: 10,
+    backgroundColor: colors.background,
+    marginBottom: 0,
+    width: '100%',
+    maxWidth: '100%',
+    alignSelf: 'flex-end',
   },
   container: {
     flexDirection: 'row',
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     paddingVertical: 8,
     borderTopWidth: 1,
-    borderTopColor: '#222',
+    borderTopColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    maxWidth: '100%',
+    alignSelf: 'flex-end',
   },
   tab: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    paddingVertical: 0,
+    paddingHorizontal: 0,
   },
   tabInner: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+    flexDirection: 'row',
     borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: 'transparent',
+    minWidth: 60,
+    minHeight: 40,
   },
   activeTab: {
-    backgroundColor: 'rgba(255, 107, 0, 0.15)',
+    backgroundColor: colors.primary + '22',
+    borderRadius: 20,
+    minWidth: 60,
+    minHeight: 40,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   tabText: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 12,
-    marginTop: 4,
+    fontWeight: 'bold',
+    marginLeft: 6,
+    letterSpacing: 0.2,
+    textAlign: 'center',
   },
   activeTabText: {
-    color: COLORS.primary,
-    fontWeight: 'bold',
+    color: colors.primary,
   },
   badge: {
     position: 'absolute',
-    top: -5,
-    right: '25%',
-    backgroundColor: COLORS.error,
+    top: -6,
+    right: -10,
+    backgroundColor: colors.primary,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -131,7 +155,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   badgeText: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 10,
     fontWeight: 'bold',
   },

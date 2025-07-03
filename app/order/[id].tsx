@@ -2,12 +2,12 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { COLORS } from '../../constants/colors';
+import { colors } from '../../theme/colors';
 import { useOrders } from '../../contexts/OrdersContext';
 import Header from '../../components/Header';
 import OrderStatusTracker from '../../components/OrderStatusTracker';
 import { Ionicons } from '@expo/vector-icons';
-import Button from '../../components/Button';
+import { BaseButton } from '../../components/base/BaseButton';
 import Toast from 'react-native-toast-message';
 
 export default function OrderDetailsScreen() {
@@ -23,12 +23,14 @@ export default function OrderDetailsScreen() {
         <Header showBackButton />
         <View style={styles.content}>
           <View style={styles.notFoundContainer}>
-            <Ionicons name="document-text-outline" size={64} color={COLORS.text.gray} />
+            <Ionicons name="document-text-outline" size={64} color={colors.text.gray} />
             <Text style={styles.notFoundTitle}>Order Not Found</Text>
             <Text style={styles.notFoundText}>
               The order you're looking for doesn't exist or has been removed.
             </Text>
-            <Button title="Go Back" onPress={() => router.back()} style={styles.goBackButton} />
+            <BaseButton onPress={() => router.back()} style={styles.goBackButton}>
+              <Text style={styles.goBackButtonText || {}}>Go Back</Text>
+            </BaseButton>
           </View>
         </View>
       </SafeAreaView>
@@ -99,13 +101,13 @@ export default function OrderDetailsScreen() {
       case 'confirmed':
       case 'preparing':
       case 'out_for_delivery':
-        return COLORS.primary;
+        return colors.primary;
       case 'delivered':
         return '#4CAF50';
       case 'cancelled':
-        return COLORS.error;
+        return colors.error;
       default:
-        return COLORS.text.gray;
+        return colors.text.gray;
     }
   };
 
@@ -191,12 +193,13 @@ export default function OrderDetailsScreen() {
         {order.status === 'pending' && (
           <View style={styles.actionsCard}>
             <Text style={styles.cardTitle}>Order Actions</Text>
-            <Button
-              title="Cancel Order"
+            <BaseButton
               onPress={handleCancelOrder}
               style={styles.cancelButton}
               variant="outline"
-            />
+            >
+              <Text style={styles.cancelButtonText || {}}>Cancel Order</Text>
+            </BaseButton>
           </View>
         )}
 
@@ -208,7 +211,7 @@ export default function OrderDetailsScreen() {
 
           <View style={styles.supportButtons}>
             <TouchableOpacity style={styles.supportButton}>
-              <Ionicons name="call-outline" size={20} color={COLORS.primary} />
+              <Ionicons name="call-outline" size={20} color={colors.primary} />
               <Text style={styles.supportButtonText}>Call Support</Text>
             </TouchableOpacity>
 
@@ -216,7 +219,7 @@ export default function OrderDetailsScreen() {
               style={styles.supportButton}
               onPress={() => router.push('/(tabs)/chat')}
             >
-              <Ionicons name="chatbubble-outline" size={20} color={COLORS.primary} />
+              <Ionicons name="chatbubble-outline" size={20} color={colors.primary} />
               <Text style={styles.supportButtonText}>Live Chat</Text>
             </TouchableOpacity>
           </View>
@@ -229,7 +232,7 @@ export default function OrderDetailsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
@@ -242,7 +245,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 24,
     fontWeight: 'bold',
   },
@@ -256,7 +259,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   orderInfoCard: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
@@ -267,24 +270,24 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   infoLabel: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 14,
   },
   infoValue: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 14,
     fontWeight: 'bold',
     flex: 1,
     textAlign: 'right',
   },
   itemsCard: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
   },
   cardTitle: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
@@ -299,22 +302,22 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   itemName: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 14,
     marginBottom: 4,
   },
   itemQuantity: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 12,
   },
   itemPrice: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 14,
     fontWeight: 'bold',
   },
   divider: {
     height: 1,
-    backgroundColor: COLORS.border,
+    backgroundColor: colors.border,
     marginVertical: 16,
   },
   totalRow: {
@@ -323,32 +326,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   totalLabel: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 16,
     fontWeight: 'bold',
   },
   totalValue: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 18,
     fontWeight: 'bold',
   },
   actionsCard: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
   },
   cancelButton: {
-    borderColor: COLORS.error,
+    borderColor: colors.error,
   },
   supportCard: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     marginBottom: 40,
   },
   supportText: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 14,
     marginBottom: 16,
     lineHeight: 20,
@@ -360,14 +363,14 @@ const styles = StyleSheet.create({
   supportButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     borderRadius: 8,
     padding: 12,
     flex: 1,
     marginHorizontal: 4,
   },
   supportButtonText: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 14,
     marginLeft: 8,
     fontWeight: 'bold',
@@ -379,14 +382,14 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   notFoundTitle: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 24,
     fontWeight: 'bold',
     marginTop: 16,
     marginBottom: 8,
   },
   notFoundText: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 24,
@@ -394,5 +397,15 @@ const styles = StyleSheet.create({
   },
   goBackButton: {
     width: '80%',
+  },
+  goBackButtonText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  cancelButtonText: {
+    color: colors.error,
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });

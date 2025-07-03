@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Linking, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS } from '../../constants/colors';
+import { colors } from '../../theme/colors';
 import { COMPANY } from '../../constants/company';
 
 export default function ContactScreen() {
@@ -34,7 +34,7 @@ export default function ContactScreen() {
       <TextInput
         style={styles.input}
         placeholder="Type your message here..."
-        placeholderTextColor={COLORS.text.gray}
+        placeholderTextColor={colors.text.gray}
         value={message}
         onChangeText={setMessage}
         multiline
@@ -55,26 +55,26 @@ export default function ContactScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     padding: 24,
     justifyContent: 'center',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: COLORS.primary,
+    color: colors.primary,
     marginBottom: 12,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     marginBottom: 24,
     textAlign: 'center',
   },
   input: {
-    backgroundColor: COLORS.card,
-    color: COLORS.text.white,
+    backgroundColor: colors.card,
+    color: colors.text.white,
     borderRadius: 8,
     padding: 16,
     fontSize: 16,
@@ -83,13 +83,13 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   button: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',
   },
   buttonText: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 18,
     fontWeight: 'bold',
   },

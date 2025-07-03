@@ -1,252 +1,271 @@
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-} from 'react-native';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { View, StyleSheet, Platform, KeyboardAvoidingView, ActivityIndicator, Modal, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS } from '../../constants/colors';
+import { Ionicons } from '@expo/vector-icons';
 import Header from '../../components/Header';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMessages } from '../../contexts/MessagesContext';
-import { Ionicons } from '@expo/vector-icons';
 import MessageBubble from '../../components/MessageBubble';
-import { addRealtimeErrorListener, removeRealtimeErrorListener } from '../../services/realtime/RealtimeManager';
+import { BaseText } from '../../components/base/BaseText';
+import { BaseButton } from '../../components/base/BaseButton';
+import { BaseInput } from '../../components/base/BaseInput';
+import { colors } from '../../theme/colors';
+import { spacing } from '../../theme/spacing';
+import { typography } from '../../theme/typography';
+import { WebView } from 'react-native-webview';
+
+const CHATBASE_URL = 'https://www.chatbase.co/chatbot-iframe/SzxvYORICrmmckhOCkvB6';
 
 export default function ChatScreen() {
   const { user } = useAuth();
-  const { 
-    messages, 
-    sendMessage, 
-    refreshMessages,
-    markAllAsRead,
+  const {
+    messages,
     unreadCount,
+    markAllAsRead,
+    sendMessage,
     isLoading,
   } = useMessages();
-  
-  const [input, setInput] = React.useState('');
-  const [sending, setSending] = React.useState(false);
-  const flatListRef = useRef<FlatList>(null);
-  const [realtimeError, setRealtimeError] = useState<string | null>(null);
-  const [showRealtimeBanner, setShowRealtimeBanner] = useState(true);
 
-  // Mark messages as read when screen is focused
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const [isLiveChatVisible, setLiveChatVisible] = useState(false);
+  const [activeConversationDate, setActiveConversationDate] = useState<string | null>(null);
+  const flatListRef = useRef<any>(null);
+
+  // Set active conversation to today when opening live chat
   useEffect(() => {
-    if (unreadCount > 0) {
+    if (isLiveChatVisible && !activeConversationDate) {
+      const today = new Date().toISOString().split('T')[0];
+      setActiveConversationDate(today);
+    }
+  }, [isLiveChatVisible, activeConversationDate]);
+
+  // Mark messages as read when viewing them
+  useEffect(() => {
+    if (isLiveChatVisible && unreadCount > 0) {
       markAllAsRead();
     }
-  }, [unreadCount, markAllAsRead]);
-
-  // Scroll to bottom when new messages arrive
-  useEffect(() => {
-    if (messages.length > 0) {
-      // Use a small delay to ensure the FlatList has rendered the new content
-      setTimeout(() => {
-        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-      }, 100);
-    }
-  }, [messages]);
-
-  useEffect(() => {
-    function handleRealtimeError(error: any) {
-      setRealtimeError(error?.message || 'Chat features are currently unavailable.');
-      setShowRealtimeBanner(true);
-    }
-    addRealtimeErrorListener(handleRealtimeError);
-    return () => removeRealtimeErrorListener(handleRealtimeError);
-  }, []);
+  }, [isLiveChatVisible, unreadCount, markAllAsRead]);
 
   const handleSendMessage = async () => {
-    if (!input.trim() || !user || sending) {
-      return;
-    }
-
+    if (!input.trim() || !user || sending) return;
     setSending(true);
     const messageContent = input.trim();
     setInput('');
-
     try {
-      if (!user.id) {
-        throw new Error('User ID is required to send a message');
-      }
-      
+      if (!user.id) throw new Error('User ID is required to send a message');
       await sendMessage({
         userId: user.id,
         subject: messageContent,
         message: messageContent,
         logType: 'user_message',
-        senderType: 'customer'
+        senderType: 'customer',
       });
-      
-      console.log('Message sent successfully');
-      
-      // Scroll to bottom after a short delay to ensure new message is rendered
       setTimeout(() => {
         if (flatListRef.current) {
-          flatListRef.current.scrollToOffset({ offset: 0, animated: true });
+          if (Platform.OS === 'web') {
+            flatListRef.current.scrollToEnd({ animated: true });
+          } else {
+            flatListRef.current.scrollToEnd({ animated: true });
+          }
         }
       }, 300);
-      
     } catch (error: any) {
-      console.error('Error sending message:', error.message);
-      // Restore input on error
       setInput(messageContent);
     } finally {
       setSending(false);
     }
   };
 
-  const handleRefresh = async () => {
-    try {
-      await refreshMessages();
-    } catch (error) {
-      console.error('Error refreshing messages:', error);
-    }
+  // Group messages by date for conversation history
+  const conversationDates = useMemo(() => {
+    const dates = new Set<string>();
+    (Array.isArray(messages) ? messages : []).forEach((msg) => {
+      try {
+        if (msg.createdAt && !isNaN(new Date(msg.createdAt).getTime())) {
+          dates.add(new Date(msg.createdAt).toISOString().split('T')[0]);
+        }
+      } catch {}
+    });
+    return Array.from(dates).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+  }, [messages]);
+
+  // Filter messages for the active conversation date
+  const currentChatMessages = useMemo(() => {
+    if (!activeConversationDate) return [];
+    return messages.filter((msg) => {
+      try {
+        if (!msg.createdAt || isNaN(new Date(msg.createdAt).getTime())) return false;
+        return new Date(msg.createdAt).toISOString().split('T')[0] === activeConversationDate;
+      } catch {
+        return false;
+      }
+    }).map(msg => ({
+      ...msg,
+      _clientKey: msg.id + '-' + (msg._clientKey || Math.random().toString(36).substring(2, 8)),
+    }));
+  }, [messages, activeConversationDate]);
+
+  const startNewChat = () => {
+    const today = new Date().toISOString().split('T')[0];
+    setActiveConversationDate(today);
   };
 
-  // Safely format timestamp
-  const formatTimestamp = (dateStr: string) => {
+  const formatThreadDate = (dateStr: string) => {
     try {
-      if (!dateStr || isNaN(new Date(dateStr).getTime())) {
-        return '';
-      }
-      return new Date(dateStr).toLocaleTimeString([], { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
-    } catch (error) {
-      console.warn('Error formatting timestamp:', error);
-      return '';
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return 'Invalid Date';
+      return date.toLocaleDateString();
+    } catch {
+      return 'Invalid Date';
     }
-  };
-
-  const renderItem = ({ item }: { item: any }) => {
-    // Safely format timestamp
-    let timeString = '';
-    try {
-      if (item.createdAt && !isNaN(new Date(item.createdAt).getTime())) {
-        timeString = new Date(item.createdAt).toLocaleTimeString([], { 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        });
-      }
-    } catch (error) {
-      console.warn('Error formatting message timestamp:', error);
-      timeString = '';
-    }
-
-    return (
-      <View
-        style={[
-          styles.messageBubble,
-          item.senderType === 'customer' ? styles.userBubble : styles.staffBubble,
-        ]}
-      >
-        {item.logType === 'order_status_update' && (
-          <View style={styles.orderUpdateHeader}>
-            <Ionicons name="cube-outline" size={16} color={COLORS.primary} />
-            <Text style={styles.orderUpdateLabel}>Order Update</Text>
-          </View>
-        )}
-        <Text style={styles.messageText}>{item.subject || item.message}</Text>
-        <View style={styles.messageFooter}>
-          <Text style={styles.timestamp}>{timeString}</Text>
-          {!item.isRead && item.senderType === 'staff' && (
-            <View style={styles.unreadDot} />
-          )}
-        </View>
-      </View>
-    );
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <Header />
-      {realtimeError && showRealtimeBanner && (
-        <View style={styles.realtimeBanner}>
-          <Ionicons name="warning-outline" size={18} color="#FFD700" style={{ marginRight: 8 }} />
-          <Text style={styles.realtimeBannerText}>{realtimeError}</Text>
-          <TouchableOpacity onPress={() => setShowRealtimeBanner(false)}>
-            <Ionicons name="close" size={18} color="#FFD700" />
-          </TouchableOpacity>
-        </View>
-      )}
-      
-      {/* Pull to refresh header */}
-      <View style={styles.refreshHeader}>
-        <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton}>
-          <Ionicons name="refresh" size={16} color={COLORS.primary} />
-          <Text style={styles.refreshText}>Pull to refresh</Text>
-        </TouchableOpacity>
-      </View>
-
-      <KeyboardAvoidingView
-        style={styles.flex1}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
-            <Text style={styles.loadingText}>Loading messages...</Text>
-          </View>
+      {/* AI Assistant */}
+      <View style={styles.content}>
+        {Platform.OS === 'web' ? (
+          <iframe
+            src={CHATBASE_URL}
+            width="100%"
+            style={{ height: 700, minHeight: 400, border: 'none' }}
+            frameBorder="0"
+            title="AI Assistant"
+            aria-label="AI Assistant"
+          />
         ) : (
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            renderItem={renderItem}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.messagesList}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Ionicons name="chatbubbles-outline" size={64} color={COLORS.text.gray} />
-                <Text style={styles.emptyText}>
-                  No messages yet. Send a message to start the conversation!
-                </Text>
-                <Text style={styles.emptySubtext}>
-                  Our support team will respond as soon as possible.
-                </Text>
-              </View>
-            }
-            inverted={false}
-            // Data is already sorted by created_at desc in MessagesContext
-            showsVerticalScrollIndicator={false}
-            onRefresh={handleRefresh}
-            refreshing={false}
-          />
+          <WebView source={{ uri: CHATBASE_URL }} style={styles.webview} />
         )}
-        
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            value={input}
-            onChangeText={setInput}
-            placeholder="Type your message..."
-            placeholderTextColor={COLORS.text.gray}
-            editable={!sending}
-            multiline
-            maxLength={500}
-            returnKeyType="send"
-            onSubmitEditing={handleSendMessage}
-          />
-          <TouchableOpacity
-            style={[styles.sendButton, sending && { opacity: 0.5 }]}
-            onPress={handleSendMessage}
-            disabled={sending || !input.trim()}
+        <View style={styles.liveChatButtonContainer}>
+          <BaseButton
+            style={styles.liveChatButton}
+            onPress={() => setLiveChatVisible(true)}
+            accessibilityLabel="Open live chat with staff"
+            variant="primary"
           >
-            <Ionicons 
-              name={sending ? "hourglass" : "send"} 
-              size={20} 
-              color={COLORS.text.white} 
-            />
-          </TouchableOpacity>
+            <BaseText style={styles.liveChatButtonText}>Live Chat with Staff</BaseText>
+            {unreadCount > 0 && (
+              <View style={styles.unreadBadge}>
+                <BaseText style={styles.unreadBadgeText}>{unreadCount}</BaseText>
+              </View>
+            )}
+          </BaseButton>
         </View>
-      </KeyboardAvoidingView>
+        <Modal
+          visible={isLiveChatVisible}
+          animationType="slide"
+          onRequestClose={() => setLiveChatVisible(false)}
+          transparent={Platform.OS === 'web'}
+          accessibilityViewIsModal
+        >
+          <View style={Platform.OS === 'web' ? styles.modalOverlay : styles.modalContainer}>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalHeader}>
+                <BaseText style={styles.modalTitle}>Live Chat</BaseText>
+                <BaseButton
+                  onPress={() => setLiveChatVisible(false)}
+                  style={styles.closeButton}
+                  accessibilityLabel="Close live chat"
+                  variant="ghost"
+                >
+                  <BaseText style={styles.closeButtonText}>Close</BaseText>
+                </BaseButton>
+              </View>
+              {conversationDates.length > 0 && (
+                <View style={styles.historyContainer}>
+                  <BaseText style={styles.historyTitle}>Conversations:</BaseText>
+                  <View style={{ flexDirection: 'row' }}>
+                    {conversationDates.map((item) => (
+                      <BaseButton
+                        key={item}
+                        style={[
+                          styles.threadButton,
+                          item === activeConversationDate && styles.activeThreadButton,
+                        ]}
+                        onPress={() => setActiveConversationDate(item)}
+                        accessibilityLabel={`Switch to conversation from ${formatThreadDate(item)}`}
+                        variant={item === activeConversationDate ? 'primary' : 'ghost'}
+                      >
+                        <BaseText style={styles.threadButtonText}>{formatThreadDate(item)}</BaseText>
+                      </BaseButton>
+                    ))}
+                  </View>
+                </View>
+              )}
+              <BaseButton
+                style={styles.newChatButton}
+                onPress={startNewChat}
+                accessibilityLabel="Start new chat"
+                variant="outline"
+              >
+                <BaseText style={styles.newChatButtonText}>Start New Chat</BaseText>
+              </BaseButton>
+              <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              >
+                {isLoading ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                    <BaseText style={styles.loadingText}>Loading messages...</BaseText>
+                  </View>
+                ) : (
+                  <>
+                    <View style={{ flex: 1 }}>
+                      <FlatList
+                        ref={flatListRef}
+                        data={currentChatMessages}
+                        keyExtractor={(item) => item._clientKey || item.id}
+                        contentContainerStyle={{ flexGrow: 1, padding: 16 }}
+                        renderItem={({ item }) => <MessageBubble message={item} />}
+                        ListEmptyComponent={
+                          <View style={styles.placeholder}>
+                            <BaseText style={styles.placeholderText}>
+                              Send a message to start the conversation with our support team.
+                            </BaseText>
+                          </View>
+                        }
+                        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+                        onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+                        accessibilityLabel="Message list"
+                      />
+                    </View>
+                    <View style={styles.inputContainer}>
+                      <BaseInput
+                        style={styles.input}
+                        value={input}
+                        onChangeText={setInput}
+                        placeholder="Type your message..."
+                        editable={!sending}
+                        multiline
+                        maxLength={500}
+                        accessibilityLabel="Message input"
+                        onSubmitEditing={handleSendMessage}
+                      />
+                      <BaseButton
+                        style={[styles.sendButton, sending && { opacity: 0.5 }]}
+                        onPress={handleSendMessage}
+                        disabled={sending || !input.trim()}
+                        accessibilityLabel="Send message"
+                        variant="primary"
+                      >
+                        <Ionicons
+                          name={sending ? 'hourglass' : 'send'}
+                          size={20}
+                          color={colors.text.white}
+                          accessibilityLabel={sending ? 'Sending' : 'Send'}
+                        />
+                      </BaseButton>
+                    </View>
+                  </>
+                )}
+              </KeyboardAvoidingView>
+            </View>
+          </View>
+        </Modal>
+      </View>
     </SafeAreaView>
   );
 }
@@ -254,122 +273,117 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
-  flex1: {
+  content: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
+  },
+  webview: { flex: 1, backgroundColor: 'transparent' },
+  liveChatButtonContainer: {
+    padding: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.surface,
+    paddingBottom: 34,
+    backgroundColor: colors.background,
+  },
+  liveChatButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 24,
+    paddingVertical: 14,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  liveChatButtonText: { color: colors.text.white, fontSize: 16, fontWeight: 'bold' },
+  unreadBadge: {
+    position: 'absolute',
+    top: -8,
+    right: 20,
+    backgroundColor: colors.error,
+    borderRadius: 12,
+    minWidth: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  unreadBadgeText: {
+    color: colors.text.white,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '90%',
+    maxHeight: '90%',
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    overflow: 'hidden',
+    paddingTop: 20,
     flex: 1,
   },
-  refreshHeader: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#222',
-  },
-  refreshButton: {
+  modalHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    alignSelf: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.surface,
+    minHeight: 56,
+    gap: 8,
   },
-  refreshText: {
-    color: COLORS.primary,
-    fontSize: 12,
-    marginLeft: 4,
+  modalTitle: { color: colors.text.white, fontSize: 18, fontWeight: 'bold', flex: 1, textAlign: 'center' },
+  closeButton: { backgroundColor: 'transparent', padding: 0 },
+  closeButtonText: { color: colors.primary, fontSize: 16, fontWeight: '600' },
+  historyContainer: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.surface,
   },
+  historyTitle: { color: colors.text.gray, fontSize: 12, marginBottom: 8 },
+  threadButton: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginRight: 8,
+  },
+  activeThreadButton: { backgroundColor: colors.primary },
+  threadButtonText: { color: colors.text.white, fontSize: 12 },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     marginTop: 12,
   },
-  messagesList: {
-    padding: 16,
-    flexGrow: 1,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 40,
-    paddingHorizontal: 20,
-  },
-  emptyText: {
-    color: COLORS.text.gray,
-    fontSize: 16,
-    textAlign: 'center',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    color: COLORS.text.gray,
-    fontSize: 14,
-    textAlign: 'center',
-    opacity: 0.7,
-  },
-  messageBubble: {
-    marginBottom: 12,
-    padding: 12,
-    borderRadius: 16,
-    maxWidth: '80%',
-    alignSelf: 'flex-start',
-  },
-  userBubble: {
-    backgroundColor: COLORS.primary,
-    alignSelf: 'flex-end',
-  },
-  staffBubble: {
-    backgroundColor: '#222',
-    alignSelf: 'flex-start',
-  },
-  orderUpdateHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  orderUpdateLabel: {
-    color: COLORS.primary,
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginLeft: 4,
-  },
-  messageText: {
-    color: COLORS.text.white,
-    fontSize: 16,
-    lineHeight: 22,
-  },
-  messageFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  timestamp: {
-    color: COLORS.text.gray,
-    fontSize: 10,
-  },
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.primary,
-    marginLeft: 8,
-  },
+  placeholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  placeholderText: { color: colors.text.gray, fontSize: 16, textAlign: 'center' },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     padding: 12,
     borderTopWidth: 1,
-    borderTopColor: '#222',
-    backgroundColor: COLORS.background,
+    borderTopColor: colors.surface,
+    backgroundColor: colors.background,
   },
   input: {
     flex: 1,
-    backgroundColor: '#222',
-    color: COLORS.text.white,
+    backgroundColor: colors.surface,
+    color: colors.text.white,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -378,26 +392,20 @@ const styles = StyleSheet.create({
     maxHeight: 100,
   },
   sendButton: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
     borderRadius: 20,
     width: 40,
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  realtimeBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 215, 0, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.5)',
-    borderRadius: 8,
-    padding: 10,
-    margin: 12,
+  newChatButton: {
+    alignSelf: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginVertical: 8,
   },
-  realtimeBannerText: {
-    color: COLORS.text.white,
-    fontSize: 14,
-    flex: 1,
-  },
+  newChatButtonText: { color: colors.text.white, fontSize: 14, fontWeight: 'bold' },
 });

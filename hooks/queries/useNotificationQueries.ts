@@ -7,6 +7,7 @@ import type {
   PushNotificationToken,
   NotificationRequest 
 } from '../../services/interfaces/INotificationService';
+import { NotificationSettingsSchema, NotificationPreferencesSchema, validateData, getValidationErrors } from '../../validation/schemas';
 
 // Notification settings query
 export const useNotificationSettings = (userId: string) => {
@@ -43,8 +44,14 @@ export const useUpdateNotificationSettings = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ userId, settings }: { userId: string; settings: NotificationSettings }) => 
-      notificationService.updateNotificationSettings(userId, settings),
+    mutationFn: async ({ userId, settings }: { userId: string; settings: NotificationSettings }) => {
+      const validationResult = validateData(NotificationSettingsSchema, settings);
+      if (!validationResult.success) {
+        const errors = getValidationErrors(validationResult.errors);
+        throw new Error('Validation failed: ' + JSON.stringify(errors));
+      }
+      return notificationService.updateNotificationSettings(userId, settings);
+    },
     onSuccess: (_, { userId, settings }) => {
       console.log('Notification settings updated successfully');
       
@@ -68,8 +75,14 @@ export const useUpdateNotificationPreferences = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ userId, preferences }: { userId: string; preferences: NotificationPreferences }) => 
-      notificationService.updateNotificationPreferences(userId, preferences),
+    mutationFn: async ({ userId, preferences }: { userId: string; preferences: NotificationPreferences }) => {
+      const validationResult = validateData(NotificationPreferencesSchema, preferences);
+      if (!validationResult.success) {
+        const errors = getValidationErrors(validationResult.errors);
+        throw new Error('Validation failed: ' + JSON.stringify(errors));
+      }
+      return notificationService.updateNotificationPreferences(userId, preferences);
+    },
     onSuccess: (_, { userId, preferences }) => {
       console.log('Notification preferences updated successfully');
       

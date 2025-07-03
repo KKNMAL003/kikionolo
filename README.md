@@ -32,7 +32,7 @@ A modern React Native/Expo app for LPG gas delivery and communication, powered b
    # or
    npm install
    ```
-3. Copy `.env.example` to `.env` and fill in your Supabase and PayPal credentials.
+3. Copy `.env.example` to `.env` and fill in your Supabase credentials.
 
 ### Running the App
 
@@ -83,8 +83,6 @@ See `types/env.d.ts` for required variables:
 
 - `EXPO_PUBLIC_SUPABASE_URL`
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
-- `EXPO_PUBLIC_PAYPAL_CLIENT_ID`
-- `EXPO_PUBLIC_PAYPAL_SECRET`
 
 ## Folder Structure
 
@@ -105,61 +103,16 @@ Pull requests welcome! Please lint and format your code before submitting.
 
 MIT
 
-## PayFast Integration Notes
+## Storybook (Component Explorer)
 
-### Development Testing
+Storybook is set up for React Native to preview and test base UI components in isolation.
 
-PayFast requires publicly accessible URLs for return/cancel/notify URLs. During development with Expo Go, this creates challenges because:
+### To launch Storybook:
 
-1. `Linking.createURL()` creates `exp://` URLs that PayFast doesn't recognize
-2. PayFast validates URL formats and requires HTTP/HTTPS URLs
+```sh
+yarn storybook
+# or
+npm run storybook
+```
 
-### Solutions for Development:
-
-1. **Use Development Simulation** (Current Implementation):
-   - Simulates PayFast flow without external URLs
-   - Shows development warnings
-   - Allows testing the UI flow
-
-2. **Use ngrok for Testing**:
-   ```bash
-   # Install ngrok
-   npm install -g ngrok
-   
-   # Create tunnel to your local server
-   ngrok http 3000
-   
-   # Use the ngrok URL in PayFast configuration
-   ```
-
-3. **Use a Staging Server**:
-   - Deploy a simple redirect service
-   - Configure PayFast URLs to point to staging
-   - Staging server redirects back to app using deep links
-
-4. **Testing Services**:
-   - Use webhook.site for temporary URLs
-   - Use httpbin.org for testing endpoints
-
-### Production Setup:
-
-1. Configure proper domain in `app.json`:
-   ```json
-   {
-     "expo": {
-       "scheme": "onolo",
-       "web": {
-         "bundler": "metro"
-       }
-     }
-   }
-   ```
-
-2. Set up proper return URLs:
-   ```typescript
-   return_url: 'https://yourdomain.com/payfast-success'
-   cancel_url: 'https://yourdomain.com/payfast-cancel'
-   notify_url: 'https://yourdomain.com/api/payfast-notify'
-   ```
-
-3. Implement deep linking to redirect back to app from web URLs.
+This will start Expo with Storybook as the entry point. You can browse and interact with all base components and their variants.

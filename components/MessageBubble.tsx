@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { COLORS } from '../constants/colors';
+import { View, StyleSheet } from 'react-native';
+import { colors } from '../theme/colors';
 import type { Message } from '../services/interfaces/IMessageService';
+import { BaseText } from './base/BaseText';
 
 interface MessageBubbleProps {
   message: Message & { _clientKey?: string };
@@ -31,9 +32,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
     return (
       <View style={styles.orderUpdateContainer}>
         <View style={styles.orderUpdateBubble}>
-          <Text style={styles.orderUpdateTitle}>📦 Order Update</Text>
-          <Text style={styles.orderUpdateText}>{message.subject}</Text>
-          <Text style={styles.timestamp}>{formattedTime}</Text>
+          <BaseText style={styles.orderUpdateTitle}>📦 Order Update</BaseText>
+          <BaseText style={styles.orderUpdateText}>{message.subject}</BaseText>
+          <BaseText style={styles.timestamp}>{formattedTime}</BaseText>
         </View>
       </View>
     );
@@ -46,9 +47,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
         isFromUser ? styles.userBubble : styles.staffBubble,
       ]}
     >
-      <Text style={styles.messageText}>{message.subject || message.message}</Text>
+      <BaseText style={styles.messageText}>{message.subject || message.message}</BaseText>
       <View style={styles.messageFooter}>
-        <Text style={styles.timestamp}>{formattedTime}</Text>
+        <BaseText style={styles.timestamp}>{formattedTime}</BaseText>
         {!message.isRead && !isFromUser && (
           <View style={styles.unreadDot} />
         )}
@@ -65,15 +66,15 @@ const styles = StyleSheet.create({
     maxWidth: '80%' 
   },
   userBubble: { 
-    backgroundColor: COLORS.primary, 
+    backgroundColor: colors.primary, 
     alignSelf: 'flex-end' 
   },
   staffBubble: { 
-    backgroundColor: '#222', 
+    backgroundColor: colors.card, 
     alignSelf: 'flex-start' 
   },
   messageText: { 
-    color: COLORS.text.white, 
+    color: colors.text.white, 
     fontSize: 16,
     lineHeight: 22,
   },
@@ -84,14 +85,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   timestamp: { 
-    color: COLORS.text.gray, 
+    color: colors.text.gray, 
     fontSize: 10,
   },
   unreadDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
     marginLeft: 8,
   },
   orderUpdateContainer: {
@@ -99,21 +100,21 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   orderUpdateBubble: {
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: colors.primary + '20',
     borderRadius: 12,
     padding: 12,
     borderLeftWidth: 4,
-    borderLeftColor: COLORS.primary,
+    borderLeftColor: colors.primary,
     maxWidth: '90%',
   },
   orderUpdateTitle: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 14,
     fontWeight: 'bold',
     marginBottom: 4,
   },
   orderUpdateText: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 14,
     lineHeight: 20,
   },

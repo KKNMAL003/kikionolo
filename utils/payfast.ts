@@ -2,6 +2,7 @@ import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';
 import CryptoJS from 'crypto-js';
 import MD5 from 'crypto-js/md5';
+import { payfastConfig } from '../config/api';
 
 // PayFast configuration for production
 const PAYFAST_CONFIG = {
@@ -103,7 +104,7 @@ export function createPayFastPayment(orderData: {
   console.log('=== Creating PayFast Payment ===');
   console.log('Order data:', orderData);
 
-  const baseUrl = PAYFAST_CONFIG.productionUrl;
+  const baseUrl = payfastConfig.productionUrl;
   
   // Split customer name properly
   const nameParts = orderData.customerName.trim().split(/\s+/);
@@ -115,8 +116,8 @@ export function createPayFastPayment(orderData: {
 
   // Prepare payment data with EXACT field names required by PayFast
   const paymentData: Record<string, string | number> = {
-    merchant_id: PAYFAST_CONFIG.merchantId,
-    merchant_key: PAYFAST_CONFIG.merchantKey,
+    merchant_id: payfastConfig.merchantId,
+    merchant_key: payfastConfig.merchantKey,
     return_url: returnUrl,
     cancel_url: cancelUrl,
     notify_url: notifyUrl,
@@ -132,7 +133,7 @@ export function createPayFastPayment(orderData: {
   console.log('Payment data before signature:', paymentData);
 
   // Generate signature using the corrected algorithm
-  const signature = generateSignature(paymentData, PAYFAST_CONFIG.saltPassphrase);
+  const signature = generateSignature(paymentData, payfastConfig.saltPassphrase);
   paymentData.signature = signature;
 
   console.log('Final payment data with signature:', paymentData);
@@ -163,7 +164,7 @@ export function verifyPayFastPayment(data: Record<string, string>): boolean {
   }
   
   // Generate expected signature
-  const expectedSignature = generateSignature(dataWithoutSignature, PAYFAST_CONFIG.saltPassphrase);
+  const expectedSignature = generateSignature(dataWithoutSignature, payfastConfig.saltPassphrase);
   
   console.log('Received signature:', signature);
   console.log('Expected signature:', expectedSignature);
@@ -256,8 +257,8 @@ export function testSignatureGeneration() {
   
   // Test with production credentials
   const testData = {
-    merchant_id: PAYFAST_CONFIG.merchantId,
-    merchant_key: PAYFAST_CONFIG.merchantKey,
+    merchant_id: payfastConfig.merchantId,
+    merchant_key: payfastConfig.merchantKey,
     return_url: 'https://app.onologroup.com/payfast-success',
     cancel_url: 'https://app.onologroup.com/payfast-cancel',
     notify_url: 'https://app.onologroup.com/api/payfast-notify',
@@ -269,7 +270,7 @@ export function testSignatureGeneration() {
     item_name: 'Test Payment',
   };
   
-  const signature = generateSignature(testData, PAYFAST_CONFIG.saltPassphrase);
+  const signature = generateSignature(testData, payfastConfig.saltPassphrase);
   console.log('Test signature result:', signature);
   console.log('=== End Test ===');
   

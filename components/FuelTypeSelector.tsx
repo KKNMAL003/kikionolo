@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../constants/colors';
+import { colors } from '../theme/colors';
 import { useRouter } from 'expo-router';
+import { BaseButton } from './base/BaseButton';
+import { BaseText } from './base/BaseText';
 
 type FuelType = 'gas' | 'petrol' | 'diesel';
 
@@ -28,50 +30,50 @@ export default function FuelTypeSelector() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Select Fuel Type</Text>
+      <BaseText style={styles.title}>Select Fuel Type</BaseText>
 
       <View style={styles.fuelTypes}>
-        <TouchableOpacity
+        <BaseButton
           style={[styles.fuelOption, selectedFuel === 'diesel' && styles.selectedFuelOption]}
           onPress={() => handleFuelSelect('diesel')}
         >
           <Ionicons
             name="speedometer-outline"
             size={32}
-            color={selectedFuel === 'diesel' ? COLORS.text.white : COLORS.text.gray}
+            color={selectedFuel === 'diesel' ? colors.text.white : colors.text.gray}
           />
-          <Text style={[styles.fuelName, selectedFuel === 'diesel' && styles.selectedFuelText]}>
+          <BaseText style={[styles.fuelName, selectedFuel === 'diesel' && styles.selectedFuelText]}>
             Diesel
-          </Text>
-        </TouchableOpacity>
+          </BaseText>
+        </BaseButton>
 
-        <TouchableOpacity
+        <BaseButton
           style={[styles.fuelOption, selectedFuel === 'gas' && styles.selectedFuelOption]}
           onPress={() => handleFuelSelect('gas')}
         >
           <Ionicons
             name="flame-outline"
             size={32}
-            color={selectedFuel === 'gas' ? COLORS.text.white : COLORS.text.gray}
+            color={selectedFuel === 'gas' ? colors.text.white : colors.text.gray}
           />
-          <Text style={[styles.fuelName, selectedFuel === 'gas' && styles.selectedFuelText]}>
+          <BaseText style={[styles.fuelName, selectedFuel === 'gas' && styles.selectedFuelText]}>
             Gas
-          </Text>
-        </TouchableOpacity>
+          </BaseText>
+        </BaseButton>
 
-        <TouchableOpacity
+        <BaseButton
           style={[styles.fuelOption, selectedFuel === 'petrol' && styles.selectedFuelOption]}
           onPress={() => handleFuelSelect('petrol')}
         >
           <Ionicons
             name="car-outline"
             size={32}
-            color={selectedFuel === 'petrol' ? COLORS.text.white : COLORS.text.gray}
+            color={selectedFuel === 'petrol' ? colors.text.white : colors.text.gray}
           />
-          <Text style={[styles.fuelName, selectedFuel === 'petrol' && styles.selectedFuelText]}>
+          <BaseText style={[styles.fuelName, selectedFuel === 'petrol' && styles.selectedFuelText]}>
             Petrol
-          </Text>
-        </TouchableOpacity>
+          </BaseText>
+        </BaseButton>
       </View>
     </View>
   );
@@ -82,7 +84,7 @@ const styles = StyleSheet.create({
     marginVertical: 20,
   },
   title: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 16,
@@ -90,26 +92,33 @@ const styles = StyleSheet.create({
   fuelTypes: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    marginHorizontal: 0,
+    gap: 8,
   },
   fuelOption: {
-    width: '30%',
+    flex: 1,
     height: 120,
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 12,
+    borderWidth: 0,
   },
   selectedFuelOption: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
+    borderWidth: 0,
   },
   fuelName: {
-    color: COLORS.text.gray,
-    marginTop: 16,
-    fontSize: 16,
+    color: colors.text.gray,
+    marginTop: 12,
+    fontSize: 14,
+    textAlign: 'center',
+    fontWeight: '500',
   },
   selectedFuelText: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontWeight: 'bold',
   },
 });

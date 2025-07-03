@@ -1,11 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
+import { View, StyleSheet, ScrollView, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS } from '../../constants/colors';
+import { colors } from '../../theme/colors';
 import { COMPANY } from '../../constants/company';
 import { Ionicons } from '@expo/vector-icons';
 import MenuOption from '../../components/MenuOption';
 import { useRouter } from 'expo-router';
+import { BaseText } from '../../components/base/BaseText';
+import { BaseButton } from '../../components/base/BaseButton';
+import Header from '../../components/Header';
 
 export default function MenuScreen() {
   const router = useRouter();
@@ -28,13 +31,10 @@ export default function MenuScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Menu</Text>
-      </View>
-
+      <Header />
       <ScrollView style={styles.content}>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Customer Info</Text>
+          <BaseText style={styles.sectionTitle}>Customer Info</BaseText>
 
           {COMPANY.customerInfo.map((info, index) => (
             <MenuOption
@@ -46,53 +46,53 @@ export default function MenuScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Contact</Text>
+          <BaseText style={styles.sectionTitle}>Contact</BaseText>
 
           <View style={styles.contactInfo}>
             <View style={styles.contactItem}>
               <Ionicons
                 name="mail-outline"
                 size={20}
-                color={COLORS.primary}
+                color={colors.primary}
                 style={styles.contactIcon}
               />
-              <TouchableOpacity onPress={handleEmailPress}>
-                <Text style={styles.contactEmail}>{COMPANY.contact.email}</Text>
-              </TouchableOpacity>
+              <BaseButton onPress={handleEmailPress} variant="ghost">
+                <BaseText style={styles.contactEmail}>{COMPANY.contact.email}</BaseText>
+              </BaseButton>
             </View>
 
             <View style={styles.contactItem}>
               <Ionicons
                 name="globe-outline"
                 size={20}
-                color={COLORS.primary}
+                color={colors.primary}
                 style={styles.contactIcon}
               />
-              <TouchableOpacity onPress={handleWebsitePress}>
-                <Text style={styles.contactEmail}>{COMPANY.contact.website}</Text>
-              </TouchableOpacity>
+              <BaseButton onPress={handleWebsitePress} variant="ghost">
+                <BaseText style={styles.contactEmail}>{COMPANY.contact.website}</BaseText>
+              </BaseButton>
             </View>
 
             <View style={styles.contactItem}>
               <Ionicons
                 name="call-outline"
                 size={20}
-                color={COLORS.primary}
+                color={colors.primary}
                 style={styles.contactIcon}
               />
-              <TouchableOpacity onPress={handlePhonePress}>
-                <Text style={styles.contactEmail}>{COMPANY.contact.phone}</Text>
-              </TouchableOpacity>
+              <BaseButton onPress={handlePhonePress} variant="ghost">
+                <BaseText style={styles.contactEmail}>{COMPANY.contact.phone}</BaseText>
+              </BaseButton>
             </View>
 
             <View style={styles.contactItem}>
               <Ionicons
                 name="document-outline"
                 size={20}
-                color={COLORS.primary}
+                color={colors.primary}
                 style={styles.contactIcon}
               />
-              <Text style={styles.contactTextAligned}>Fax: {COMPANY.contact.fax}</Text>
+              <BaseText style={styles.contactTextAligned}>Fax: {COMPANY.contact.fax}</BaseText>
             </View>
 
             <View style={styles.contactItem}>
@@ -102,12 +102,12 @@ export default function MenuScreen() {
                 color="#25D366"
                 style={styles.contactIcon}
               />
-              <Text
+              <BaseText
                 style={[styles.contactTextAligned, { color: '#25D366' }]}
                 onPress={() => Linking.openURL('https://wa.me/27717703063')}
               >
                 WhatsApp: +27 71 770-3063
-              </Text>
+              </BaseText>
             </View>
           </View>
         </View>
@@ -119,7 +119,7 @@ export default function MenuScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   title: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 28,
     fontWeight: 'bold',
   },
@@ -140,19 +140,19 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   sectionTitle: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 16,
   },
   contactInfo: {
     marginTop: 8,
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
   },
   contactText: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 16,
     marginBottom: 8,
   },
@@ -165,11 +165,11 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   contactEmail: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 16,
   },
   contactSubtitle: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 18,
     fontWeight: 'bold',
     marginTop: 8,
@@ -177,11 +177,11 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: COLORS.border,
+    backgroundColor: colors.border,
     marginVertical: 16,
   },
   contactTextAligned: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 16,
     textAlignVertical: 'center',
     includeFontPadding: false,

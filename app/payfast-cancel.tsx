@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { COLORS } from '../constants/colors';
+import { colors } from '../theme/colors';
 import Toast from 'react-native-toast-message';
-import Button from '../components/Button';
+import { BaseButton } from '../components/base/BaseButton';
 
 export default function PayFastCancelScreen() {
   const router = useRouter();
@@ -51,7 +51,7 @@ export default function PayFastCancelScreen() {
       Toast.show({
         type: 'info',
         text1: 'Try Another Payment Method',
-        text2: 'Consider using PayPal, EFT, or Cash on Delivery',
+        text2: 'Consider using EFT or Cash on Delivery',
         position: 'bottom',
         visibilityTime: 4000,
       });
@@ -81,18 +81,18 @@ export default function PayFastCancelScreen() {
       )}
       
       <View style={styles.buttonContainer}>
-        <Button
+        <BaseButton
           title="Try PayFast Again"
           onPress={handleReturnToCheckout}
           style={styles.button}
         />
-        <Button
+        <BaseButton
           title="Choose Different Payment"
           onPress={handleTryDifferentPayment}
           variant="outline"
           style={styles.button}
         />
-        <Button
+        <BaseButton
           title="Go Home"
           onPress={handleGoHome}
           variant="outline"
@@ -108,18 +108,18 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     padding: 20,
   },
   title: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'center',
   },
   subtitle: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 16,
     marginBottom: 30,
     textAlign: 'center',
@@ -135,17 +135,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   orderLabel: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 16,
     marginRight: 8,
   },
   orderValue: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 16,
     fontWeight: 'bold',
   },
   debugInfo: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 8,
     padding: 12,
     marginTop: 20,
@@ -153,13 +153,13 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   debugLabel: {
-    color: COLORS.error,
+    color: colors.error,
     fontSize: 14,
     fontWeight: 'bold',
     marginBottom: 8,
   },
   debugText: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 12,
     fontFamily: 'monospace',
     marginBottom: 4,

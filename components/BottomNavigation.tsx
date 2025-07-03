@@ -1,12 +1,14 @@
 // Deprecated file, replaced by BottomNavBar.tsx
 export {};
 
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../constants/colors';
+import { colors } from '../theme/colors';
 import { usePathname, useRouter } from 'expo-router';
 import { useCart } from '../context/CartContext';
+import { BaseButton } from './base/BaseButton';
+import { BaseText } from './base/BaseText';
 
 export default function BottomNavigation() {
   const pathname = usePathname();
@@ -61,7 +63,7 @@ export default function BottomNavigation() {
             {tabs.map((tab) => {
               const active = isActive(tab.path);
               return (
-                <TouchableOpacity
+                <BaseButton
                   key={tab.name}
                   style={styles.tab}
                   onPress={() => handleTabPress(tab.path)}
@@ -71,16 +73,16 @@ export default function BottomNavigation() {
                     <Ionicons
                       name={active ? (tab.activeIcon as any) : (tab.icon as any)}
                       size={24}
-                      color={active ? COLORS.primary : COLORS.text.gray}
+                      color={active ? colors.primary : colors.text.gray}
                     />
-                    <Text style={[styles.tabText, active && styles.activeTabText]}>{tab.name}</Text>
+                    <BaseText style={[styles.tabText, active && styles.activeTabText]}>{tab.name}</BaseText>
                   </View>
                   {tab.badge && (
                     <View style={styles.badge}>
-                      <Text style={styles.badgeText}>{tab.badge}</Text>
+                      <BaseText style={styles.badgeText}>{tab.badge}</BaseText>
                     </View>
                   )}
-                </TouchableOpacity>
+                </BaseButton>
               );
             })}
           </View>
@@ -107,7 +109,7 @@ export default function BottomNavigation() {
         {tabs.map((tab) => {
           const active = isActive(tab.path);
           return (
-            <TouchableOpacity
+            <BaseButton
               key={tab.name}
               style={styles.tab}
               onPress={() => handleTabPress(tab.path)}
@@ -117,16 +119,16 @@ export default function BottomNavigation() {
                 <Ionicons
                   name={active ? tab.activeIcon : tab.icon}
                   size={24}
-                  color={active ? COLORS.primary : COLORS.text.gray}
+                  color={active ? colors.primary : colors.text.gray}
                 />
-                <Text style={[styles.tabText, active && styles.activeTabText]}>{tab.name}</Text>
+                <BaseText style={[styles.tabText, active && styles.activeTabText]}>{tab.name}</BaseText>
                 {tab.badge && (
                   <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{tab.badge}</Text>
+                    <BaseText style={styles.badgeText}>{tab.badge}</BaseText>
                   </View>
                 )}
               </View>
-            </TouchableOpacity>
+            </BaseButton>
           );
         })}
       </View>
@@ -163,19 +165,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 107, 0, 0.15)', // Semi-transparent primary color
   },
   tabText: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 12,
     marginTop: 4,
   },
   activeTabText: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontWeight: 'bold',
   },
   badge: {
     position: 'absolute',
     top: -5,
     right: '25%',
-    backgroundColor: COLORS.error,
+    backgroundColor: colors.error,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -184,7 +186,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   badgeText: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 10,
     fontWeight: 'bold',
   },

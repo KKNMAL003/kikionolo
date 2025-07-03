@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  TextInput,
   StyleSheet,
   TextInputProps,
   View,
@@ -9,10 +8,11 @@ import {
   ViewStyle,
   Keyboard,
   Platform,
-  TouchableOpacity,
 } from 'react-native';
-import { COLORS } from '../constants/colors';
+import { colors } from '../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
+import { BaseButton } from './base/BaseButton';
+import { BaseInput } from './base/BaseInput';
 
 interface CustomTextInputProps extends TextInputProps {
   label?: string;
@@ -63,10 +63,10 @@ export default function CustomTextInput({
       <View style={styles.inputContainer}>
         {leftIcon && (
           <View style={styles.leftIconContainer}>
-            <Ionicons name={leftIcon} size={20} color={COLORS.text.gray} />
+            <Ionicons name={leftIcon} size={20} color={colors.text.gray} />
           </View>
         )}
-        <TextInput
+        <BaseInput
           style={[
             styles.input,
             isTextArea && styles.textArea,
@@ -75,7 +75,7 @@ export default function CustomTextInput({
             rightIcon && styles.inputWithRightIcon,
             style,
           ]}
-          placeholderTextColor={COLORS.text.gray}
+          placeholderTextColor={colors.text.gray}
           returnKeyType={returnKeyType}
           onSubmitEditing={handleSubmitEditing}
           onBlur={handleBlur}
@@ -86,9 +86,9 @@ export default function CustomTextInput({
           {...rest}
         />
         {rightIcon && (
-          <TouchableOpacity style={styles.rightIconContainer} onPress={onRightIconPress}>
-            <Ionicons name={rightIcon} size={20} color={COLORS.text.gray} />
-          </TouchableOpacity>
+          <BaseButton style={styles.rightIconContainer} onPress={onRightIconPress}>
+            <Ionicons name={rightIcon} size={20} color={colors.text.gray} />
+          </BaseButton>
         )}
       </View>
       {error && <Text style={styles.errorText}>{error}</Text>}
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    color: COLORS.text.lightGray,
+    color: colors.text.lightGray,
     fontSize: 14,
     marginBottom: 8,
     fontWeight: '500',
@@ -113,13 +113,13 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     borderRadius: 8,
     padding: 12,
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
     // Enhanced for better UX
     minHeight: 48,
   },
@@ -146,10 +146,10 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   inputError: {
-    borderColor: COLORS.error,
+    borderColor: colors.error,
   },
   errorText: {
-    color: COLORS.error,
+    color: colors.error,
     fontSize: 12,
     marginTop: 4,
   },

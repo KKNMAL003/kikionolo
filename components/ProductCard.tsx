@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../constants/colors';
+import { colors } from '../theme/colors';
 import { Product } from '../constants/products';
-import Button from './Button';
 import Toast from 'react-native-toast-message';
+import { BaseButton } from './base/BaseButton';
+import { BaseCard } from './base/BaseCard';
 
 interface ProductCardProps {
   product: Product;
@@ -48,7 +49,7 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
   };
 
   return (
-    <View style={styles.container}>
+    <BaseCard style={styles.container}>
       <View style={styles.iconContainer}>
         {productImage ? (
           <Image source={productImage} style={{ width: 72, height: 72, resizeMode: 'contain' }} />
@@ -56,7 +57,7 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
           <Ionicons
             name={product.type === 'gas' ? 'flame-outline' : 'water-outline'}
             size={60}
-            color={COLORS.primary}
+            color={colors.primary}
           />
         )}
       </View>
@@ -65,7 +66,7 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
       <Text style={styles.price}>R {product.price.toFixed(2)}</Text>
 
       <View style={styles.quantityContainer}>
-        <TouchableOpacity
+        <BaseButton
           style={styles.quantityButton}
           onPress={decreaseQuantity}
           disabled={quantity <= 1}
@@ -73,25 +74,27 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
           <Ionicons
             name="remove"
             size={20}
-            color={quantity <= 1 ? COLORS.inactive : COLORS.text.white}
+            color={quantity <= 1 ? colors.inactive : colors.text.white}
           />
-        </TouchableOpacity>
+        </BaseButton>
 
         <Text style={styles.quantityText}>{quantity}</Text>
 
-        <TouchableOpacity style={styles.quantityButton} onPress={increaseQuantity}>
-          <Ionicons name="add" size={20} color={COLORS.text.white} />
-        </TouchableOpacity>
+        <BaseButton style={styles.quantityButton} onPress={increaseQuantity}>
+          <Ionicons name="add" size={20} color={colors.text.white} />
+        </BaseButton>
       </View>
 
-      <Button title="Add to Cart" onPress={handleAddToCart} style={styles.button} />
-    </View>
+      <BaseButton onPress={handleAddToCart} style={styles.button}>
+        Add to Cart
+      </BaseButton>
+    </BaseCard>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -102,27 +105,27 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
     alignSelf: 'center',
   },
   name: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 8,
     textAlign: 'center',
   },
   description: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 14,
     marginBottom: 16,
     textAlign: 'center',
   },
   price: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 16,
@@ -139,12 +142,12 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
   quantityText: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 18,
     fontWeight: 'bold',
     marginHorizontal: 16,

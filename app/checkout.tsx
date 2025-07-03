@@ -14,10 +14,10 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS } from '../constants/colors';
+import { colors } from '../theme/colors';
 import { COMPANY } from '../constants/company';
 import Header from '../components/Header';
-import Button from '../components/Button';
+import { BaseButton } from '../components/base/BaseButton';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrders } from '../contexts/OrdersContext';
@@ -30,6 +30,7 @@ import DeliveryScheduler from '../components/DeliveryScheduler';
 
 import { sendOrderConfirmationEmail } from '../utils/email';
 import { initiatePayFastPayment } from '../utils/payfast';
+import { CreateOrderSchema, validateData, getValidationErrors } from '../validation/schemas';
 
 type PaymentMethod = 'cash_on_delivery' | 'card_on_delivery' | 'card' | 'payfast' | 'eft';
 type TimeSlot = 'morning' | 'afternoon' | 'evening';
@@ -181,6 +182,13 @@ export default function CheckoutScreen() {
   const handlePlaceOrder = async () => {
     if (!isFormValid()) {
       Alert.alert('Incomplete Information', 'Please fill in your name, phone, and address.');
+      return;
+    }
+    
+    const validationResult = validateData(CreateOrderSchema, formData);
+    if (!validationResult.success) {
+      const errors = getValidationErrors(validationResult.errors);
+      // Show errors to user (e.g., Toast or setFormErrors)
       return;
     }
     
@@ -345,7 +353,7 @@ export default function CheckoutScreen() {
                                   : 'cash-outline'
                           }
                           size={28}
-                          color={paymentMethod === method ? COLORS.primary : COLORS.text.gray}
+                          color={paymentMethod === method ? colors.primary : colors.text.gray}
                           style={styles.paymentCardIcon}
                         />
                         <Text
@@ -438,7 +446,7 @@ export default function CheckoutScreen() {
               </View>
             </View>
 
-            <Button
+            <BaseButton
               title={loading || isProcessingOrder ? 'Processing...' : 'Place Order'}
               onPress={handlePlaceOrder}
               disabled={loading || isProcessingOrder || !isFormValid()}
@@ -454,7 +462,7 @@ export default function CheckoutScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
   scrollView: {
     paddingHorizontal: 16,
@@ -465,13 +473,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: COLORS.text.white,
+    color: colors.text.white,
     marginBottom: 12,
   },
   summaryContainer: {
     marginTop: 20,
     padding: 16,
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 8,
   },
   summaryRow: {
@@ -481,7 +489,7 @@ const styles = StyleSheet.create({
   },
   summaryText: {
     fontSize: 16,
-    color: COLORS.text.gray,
+    color: colors.text.gray,
   },
   totalRow: {
     flexDirection: 'row',
@@ -489,12 +497,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    borderTopColor: colors.border,
   },
   totalText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: COLORS.primary,
+    color: colors.primary,
     marginTop: 8,
   },
   paymentOptions: {
@@ -502,10 +510,10 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   paymentCard: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
     padding: 18,
     marginBottom: 0,
     shadowColor: '#000',
@@ -516,8 +524,8 @@ const styles = StyleSheet.create({
     marginTop: 0,
   },
   paymentCardSelected: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primary + '18',
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '18',
     shadowOpacity: 0.18,
     elevation: 4,
   },
@@ -532,13 +540,13 @@ const styles = StyleSheet.create({
   paymentCardTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: COLORS.text.white,
+    color: colors.text.white,
   },
   paymentCardTitleSelected: {
-    color: COLORS.primary,
+    color: colors.primary,
   },
   paymentCardDescription: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 13,
     marginLeft: 40,
     marginTop: 2,
@@ -552,23 +560,23 @@ const styles = StyleSheet.create({
   eftDetailsContainer: {
     marginTop: 16,
     padding: 16,
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 8,
   },
   eftTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: COLORS.text.white,
+    color: colors.text.white,
     marginBottom: 8,
   },
   eftText: {
     fontSize: 14,
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     marginBottom: 4,
   },
   eftContactLink: {
     fontSize: 14,
-    color: COLORS.primary,
+    color: colors.primary,
     textDecorationLine: 'underline',
     marginTop: 8,
   },

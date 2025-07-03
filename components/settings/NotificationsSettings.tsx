@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, Switch } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from 'react-native-gesture-handler';
-import { COLORS } from '../../constants/colors';
+import { colors } from '../../theme/colors';
 import { styles } from './settingsStyles';
 
 type NotificationSettingsProps = {
@@ -53,7 +53,7 @@ export const NotificationsSettings: React.FC<NotificationSettingsProps> = ({
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text.white} />
+          <Ionicons name="arrow-back" size={24} color={colors.text.white} />
         </TouchableOpacity>
         <Text style={styles.title}>Notifications</Text>
         <View style={{ width: 24 }} />
@@ -65,7 +65,7 @@ export const NotificationsSettings: React.FC<NotificationSettingsProps> = ({
 
           <View style={styles.settingItem}>
             <View style={styles.settingIcon}>
-              <Ionicons name="mail-outline" size={22} color={COLORS.primary} />
+              <Ionicons name="mail-outline" size={22} color={colors.primary} />
             </View>
             <View style={styles.settingTextContainer}>
               <Text style={styles.settingText}>Email Notifications</Text>
@@ -74,14 +74,14 @@ export const NotificationsSettings: React.FC<NotificationSettingsProps> = ({
             <Switch
               value={settings.email}
               onValueChange={() => handleToggle('email')}
-              trackColor={{ false: COLORS.border, true: COLORS.primary }}
-              thumbColor={COLORS.text.white}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={colors.text.white}
             />
           </View>
 
           <View style={styles.settingItem}>
             <View style={styles.settingIcon}>
-              <Ionicons name="chatbubbles-outline" size={22} color={COLORS.primary} />
+              <Ionicons name="chatbubbles-outline" size={22} color={colors.primary} />
             </View>
             <View style={styles.settingTextContainer}>
               <Text style={styles.settingText}>SMS Notifications</Text>
@@ -90,14 +90,14 @@ export const NotificationsSettings: React.FC<NotificationSettingsProps> = ({
             <Switch
               value={settings.sms}
               onValueChange={() => handleToggle('sms')}
-              trackColor={{ false: COLORS.border, true: COLORS.primary }}
-              thumbColor={COLORS.text.white}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={colors.text.white}
             />
           </View>
 
           <View style={styles.settingItem}>
             <View style={styles.settingIcon}>
-              <Ionicons name="notifications-outline" size={22} color={COLORS.primary} />
+              <Ionicons name="notifications-outline" size={22} color={colors.primary} />
             </View>
             <View style={styles.settingTextContainer}>
               <Text style={styles.settingText}>Push Notifications</Text>
@@ -106,8 +106,8 @@ export const NotificationsSettings: React.FC<NotificationSettingsProps> = ({
             <Switch
               value={settings.push}
               onValueChange={() => handleToggle('push')}
-              trackColor={{ false: COLORS.border, true: COLORS.primary }}
-              thumbColor={COLORS.text.white}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={colors.text.white}
             />
           </View>
         </View>
@@ -123,8 +123,8 @@ export const NotificationsSettings: React.FC<NotificationSettingsProps> = ({
             <Switch
               value={settings.orderUpdates}
               onValueChange={() => handleToggle('orderUpdates')}
-              trackColor={{ false: COLORS.border, true: COLORS.primary }}
-              thumbColor={COLORS.text.white}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={colors.text.white}
             />
           </View>
 
@@ -136,8 +136,8 @@ export const NotificationsSettings: React.FC<NotificationSettingsProps> = ({
             <Switch
               value={settings.promotions}
               onValueChange={() => handleToggle('promotions')}
-              trackColor={{ false: COLORS.border, true: COLORS.primary }}
-              thumbColor={COLORS.text.white}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={colors.text.white}
             />
           </View>
 
@@ -149,8 +149,8 @@ export const NotificationsSettings: React.FC<NotificationSettingsProps> = ({
             <Switch
               value={settings.newsletter}
               onValueChange={() => handleToggle('newsletter')}
-              trackColor={{ false: COLORS.border, true: COLORS.primary }}
-              thumbColor={COLORS.text.white}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={colors.text.white}
             />
           </View>
         </View>

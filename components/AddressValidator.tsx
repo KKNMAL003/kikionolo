@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { COLORS } from '../constants/colors';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { colors } from '../theme/colors';
+import { addressSchema } from '../validation/schemas';
+import { BaseText } from './base/BaseText';
 
 export interface AddressValidationResult {
   isValid: boolean;
@@ -124,6 +126,14 @@ export default function AddressValidator({
         // Debounce validation
         await new Promise((resolve) => setTimeout(resolve, 500));
 
+        // Before calling validateAddress, validate the address using addressSchema
+        try {
+          addressSchema.parse(address);
+        } catch (error) {
+          // Show error to user or set validationResult to invalid
+          return;
+        }
+
         const result = await validateAddress(address);
         setValidationResult(result);
         onValidationComplete(result);
@@ -151,8 +161,8 @@ export default function AddressValidator({
     <View style={styles.container}>
       {isValidating && (
         <View style={styles.validatingContainer}>
-          <ActivityIndicator size="small" color={COLORS.primary} />
-          <Text style={styles.validatingText}>Validating address...</Text>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <BaseText style={styles.validatingText}>Validating address...</BaseText>
         </View>
       )}
 
@@ -160,18 +170,18 @@ export default function AddressValidator({
         <View style={styles.resultContainer}>
           {validationResult.isValid ? (
             <View style={styles.validContainer}>
-              <Text style={styles.validText}>✅ Address validated</Text>
+              <BaseText style={styles.validText}>✅ Address validated</BaseText>
               {validationResult.formattedAddress && (
-                <Text style={styles.formattedAddress}>{validationResult.formattedAddress}</Text>
+                <BaseText style={styles.formattedAddress}>{validationResult.formattedAddress}</BaseText>
               )}
             </View>
           ) : (
             <View style={styles.invalidContainer}>
-              <Text style={styles.invalidText}>⚠️ Address needs review</Text>
+              <BaseText style={styles.invalidText}>⚠️ Address needs review</BaseText>
               {validationResult.suggestions?.map((suggestion, index) => (
-                <Text key={index} style={styles.suggestion}>
+                <BaseText key={index} style={styles.suggestion}>
                   • {suggestion}
-                </Text>
+                </BaseText>
               ))}
             </View>
           )}
@@ -189,11 +199,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 8,
-    backgroundColor: COLORS.primary + '10',
+    backgroundColor: colors.primary + '10',
     borderRadius: 6,
   },
   validatingText: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 12,
     marginLeft: 8,
   },

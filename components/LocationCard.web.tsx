@@ -1,10 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { COLORS } from '../constants/colors';
+import { View, StyleSheet } from 'react-native';
+import { colors } from '../theme/colors';
 import { COMPANY } from '../constants/company';
 import { Ionicons } from '@expo/vector-icons';
-import Button from './Button';
+import { BaseButton } from './base/BaseButton';
 import { useRouter } from 'expo-router';
+import { BaseCard } from './base/BaseCard';
+import { BaseText } from './base/BaseText';
 
 interface LocationCardProps {
   onDeliveryRequest?: () => void;
@@ -19,38 +21,38 @@ export default function LocationCard({ onDeliveryRequest }: LocationCardProps) {
   };
 
   return (
-    <View style={styles.container}>
+    <BaseCard style={styles.container}>
       <View style={styles.mapContainer}>
         <View style={styles.mapPlaceholder}>
-          <Ionicons name="location-outline" size={32} color={COLORS.text.gray} />
-          <Text style={styles.mapPlaceholderText}>
+          <Ionicons name="location-outline" size={32} color={colors.text.gray} />
+          <BaseText style={styles.mapPlaceholderText}>
             {COMPANY.location.fullAddress.street}, {COMPANY.location.fullAddress.area}
-          </Text>
+          </BaseText>
         </View>
       </View>
       <View style={styles.locationInfo}>
         <View style={styles.locationHeader}>
           <View style={styles.iconContainer}>
-            <Ionicons name="location" size={24} color={COLORS.primary} />
+            <Ionicons name="location" size={24} color={colors.primary} />
           </View>
           <View>
-            <Text style={styles.locationName}>{COMPANY.location.name}</Text>
-            <Text style={styles.locationAddress}>{COMPANY.location.address}</Text>
+            <BaseText style={styles.locationName}>{COMPANY.location.name}</BaseText>
+            <BaseText style={styles.locationAddress}>{COMPANY.location.address}</BaseText>
           </View>
         </View>
         <View style={styles.hoursContainer}>
           <View style={styles.dot} />
-          <Text style={styles.hours}>{COMPANY.location.hours}</Text>
+          <BaseText style={styles.hours}>{COMPANY.location.hours}</BaseText>
         </View>
-        <Button title="Ask for a delivery" onPress={handleDeliveryRequest} style={styles.button} />
+        <BaseButton title="Ask for a delivery" onPress={handleDeliveryRequest} style={styles.button} />
       </View>
-    </View>
+    </BaseCard>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     overflow: 'hidden',
     marginBottom: 20,
@@ -67,7 +69,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   mapPlaceholderText: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 14,
     marginTop: 8,
     textAlign: 'center',
@@ -90,12 +92,12 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   locationName: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 18,
     fontWeight: 'bold',
   },
   locationAddress: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 14,
   },
   hoursContainer: {
@@ -107,11 +109,11 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
     marginRight: 8,
   },
   hours: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 14,
   },
   button: {

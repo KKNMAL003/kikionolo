@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, Modal } from 'react-native';
+import { View, Text, StyleSheet, Platform, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../constants/colors';
+import { colors } from '../theme/colors';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { BaseButton } from './base/BaseButton';
 
 type TimeSlot = 'morning' | 'afternoon' | 'evening';
 
@@ -97,13 +98,13 @@ export default function DeliveryScheduler({
           <View style={styles.modalOverlay}>
             <View style={styles.modalContainer}>
               <View style={styles.modalHeader}>
-                <TouchableOpacity onPress={handlePickerDismiss}>
+                <BaseButton onPress={handlePickerDismiss}>
                   <Text style={styles.modalCancelText}>Cancel</Text>
-                </TouchableOpacity>
+                </BaseButton>
                 <Text style={styles.modalTitle}>Select Delivery Date</Text>
-                <TouchableOpacity onPress={handleDonePress}>
+                <BaseButton onPress={handleDonePress}>
                   <Text style={styles.modalDoneText}>Done</Text>
-                </TouchableOpacity>
+                </BaseButton>
               </View>
               <View style={styles.datePickerNote}>
                 <Text style={styles.noteText}>📅 Delivery available from tomorrow onwards</Text>
@@ -115,7 +116,7 @@ export default function DeliveryScheduler({
                 onChange={handleDateChange}
                 minimumDate={tomorrow}
                 maximumDate={maxDate}
-                textColor={Platform.OS === 'ios' ? COLORS.text.white : undefined}
+                textColor={Platform.OS === 'ios' ? colors.text.white : undefined}
                 themeVariant="dark"
                 style={styles.iosDatePicker}
               />
@@ -133,7 +134,7 @@ export default function DeliveryScheduler({
           onChange={handleDateChange}
           minimumDate={tomorrow}
           maximumDate={maxDate}
-          textColor={COLORS.text.white}
+          textColor={colors.text.white}
         />
       ) : null;
     }
@@ -147,16 +148,16 @@ export default function DeliveryScheduler({
       <View style={styles.dateSection}>
         <Text style={styles.label}>Delivery Date</Text>
         <View style={styles.dateNotice}>
-          <Ionicons name="information-circle-outline" size={16} color={COLORS.primary} />
+          <Ionicons name="information-circle-outline" size={16} color={colors.primary} />
           <Text style={styles.dateNoticeText}>Deliveries available from tomorrow onwards</Text>
         </View>
-        <TouchableOpacity
+        <BaseButton
           style={styles.dateButton}
           onPress={() => setShowDatePicker(true)}
           activeOpacity={0.7}
         >
           <View style={styles.dateContent}>
-            <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+            <Ionicons name="calendar-outline" size={20} color={colors.primary} />
             <View style={styles.dateTextContainer}>
               <Text style={styles.dateText}>{getDateDisplayText(selectedDate)}</Text>
               {!isTomorrow(selectedDate) && !isDayAfterTomorrow(selectedDate) && (
@@ -164,15 +165,15 @@ export default function DeliveryScheduler({
               )}
             </View>
           </View>
-          <Ionicons name="chevron-down" size={20} color={COLORS.text.white} />
-        </TouchableOpacity>
+          <Ionicons name="chevron-down" size={20} color={colors.text.white} />
+        </BaseButton>
       </View>
 
       {/* Time Slot Selection */}
       <View style={styles.timeSlotsSection}>
         <Text style={styles.label}>Delivery Time</Text>
         {TIME_SLOTS.map((slot) => (
-          <TouchableOpacity
+          <BaseButton
             key={slot.id}
             style={[styles.timeSlot, selectedTimeSlot === slot.value && styles.selectedTimeSlot]}
             onPress={() => onTimeSlotChange(slot.value)}
@@ -196,7 +197,7 @@ export default function DeliveryScheduler({
                 {slot.label}
               </Text>
             </View>
-          </TouchableOpacity>
+          </BaseButton>
         ))}
       </View>
 
@@ -208,13 +209,13 @@ export default function DeliveryScheduler({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
   },
   sectionTitle: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
@@ -223,7 +224,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   label: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 14,
     marginBottom: 8,
     fontWeight: '500',
@@ -231,13 +232,13 @@ const styles = StyleSheet.create({
   dateNotice: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.primary + '15',
+    backgroundColor: colors.primary + '15',
     borderRadius: 6,
     padding: 8,
     marginBottom: 12,
   },
   dateNoticeText: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 12,
     marginLeft: 6,
     fontWeight: '500',
@@ -246,11 +247,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     borderRadius: 8,
     padding: 12,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
   },
   dateContent: {
     flexDirection: 'row',
@@ -260,12 +261,12 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   dateText: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 16,
     fontWeight: 'bold',
   },
   dateSubtext: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 12,
     marginTop: 2,
   },
@@ -273,16 +274,16 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   timeSlot: {
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
   },
   selectedTimeSlot: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primary + '10',
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '10',
   },
   timeSlotContent: {
     flexDirection: 'row',
@@ -293,27 +294,27 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
     marginRight: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
   selectedRadioButton: {
-    borderColor: COLORS.primary,
+    borderColor: colors.primary,
   },
   radioButtonInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
   },
   timeSlotText: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 14,
     flex: 1,
   },
   selectedTimeSlotText: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontWeight: 'bold',
   },
   // iOS Modal Styles with enhanced theming
@@ -323,14 +324,14 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: Platform.OS === 'ios' ? 34 : 20,
     borderWidth: 1,
-    borderTopColor: COLORS.border,
-    borderLeftColor: COLORS.border,
-    borderRightColor: COLORS.border,
+    borderTopColor: colors.border,
+    borderLeftColor: colors.border,
+    borderRightColor: colors.border,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -339,40 +340,40 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.card,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.card,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
   modalTitle: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 18,
     fontWeight: 'bold',
   },
   modalCancelText: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 16,
   },
   modalDoneText: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 16,
     fontWeight: 'bold',
   },
   datePickerNote: {
-    backgroundColor: COLORS.primary + '15',
+    backgroundColor: colors.primary + '15',
     padding: 12,
     marginHorizontal: 20,
     marginTop: 10,
     borderRadius: 8,
   },
   noteText: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 14,
     textAlign: 'center',
     fontWeight: '500',
   },
   iosDatePicker: {
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     height: 200,
     marginTop: 10,
   },

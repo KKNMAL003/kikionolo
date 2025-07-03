@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
-  Text,
   TextInput,
   StyleSheet,
   StyleProp,
   ViewStyle,
   FlatList,
-  TouchableOpacity,
   Keyboard,
   Platform,
   TouchableWithoutFeedback,
 } from 'react-native';
-import { COLORS } from '../constants/colors';
+import { colors } from '../theme/colors';
+import { BaseButton } from './base/BaseButton';
+import { BaseText } from './base/BaseText';
 
 // Use env variable if available, otherwise fallback to the provided public token
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || 'pk.eyJ1Ijoia2tubWFsMDAzIiwiYSI6ImNtOWI2NGF1MjBjdWwya3M1Mmxua3hqaXgifQ._PMbFD1tTIq4zmjGCwnAHg';
@@ -87,7 +87,7 @@ export default function AddressAutocomplete({
 
   return (
     <View style={[styles.container, style]}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label && <BaseText style={styles.label}>{label}</BaseText>}
       <TextInput
         ref={inputRef}
         style={styles.input}
@@ -108,13 +108,13 @@ export default function AddressAutocomplete({
         <TouchableWithoutFeedback onPressIn={handleSuggestionsPressIn}>
           <View style={styles.suggestionsContainer} ref={suggestionsContainerRef}>
             {suggestions.map((item) => (
-              <TouchableOpacity
+              <BaseButton
                 key={item.id}
                 style={styles.suggestionItem}
                 onPress={() => handleSelect(item)}
               >
-                <Text style={styles.suggestionText}>{item.place_name}</Text>
-              </TouchableOpacity>
+                <BaseText style={styles.suggestionText}>{item.place_name}</BaseText>
+              </BaseButton>
             ))}
           </View>
         </TouchableWithoutFeedback>

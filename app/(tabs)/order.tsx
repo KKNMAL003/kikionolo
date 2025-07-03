@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS } from '../../constants/colors';
+import { colors } from '../../theme/colors';
 import { PRODUCTS } from '../../constants/products';
 import Header from '../../components/Header';
 import ProductCard from '../../components/ProductCard';
@@ -37,14 +37,14 @@ export default function OrderScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
     padding: 16,
   },
   title: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 20,

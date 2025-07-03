@@ -158,3 +158,21 @@ export type NotificationRequestData = z.infer<typeof NotificationRequestSchema>;
 export type LoginData = z.infer<typeof LoginSchema>;
 export type RegisterData = z.infer<typeof RegisterSchema>;
 export type PayFastPaymentData = z.infer<typeof PayFastPaymentSchema>;
+
+export const MessageSchema = z.object({
+  id: z.string(),
+  user_id: z.string(),
+  customer_id: z.string(),
+  staff_id: z.string().optional(),
+  log_type: z.enum(['user_message', 'staff_message', 'order_status_update']),
+  subject: z.string(),
+  message: z.string(),
+  sender_type: z.enum(['customer', 'staff']),
+  is_read: z.boolean(),
+  created_at: z.string(),
+});
+
+export type MessageData = z.infer<typeof MessageSchema>;
+
+export const PartialProfileUpdateSchema = ProfileUpdateSchema.partial();
+export type PartialProfileUpdateData = z.infer<typeof PartialProfileUpdateSchema>;

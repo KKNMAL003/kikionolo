@@ -1,10 +1,12 @@
 import React from 'react';
-import { ScrollView, Text, View, TouchableOpacity } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../constants/colors';
+import { colors } from '../theme/colors';
 import { NotificationsSettings } from './settings/NotificationsSettings';
 import { PrivacySecuritySettings } from './settings/PrivacySecuritySettings';
 import { useRouter } from 'expo-router';
+import { BaseButton } from './base/BaseButton';
+import { BaseText } from './base/BaseText';
 
 export default function ProfileSettingsScreen({
   settingsScreen,
@@ -54,42 +56,42 @@ export default function ProfileSettingsScreen({
           contentContainerStyle={{ padding: 20 }}
           showsVerticalScrollIndicator={false}
         >
-          <TouchableOpacity
+          <BaseButton
             style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}
             onPress={() => setSettingsScreen('main')}
           >
-            <Ionicons name="arrow-back" size={24} color={COLORS.text.white} />
-            <Text style={{ color: COLORS.text.white, fontSize: 16, marginLeft: 12 }}>Back to Settings</Text>
-          </TouchableOpacity>
+            <Ionicons name="arrow-back" size={24} color={colors.text.white} />
+            <BaseText style={{ color: colors.text.white, fontSize: 16, marginLeft: 12 }}>Back to Settings</BaseText>
+          </BaseButton>
           
-          <Text style={{ color: COLORS.text.white, fontSize: 22, fontWeight: 'bold', marginBottom: 20 }}>Help & Support</Text>
+          <BaseText style={{ color: colors.text.white, fontSize: 22, fontWeight: 'bold', marginBottom: 20 }}>Help & Support</BaseText>
           
-          <View style={{ backgroundColor: COLORS.card, borderRadius: 12, padding: 16, marginBottom: 16 }}>
-            <Text style={{ color: COLORS.text.white, fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>Contact Information</Text>
-            <Text style={{ color: COLORS.text.gray, fontSize: 14, marginBottom: 8 }}>📞 Phone: +27 11 464 5073</Text>
-            <Text style={{ color: COLORS.text.gray, fontSize: 14, marginBottom: 8 }}>📧 Email: info@onologroup.com</Text>
-            <Text style={{ color: COLORS.text.gray, fontSize: 14, marginBottom: 8 }}>🌐 Website: www.onologroup.com</Text>
+          <View style={{ backgroundColor: colors.card, borderRadius: 12, padding: 16, marginBottom: 16 }}>
+            <BaseText style={{ color: colors.text.white, fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>Contact Information</BaseText>
+            <BaseText style={{ color: colors.text.gray, fontSize: 14, marginBottom: 8 }}>📞 Phone: +27 11 464 5073</BaseText>
+            <BaseText style={{ color: colors.text.gray, fontSize: 14, marginBottom: 8 }}>📧 Email: info@onologroup.com</BaseText>
+            <BaseText style={{ color: colors.text.gray, fontSize: 14, marginBottom: 8 }}>🌐 Website: www.onologroup.com</BaseText>
           </View>
           
-          <View style={{ backgroundColor: COLORS.card, borderRadius: 12, padding: 16, marginBottom: 16 }}>
-            <Text style={{ color: COLORS.text.white, fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>Business Hours</Text>
-            <Text style={{ color: COLORS.text.gray, fontSize: 14, marginBottom: 8 }}>Monday - Sunday: 7:00 AM - 10:00 PM</Text>
-            <Text style={{ color: COLORS.text.gray, fontSize: 14, marginBottom: 8 }}>Emergency deliveries available 24/7</Text>
+          <View style={{ backgroundColor: colors.card, borderRadius: 12, padding: 16, marginBottom: 16 }}>
+            <BaseText style={{ color: colors.text.white, fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>Business Hours</BaseText>
+            <BaseText style={{ color: colors.text.gray, fontSize: 14, marginBottom: 8 }}>Monday - Sunday: 7:00 AM - 10:00 PM</BaseText>
+            <BaseText style={{ color: colors.text.gray, fontSize: 14, marginBottom: 8 }}>Emergency deliveries available 24/7</BaseText>
           </View>
           
-          <View style={{ backgroundColor: COLORS.card, borderRadius: 12, padding: 16, marginBottom: 16 }}>
-            <Text style={{ color: COLORS.text.white, fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>Common Questions</Text>
-            <Text style={{ color: COLORS.text.gray, fontSize: 14, marginBottom: 8 }}>• How do I place an order?</Text>
-            <Text style={{ color: COLORS.text.gray, fontSize: 14, marginBottom: 8 }}>• What payment methods do you accept?</Text>
-            <Text style={{ color: COLORS.text.gray, fontSize: 14, marginBottom: 8 }}>• How long does delivery take?</Text>
-            <Text style={{ color: COLORS.text.gray, fontSize: 14, marginBottom: 8 }}>• Can I cancel my order?</Text>
+          <View style={{ backgroundColor: colors.card, borderRadius: 12, padding: 16, marginBottom: 16 }}>
+            <BaseText style={{ color: colors.text.white, fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>Common Questions</BaseText>
+            <BaseText style={{ color: colors.text.gray, fontSize: 14, marginBottom: 8 }}>• How do I place an order?</BaseText>
+            <BaseText style={{ color: colors.text.gray, fontSize: 14, marginBottom: 8 }}>• What payment methods do you accept?</BaseText>
+            <BaseText style={{ color: colors.text.gray, fontSize: 14, marginBottom: 8 }}>• How long does delivery take?</BaseText>
+            <BaseText style={{ color: colors.text.gray, fontSize: 14, marginBottom: 8 }}>• Can I cancel my order?</BaseText>
           </View>
           
-          <View style={{ backgroundColor: COLORS.card, borderRadius: 12, padding: 16 }}>
-            <Text style={{ color: COLORS.text.white, fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>Need More Help?</Text>
-            <Text style={{ color: COLORS.text.gray, fontSize: 14, lineHeight: 20 }}>
+          <View style={{ backgroundColor: colors.card, borderRadius: 12, padding: 16 }}>
+            <BaseText style={{ color: colors.text.white, fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>Need More Help?</BaseText>
+            <BaseText style={{ color: colors.text.gray, fontSize: 14, lineHeight: 20 }}>
               If you need immediate assistance, please call us directly or send us an email. Our customer service team is available during business hours to help you with any questions or concerns.
-            </Text>
+            </BaseText>
           </View>
         </ScrollView>
       );
@@ -102,40 +104,40 @@ export default function ProfileSettingsScreen({
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={{ color: COLORS.text.white, fontSize: 22, fontWeight: 'bold', marginBottom: 20 }}>Settings</Text>
+          <BaseText style={{ color: colors.text.white, fontSize: 22, fontWeight: 'bold', marginBottom: 20 }}>Settings</BaseText>
           <View style={{ marginBottom: 24 }}>
-            <TouchableOpacity
+            <BaseButton
               style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}
               onPress={() => setSettingsScreen('notifications')}
             >
-              <Ionicons name="notifications-outline" size={24} color={COLORS.text.white} />
-              <Text style={{ color: COLORS.text.white, fontSize: 16, marginLeft: 12 }}>Notifications</Text>
-              <Ionicons name="chevron-forward" size={20} color={COLORS.text.gray} style={{ marginLeft: 'auto' }} />
-            </TouchableOpacity>
-            <TouchableOpacity
+              <Ionicons name="notifications-outline" size={24} color={colors.text.white} />
+              <BaseText style={{ color: colors.text.white, fontSize: 16, marginLeft: 12 }}>Notifications</BaseText>
+              <Ionicons name="chevron-forward" size={20} color={colors.text.gray} style={{ marginLeft: 'auto' }} />
+            </BaseButton>
+            <BaseButton
               style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}
               onPress={() => setSettingsScreen('privacy')}
             >
-              <Ionicons name="lock-closed-outline" size={24} color={COLORS.text.white} />
-              <Text style={{ color: COLORS.text.white, fontSize: 16, marginLeft: 12 }}>Privacy & Security</Text>
-              <Ionicons name="chevron-forward" size={20} color={COLORS.text.gray} style={{ marginLeft: 'auto' }} />
-            </TouchableOpacity>
-            <TouchableOpacity
+              <Ionicons name="lock-closed-outline" size={24} color={colors.text.white} />
+              <BaseText style={{ color: colors.text.white, fontSize: 16, marginLeft: 12 }}>Privacy & Security</BaseText>
+              <Ionicons name="chevron-forward" size={20} color={colors.text.gray} style={{ marginLeft: 'auto' }} />
+            </BaseButton>
+            <BaseButton
               style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}
               onPress={() => router.push('/(tabs)/chat')}
             >
-              <Ionicons name="help-circle-outline" size={24} color={COLORS.text.white} />
-              <Text style={{ color: COLORS.text.white, fontSize: 16, marginLeft: 12 }}>Help & Support</Text>
-              <Ionicons name="chevron-forward" size={20} color={COLORS.text.gray} style={{ marginLeft: 'auto' }} />
-            </TouchableOpacity>
+              <Ionicons name="help-circle-outline" size={24} color={colors.text.white} />
+              <BaseText style={{ color: colors.text.white, fontSize: 16, marginLeft: 12 }}>Help & Support</BaseText>
+              <Ionicons name="chevron-forward" size={20} color={colors.text.gray} style={{ marginLeft: 'auto' }} />
+            </BaseButton>
             {onLogout && (
-              <TouchableOpacity
+              <BaseButton
                 style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}
                 onPress={onLogout}
               >
-                <Ionicons name="log-out-outline" size={24} color={COLORS.error} />
-                <Text style={{ color: COLORS.error, fontSize: 16, marginLeft: 12 }}>Sign Out</Text>
-              </TouchableOpacity>
+                <Ionicons name="log-out-outline" size={24} color={colors.error} />
+                <BaseText style={{ color: colors.error, fontSize: 16, marginLeft: 12 }}>Sign Out</BaseText>
+              </BaseButton>
             )}
           </View>
         </ScrollView>

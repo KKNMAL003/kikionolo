@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
-import { COLORS } from '../../constants/colors';
+import { colors } from '../../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import FuelTypeSelector from '../../components/FuelTypeSelector';
@@ -116,7 +116,7 @@ export default function HomeScreen() {
           <View style={styles.mapOverlay} pointerEvents="none" />
           <View style={styles.locationCard}>
             <View style={styles.locationIconContainer}>
-              <Ionicons name="location" size={24} color={COLORS.primary} />
+              <Ionicons name="location" size={24} color={colors.primary} />
             </View>
             <View style={styles.locationInfo}>
               <Text style={styles.locationTitle}>Onolo Gas</Text>
@@ -140,7 +140,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     position: 'relative',
     overflow: 'hidden',
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
   },
   mapImage: {
     borderRadius: 16,
@@ -189,13 +189,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   locationTitle: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 4,
   },
   locationAddress: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 16,
     marginBottom: 8,
   },
@@ -208,21 +208,21 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
     marginRight: 8,
   },
   hoursText: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 14,
   },
   deliveryButton: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
     borderRadius: 24,
     paddingVertical: 12,
     alignItems: 'center',
   },
   deliveryButtonText: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 16,
     fontWeight: 'bold',
   },

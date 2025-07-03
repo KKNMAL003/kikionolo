@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { COLORS } from '../constants/colors';
+import { colors } from '../theme/colors';
+import { BaseButton } from '../components/base/BaseButton';
 
 export default function Welcome() {
   const router = useRouter();
@@ -11,7 +12,7 @@ export default function Welcome() {
         Fuel <Text style={styles.white}>On</Text>
         {'\n'}Demand
       </Text>
-      <Text style={styles.subtitle}>Order LPG gas refills in seconds – we’ll handle the rest</Text>
+      <Text style={styles.subtitle}>Order LPG gas refills in seconds – we'll handle the rest</Text>
 
       {['Fast Delivery', '24/7 Support', 'Secure Payment'].map((item) => (
         <View key={item} style={styles.bullet}>
@@ -20,13 +21,14 @@ export default function Welcome() {
         </View>
       ))}
 
-      <TouchableOpacity
+      <BaseButton
         style={styles.button}
         activeOpacity={0.8}
         onPress={() => router.replace('/auth/login')}
+        variant="primary"
       >
         <Text style={styles.btnTxt}>Get Started →</Text>
-      </TouchableOpacity>
+      </BaseButton>
     </View>
   );
 }
@@ -34,21 +36,21 @@ export default function Welcome() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     paddingHorizontal: 24,
     paddingTop: 120,
   },
   headline: {
     fontSize: 64,
     fontWeight: '900',
-    color: COLORS.primary,
+    color: colors.primary,
     lineHeight: 70,
   },
   white: {
     color: '#FFFFFF',
   },
   subtitle: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 20,
     marginVertical: 24,
   },
@@ -61,7 +63,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
     marginRight: 8,
   },
   bulletText: {
@@ -70,7 +72,7 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: 32,
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
     borderRadius: 24,
     paddingVertical: 16,
     alignItems: 'center',

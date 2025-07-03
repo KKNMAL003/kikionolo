@@ -14,12 +14,12 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS } from '../../constants/colors';
+import { colors } from '../../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, usePathname } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import CustomTextInput from '../../components/CustomTextInput';
-import Button from '../../components/Button';
+import { BaseButton } from '../../components/base/BaseButton';
 import Toast from 'react-native-toast-message';
 
 export default function LoginScreen() {
@@ -120,7 +120,7 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-        <Ionicons name="arrow-back" size={24} color={COLORS.text.white} />
+        <Ionicons name="arrow-back" size={24} color={colors.text.white} />
       </TouchableOpacity>
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
@@ -179,12 +179,17 @@ export default function LoginScreen() {
                 onSubmitEditing={handleLogin}
               />
 
-              <Button
-                title="Login"
+              <BaseButton
                 onPress={handleLogin}
                 loading={isLoading}
                 style={styles.loginButton}
-              />
+                disabled={isLoading}
+                variant="primary"
+              >
+                <Text style={styles.loginButtonText || {}}>
+                  Login
+                </Text>
+              </BaseButton>
 
               <TouchableOpacity style={styles.forgotPasswordButton}>
                 <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
@@ -196,12 +201,17 @@ export default function LoginScreen() {
                 <View style={styles.dividerLine} />
               </View>
 
-              <Button
-                title="Continue as Guest"
+              <BaseButton
                 onPress={handleGuestLogin}
-                variant="outline"
+                loading={isLoading}
                 style={styles.guestButton}
-              />
+                disabled={isLoading}
+                variant="secondary"
+              >
+                <Text style={styles.guestButtonText || {}}>
+                  Continue as Guest
+                </Text>
+              </BaseButton>
 
               <View style={styles.registerContainer}>
                 <Text style={styles.registerText}>Don't have an account? </Text>
@@ -220,7 +230,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
   keyboardAvoidingView: {
     flex: 1,
@@ -233,7 +243,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
@@ -257,19 +267,19 @@ const styles = StyleSheet.create({
     borderRadius: 0,
   },
   appName: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 24,
     fontWeight: 'bold',
     marginTop: 8,
   },
   title: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 8,
   },
   subtitle: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 16,
     marginBottom: 32,
   },
@@ -285,7 +295,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   forgotPasswordText: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 14,
   },
   divider: {
@@ -296,10 +306,10 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: COLORS.border,
+    backgroundColor: colors.border,
   },
   dividerText: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     paddingHorizontal: 16,
     fontSize: 14,
   },
@@ -312,11 +322,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   registerText: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 14,
   },
   registerLink: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 14,
     fontWeight: 'bold',
   },
@@ -331,7 +341,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   errorBannerText: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 14,
     marginLeft: 8,
     flex: 1,

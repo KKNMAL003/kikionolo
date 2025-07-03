@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../constants/colors';
+import { colors } from '../theme/colors';
+import { BaseText } from './base/BaseText';
 
 interface OrderStatusTrackerProps {
   status: 'pending' | 'confirmed' | 'preparing' | 'out_for_delivery' | 'delivered' | 'cancelled';
@@ -46,9 +47,9 @@ export default function OrderStatusTracker({
   const currentStatusIndex = getStatusIndex(status);
 
   const getStatusColor = (stepIndex: number) => {
-    if (status === 'cancelled') return COLORS.error;
-    if (stepIndex <= currentStatusIndex) return COLORS.primary;
-    return COLORS.text.gray;
+    if (status === 'cancelled') return colors.error;
+    if (stepIndex <= currentStatusIndex) return colors.primary;
+    return colors.text.gray;
   };
 
   const getStatusMessage = () => {
@@ -73,11 +74,11 @@ export default function OrderStatusTracker({
   if (status === 'cancelled') {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>Order Status</Text>
+        <BaseText style={styles.title}>Order Status</BaseText>
         <View style={styles.cancelledContainer}>
-          <Ionicons name="close-circle" size={48} color={COLORS.error} />
-          <Text style={styles.cancelledText}>Order Cancelled</Text>
-          <Text style={styles.statusMessage}>{getStatusMessage()}</Text>
+          <Ionicons name="close-circle" size={48} color={colors.error} />
+          <BaseText style={styles.cancelledText}>Order Cancelled</BaseText>
+          <BaseText style={styles.statusMessage}>{getStatusMessage()}</BaseText>
         </View>
       </View>
     );
@@ -85,12 +86,12 @@ export default function OrderStatusTracker({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Order Status</Text>
+      <BaseText style={styles.title}>Order Status</BaseText>
 
       <View style={styles.statusHeader}>
-        <Text style={styles.statusMessage}>{getStatusMessage()}</Text>
+        <BaseText style={styles.statusMessage}>{getStatusMessage()}</BaseText>
         {estimatedDelivery && status !== 'delivered' && (
-          <Text style={styles.estimatedDelivery}>Estimated delivery: {estimatedDelivery}</Text>
+          <BaseText style={styles.estimatedDelivery}>Estimated delivery: {estimatedDelivery}</BaseText>
         )}
       </View>
 
@@ -103,11 +104,11 @@ export default function OrderStatusTracker({
             <View key={step.key} style={styles.timelineStep}>
               <View style={styles.timelineRow}>
                 <View style={[styles.stepIcon, { backgroundColor: getStatusColor(index) }]}>
-                  <Ionicons name={step.icon as any} size={16} color={COLORS.text.white} />
+                  <Ionicons name={step.icon as any} size={16} color={colors.text.white} />
                 </View>
 
                 <View style={styles.stepContent}>
-                  <Text
+                  <BaseText
                     style={[
                       styles.stepLabel,
                       isActive && styles.activeStepLabel,
@@ -115,12 +116,12 @@ export default function OrderStatusTracker({
                     ]}
                   >
                     {step.label}
-                  </Text>
+                  </BaseText>
 
-                  {isActive && <Text style={styles.activeStepSubtext}>In Progress</Text>}
+                  {isActive && <BaseText style={styles.activeStepSubtext}>In Progress</BaseText>}
 
                   {isCompleted && index < currentStatusIndex && (
-                    <Text style={styles.completedStepSubtext}>Completed</Text>
+                    <BaseText style={styles.completedStepSubtext}>Completed</BaseText>
                   )}
                 </View>
               </View>
@@ -140,13 +141,13 @@ export default function OrderStatusTracker({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
   },
   title: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
@@ -155,12 +156,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   statusMessage: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 16,
     marginBottom: 8,
   },
   estimatedDelivery: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 14,
     fontWeight: 'bold',
   },
@@ -169,7 +170,7 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
   cancelledText: {
-    color: COLORS.error,
+    color: colors.error,
     fontSize: 18,
     fontWeight: 'bold',
     marginTop: 8,
@@ -198,23 +199,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   stepLabel: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 14,
   },
   activeStepLabel: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontWeight: 'bold',
   },
   completedStepLabel: {
-    color: COLORS.text.white,
+    color: colors.text.white,
   },
   activeStepSubtext: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 12,
     marginTop: 2,
   },
   completedStepSubtext: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 12,
     marginTop: 2,
   },

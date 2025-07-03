@@ -1,24 +1,24 @@
 import React, { useState } from 'react';
 import {
   View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
   Image,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
   Keyboard,
   TouchableWithoutFeedback,
+  StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS } from '../../constants/colors';
+import { colors } from '../../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import CustomTextInput from '../../components/CustomTextInput';
 import Button from '../../components/Button';
 import Toast from 'react-native-toast-message';
+import { BaseText } from '../../components/base/BaseText';
+import { BaseButton } from '../../components/base/BaseButton';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -109,9 +109,9 @@ export default function RegisterScreen() {
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
           >
-            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-              <Ionicons name="arrow-back" size={24} color={COLORS.text.white} />
-            </TouchableOpacity>
+            <BaseButton style={styles.backButton} onPress={handleBack} variant="ghost">
+              <Ionicons name="arrow-back" size={24} color={colors.text.white} />
+            </BaseButton>
 
             <View style={styles.logoContainer}>
               <Image
@@ -119,11 +119,11 @@ export default function RegisterScreen() {
                 style={styles.logo}
                 resizeMode="contain"
               />
-              <Text style={styles.appName}>Onolo Gas</Text>
+              <BaseText style={styles.appName}>Onolo Gas</BaseText>
             </View>
 
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Sign up to get started with Onolo Gas.</Text>
+            <BaseText style={styles.title}>Create Account</BaseText>
+            <BaseText style={styles.subtitle}>Sign up to get started with Onolo Gas.</BaseText>
 
             <View style={styles.form}>
               <CustomTextInput
@@ -171,18 +171,23 @@ export default function RegisterScreen() {
                 onSubmitEditing={handleRegister}
               />
 
-              <Button
-                title="Register"
+              <BaseButton
                 onPress={handleRegister}
                 loading={isLoading}
                 style={styles.registerButton}
-              />
+                disabled={isLoading}
+                variant="primary"
+              >
+                <BaseText style={styles.registerButtonText || {}}>
+                  Register
+                </BaseText>
+              </BaseButton>
 
               <View style={styles.loginContainer}>
-                <Text style={styles.loginText}>Already have an account? </Text>
-                <TouchableOpacity onPress={handleLogin}>
-                  <Text style={styles.loginLink}>Login</Text>
-                </TouchableOpacity>
+                <BaseText style={styles.loginText}>Already have an account? </BaseText>
+                <BaseButton onPress={handleLogin} variant="ghost">
+                  <BaseText style={styles.loginLink}>Login</BaseText>
+                </BaseButton>
               </View>
             </View>
           </ScrollView>
@@ -195,7 +200,7 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
   keyboardAvoidingView: {
     flex: 1,
@@ -208,7 +213,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
@@ -223,19 +228,19 @@ const styles = StyleSheet.create({
     borderRadius: 40,
   },
   appName: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 24,
     fontWeight: 'bold',
     marginTop: 8,
   },
   title: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 8,
   },
   subtitle: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 16,
     marginBottom: 32,
   },
@@ -252,11 +257,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   loginText: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 14,
   },
   loginLink: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 14,
     fontWeight: 'bold',
   },

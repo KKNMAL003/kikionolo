@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { messageService } from '../../services/messages/MessageService';
+import { messageFacadeService } from '../../services/messages/MessageService';
 import { queryKeys, invalidateQueries } from '../../utils/queryClient';
 import type { 
   CreateMessageRequest, 
@@ -10,7 +10,7 @@ import type {
 export const useMessages = (userId: string, filters?: MessageFilters) => {
   return useQuery({
     queryKey: queryKeys.messages.list(userId, filters),
-    queryFn: () => messageService.getMessages(userId, filters),
+    queryFn: () => messageFacadeService.getMessages(userId, filters),
     enabled: !!userId && userId !== 'guest', // Don't fetch for guest users
     staleTime: 30 * 1000, // 30 seconds - messages are real-time
     refetchInterval: 60 * 1000, // Refetch every minute as backup
@@ -21,7 +21,7 @@ export const useMessages = (userId: string, filters?: MessageFilters) => {
 export const useUnreadCount = (userId: string) => {
   return useQuery({
     queryKey: queryKeys.messages.unreadCount(userId),
-    queryFn: () => messageService.getUnreadCount(userId),
+    queryFn: () => messageFacadeService.getUnreadCount(userId),
     enabled: !!userId && userId !== 'guest',
     staleTime: 15 * 1000, // 15 seconds for unread count
     refetchInterval: 30 * 1000, // Refetch every 30 seconds
@@ -32,7 +32,7 @@ export const useUnreadCount = (userId: string) => {
 export const useMessagesByDate = (userId: string, date: string) => {
   return useQuery({
     queryKey: queryKeys.messages.conversation(userId, date),
-    queryFn: () => messageService.getMessagesByDate(userId, date),
+    queryFn: () => messageFacadeService.getMessagesByDate(userId, date),
     enabled: !!userId && userId !== 'guest' && !!date,
     staleTime: 2 * 60 * 1000, // 2 minutes for historical messages
   });
@@ -42,7 +42,7 @@ export const useMessagesByDate = (userId: string, date: string) => {
 export const useConversationSummary = (userId: string) => {
   return useQuery({
     queryKey: queryKeys.messages.summary(userId),
-    queryFn: () => messageService.getConversationSummary(userId),
+    queryFn: () => messageFacadeService.getConversationSummary(userId),
     enabled: !!userId && userId !== 'guest',
     staleTime: 5 * 60 * 1000, // 5 minutes for summary
   });
@@ -53,7 +53,7 @@ export const useSendMessage = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (messageData: CreateMessageRequest) => messageService.sendMessage(messageData),
+    mutationFn: (messageData: CreateMessageRequest) => messageFacadeService.sendMessage(messageData),
     onSuccess: (newMessage, variables) => {
       console.log('Message sent successfully:', newMessage.id);
       
@@ -94,7 +94,7 @@ export const useMarkAsRead = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (messageId: string) => messageService.markAsRead(messageId),
+    mutationFn: (messageId: string) => messageFacadeService.markAsRead(messageId),
     onSuccess: (_, messageId) => {
       console.log('Message marked as read:', messageId);
       
@@ -127,7 +127,7 @@ export const useMarkAllAsRead = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (userId: string) => messageService.markAllAsRead(userId),
+    mutationFn: (userId: string) => messageFacadeService.markAllAsRead(userId),
     onSuccess: (_, userId) => {
       console.log('All messages marked as read for user:', userId);
       
@@ -159,7 +159,7 @@ export const useDeleteMessage = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (messageId: string) => messageService.deleteMessage(messageId),
+    mutationFn: (messageId: string) => messageFacadeService.deleteMessage(messageId),
     onSuccess: (success, messageId) => {
       if (success) {
         console.log('Message deleted successfully:', messageId);

@@ -1,12 +1,14 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
-import { COLORS } from '../constants/colors';
+import { View, Image, StyleSheet } from 'react-native';
+import { colors } from '../theme/colors';
 import { COMPANY } from '../constants/company';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, usePathname } from 'expo-router';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrders } from '../contexts/OrdersContext';
 import { useMessages } from '../contexts/MessagesContext';
+import { BaseButton } from './base/BaseButton';
+import { BaseText } from './base/BaseText';
 
 interface HeaderProps {
   showBackButton?: boolean;
@@ -86,11 +88,11 @@ export default function Header({ showBackButton = false, title }: HeaderProps) {
     <View style={styles.container}>
       <View style={styles.logoContainer}>
         {showBackButton ? (
-          <TouchableOpacity onPress={handleBackPress} style={styles.backButton} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={24} color={COLORS.text.white} />
-          </TouchableOpacity>
+          <BaseButton onPress={handleBackPress} style={styles.backButton} activeOpacity={0.7}>
+            <Ionicons name="arrow-back" size={24} color={colors.text.white} />
+          </BaseButton>
         ) : (
-          <TouchableOpacity 
+          <BaseButton 
             onPress={() => router.replace('/(tabs)')} 
             activeOpacity={0.7}
           >
@@ -101,52 +103,48 @@ export default function Header({ showBackButton = false, title }: HeaderProps) {
                 resizeMode="contain"
               />
             </View>
-          </TouchableOpacity>
+          </BaseButton>
         )}
-        <Text style={styles.companyName}>{title || COMPANY.name}</Text>
+        <BaseText style={styles.companyName}>{title || COMPANY.name}</BaseText>
       </View>
 
       <View style={styles.rightSection}>
         {/* Messages Badge - Show unread messages count */}
         {unreadCount > 0 && (
-          <TouchableOpacity
+          <BaseButton
             style={styles.messagesBadgeContainer}
             onPress={handleMessagesPress}
             activeOpacity={0.7}
           >
-            <Ionicons name="chatbubble-outline" size={20} color={COLORS.primary} />
+            <Ionicons name="chatbubble-outline" size={20} color={colors.primary} />
             <View style={styles.messagesBadge}>
-              <Text style={styles.messagesBadgeText}>{unreadCount}</Text>
+              <BaseText style={styles.messagesBadgeText}>{unreadCount}</BaseText>
             </View>
-          </TouchableOpacity>
+          </BaseButton>
         )}
 
         {/* Pending Orders Badge - Make it more prominent and clickable */}
         {pendingOrdersCount > 0 && (
-          <TouchableOpacity
+          <BaseButton
             style={styles.ordersBadgeContainer}
             onPress={handleOrdersBadgePress}
             activeOpacity={0.7}
           >
-            <Ionicons name="receipt-outline" size={20} color={COLORS.primary} />
+            <Ionicons name="receipt-outline" size={20} color={colors.primary} />
             <View style={styles.ordersBadge}>
-              <Text style={styles.ordersBadgeText}>{pendingOrdersCount}</Text>
+              <BaseText style={styles.ordersBadgeText}>{pendingOrdersCount}</BaseText>
             </View>
-          </TouchableOpacity>
+          </BaseButton>
         )}
 
         {/* Profile Button */}
-        <TouchableOpacity
+        <BaseButton
           style={styles.profileButton}
           onPress={handleProfilePress}
           activeOpacity={0.7}
         >
-          {user ? (
-            <Text style={styles.profileInitial}>{getUserInitial()}</Text>
-          ) : (
-            <Ionicons name="person-circle-outline" size={28} color={COLORS.text.white} />
-          )}
-        </TouchableOpacity>
+          <BaseText style={styles.profileInitial}>{getUserInitial()}</BaseText>
+        </BaseButton>
       </View>
     </View>
   );
@@ -155,11 +153,12 @@ export default function Header({ showBackButton = false, title }: HeaderProps) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
+    minHeight: 64,
   },
   logoContainer: {
     flexDirection: 'row',
@@ -167,27 +166,33 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 0,
     margin: 0,
+    minHeight: 48,
   },
   logoWrapper: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#FFFFFF',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.card,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+    borderWidth: 0,
+    marginRight: 8,
+    padding: 0,
+    shadowColor: 'transparent',
   },
   logoImage: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     borderRadius: 0,
     overflow: 'hidden',
   },
   companyName: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontSize: 20,
     fontWeight: 'bold',
-    marginLeft: 8,
+    alignSelf: 'center',
+    marginLeft: 0,
   },
   backButton: {
     padding: 4,
@@ -197,20 +202,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    minHeight: 48,
   },
   messagesBadgeContainer: {
     position: 'relative',
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 8,
     borderWidth: 1,
-    borderColor: COLORS.primary + '40',
+    borderColor: colors.primary + '40',
   },
   messagesBadge: {
     position: 'absolute',
     top: -5,
     right: -5,
-    backgroundColor: COLORS.error,
+    backgroundColor: colors.error,
     borderRadius: 10,
     width: 20,
     height: 20,
@@ -218,23 +224,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   messagesBadgeText: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 10,
     fontWeight: 'bold',
   },
   ordersBadgeContainer: {
     position: 'relative',
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 8,
     borderWidth: 1,
-    borderColor: COLORS.primary + '40',
+    borderColor: colors.primary + '40',
   },
   ordersBadge: {
     position: 'absolute',
     top: -5,
     right: -5,
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
     borderRadius: 10,
     width: 20,
     height: 20,
@@ -242,21 +248,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ordersBadgeText: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 10,
     fontWeight: 'bold',
   },
   profileButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.card,
-    justifyContent: 'center',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.card,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.primary,
+    marginLeft: 8,
   },
   profileInitial: {
-    color: COLORS.primary,
-    fontSize: 18,
+    color: colors.primary,
     fontWeight: 'bold',
+    fontSize: 18,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    backgroundColor: 'transparent',
+    width: '100%',
+    height: '100%',
+    lineHeight: 36,
   },
 });

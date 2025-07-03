@@ -2,6 +2,10 @@ import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
 import { initializeConnectionTest } from '@/utils/connectionTest';
+import { validateApiConfig } from './config/api';
+import { ErrorBoundary } from './components/ErrorBoundary';
+
+validateApiConfig();
 
 export default function App() {
   useEffect(() => {
@@ -26,12 +30,14 @@ export default function App() {
   }, []);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Welcome to Your App!</Text>
-      <Text style={styles.subtitle}>Your Supabase-powered mobile application</Text>
-      <Text style={styles.debugText}>Check console for connection status</Text>
-      <StatusBar style="auto" />
-    </View>
+    <ErrorBoundary>
+      <View style={styles.container}>
+        <Text style={styles.title}>Welcome to Your App!</Text>
+        <Text style={styles.subtitle}>Your Supabase-powered mobile application</Text>
+        <Text style={styles.debugText}>Check console for connection status</Text>
+        <StatusBar style="auto" />
+      </View>
+    </ErrorBoundary>
   );
 }
 

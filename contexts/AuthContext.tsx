@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { authService } from '../services/auth/AuthService';
 import type { User } from '../services/interfaces/IAuthService';
+import { LoginSchema, RegisterSchema, validateData, getValidationErrors } from '../validation/schemas';
 
 // Auth Context Types
 interface AuthContextType {
@@ -91,6 +92,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
+      const validationResult = validateData(LoginSchema, { email, password });
+      if (!validationResult.success) {
+        const errors = getValidationErrors(validationResult.errors);
+        console.error('AuthContext: Login validation errors:', errors);
+        return false;
+      }
       const result = await authService.login({ email, password });
       
       if (result.success && result.user) {
@@ -124,6 +131,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = useCallback(async (name: string, email: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
+      const validationResult = validateData(RegisterSchema, { name, email, password });
+      if (!validationResult.success) {
+        const errors = getValidationErrors(validationResult.errors);
+        console.error('AuthContext: Registration validation errors:', errors);
+        return false;
+      }
       const result = await authService.register({ name, email, password });
       
       if (result.success && result.user) {

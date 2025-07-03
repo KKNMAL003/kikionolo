@@ -1,10 +1,10 @@
 import { StyleSheet } from 'react-native';
-import { COLORS } from '../../constants/colors';
+import { colors } from '../../theme/colors';
 
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -12,14 +12,14 @@ export const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: colors.border,
   },
   backButton: {
     padding: 8,
     marginLeft: -8,
   },
   title: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
@@ -29,14 +29,14 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   section: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     margin: 16,
     marginBottom: 0,
     padding: 4,
   },
   sectionTitle: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 14,
     fontWeight: '600',
     textTransform: 'uppercase',
@@ -51,13 +51,13 @@ export const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: colors.border,
   },
   settingIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: colors.primary + '20',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -67,12 +67,12 @@ export const styles = StyleSheet.create({
     marginRight: 12,
   },
   settingText: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 16,
     fontWeight: '500',
   },
   settingDescription: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 13,
     marginTop: 2,
   },

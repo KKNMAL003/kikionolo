@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { COLORS } from '../constants/colors';
+import { colors } from '../theme/colors';
 
 export interface UpdateStep {
   id: string;
@@ -20,11 +20,11 @@ export default function ProfileUpdateProgress({ steps, currentStep }: ProfileUpd
       case 'completed':
         return '#10B981';
       case 'inProgress':
-        return COLORS.primary;
+        return colors.primary;
       case 'error':
         return '#EF4444';
       default:
-        return COLORS.text.gray;
+        return colors.text.gray;
     }
   };
 
@@ -62,13 +62,13 @@ export default function ProfileUpdateProgress({ steps, currentStep }: ProfileUpd
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     marginVertical: 12,
   },
   title: {
-    color: COLORS.text.white,
+    color: colors.text.white,
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 16,
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   stepDescription: {
-    color: COLORS.text.gray,
+    color: colors.text.gray,
     fontSize: 12,
     marginLeft: 24,
     marginTop: 4,
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
   stepConnector: {
     width: 2,
     height: 12,
-    backgroundColor: COLORS.border,
+    backgroundColor: colors.border,
     marginLeft: 12,
     marginTop: 4,
   },

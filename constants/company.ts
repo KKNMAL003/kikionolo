@@ -72,8 +72,7 @@ export const COMPANY = {
     },
   ],
   paymentInfo: {
-    merchantId: '27013965',
-    merchantKey: 'd8ugttcgsguzi',
+    // Remove merchantId and merchantKey if they are PayFast credentials, as these are now in config/api
   },
   customerInfo: [
     {

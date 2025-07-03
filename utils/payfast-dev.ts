@@ -2,18 +2,12 @@ import * as Linking from 'expo-linking';
 import Toast from 'react-native-toast-message';
 import { Platform } from 'react-native';
 import { testSignatureGeneration } from './payfast';
+import { payfastConfig } from '../config/api';
 
 /**
  * Development-friendly PayFast integration
  * This version provides multiple testing approaches for PayFast integration
  */
-
-const PAYFAST_TESTING_CONFIG = {
-  merchantId: '30596897',
-  merchantKey: 'ygodvejftqxd4',
-  saltPassphrase: 'G4smeupalready',
-  sandboxUrl: 'https://sandbox.payfast.co.za/eng/process',
-};
 
 // Simple simulation for initial testing
 export async function initiatePayFastPaymentDev(orderData: {
@@ -50,7 +44,7 @@ export async function initiatePayFastPaymentDev(orderData: {
       amount: orderData.amount.toString(),
       status: 'simulated',
       payment_status: 'COMPLETE',
-      merchant_id: PAYFAST_TESTING_CONFIG.merchantId,
+      merchant_id: payfastConfig.merchantId,
       m_payment_id: orderData.orderId,
     }).toString();
     
@@ -150,7 +144,7 @@ export function testPayFastSignature() {
 
 // Validate PayFast configuration
 export function validatePayFastConfig() {
-  const config = PAYFAST_TESTING_CONFIG;
+  const config = payfastConfig;
   const issues: string[] = [];
   
   if (!config.merchantId || config.merchantId === '10040008') {
