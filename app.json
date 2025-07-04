@@ -37,9 +37,8 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./public/favicon.png",
-      "name": "Onolo Group Orders",
-      "template": "./public/index.html"
+      "favicon": "./assets/images/favicon.png",
+      "name": "Onolo Group Orders"
     },
     "plugins": [
       [
