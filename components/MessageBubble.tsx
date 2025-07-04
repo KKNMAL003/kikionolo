@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { COLORS } from '../constants/colors';
 import type { Message } from '../services/interfaces/IMessageService';
@@ -7,7 +7,7 @@ interface MessageBubbleProps {
   message: Message & { _clientKey?: string };
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
+const MessageBubble = memo<MessageBubbleProps>(({ message }) => {
   // Handle potential invalid dates
   const formattedTime = (() => {
     try {
@@ -55,7 +55,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
       </View>
     </View>
   );
-};
+});
+
+MessageBubble.displayName = 'MessageBubble';
+
+export default MessageBubble;
 
 const styles = StyleSheet.create({
   messageBubble: { 
@@ -118,5 +122,3 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
-
-export default MessageBubble;

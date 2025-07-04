@@ -201,6 +201,17 @@ export default function ChatScreen() {
                     }
                     onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
                     onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+                    // Performance optimizations
+                    removeClippedSubviews={true}
+                    maxToRenderPerBatch={10}
+                    updateCellsBatchingPeriod={50}
+                    initialNumToRender={15}
+                    windowSize={10}
+                    getItemLayout={(data, index) => ({
+                      length: 80, // Estimated height of MessageBubble
+                      offset: 80 * index,
+                      index,
+                    })}
                   />
                 )}
                 <View style={styles.inputContainer}>
@@ -213,6 +224,10 @@ export default function ChatScreen() {
                     editable={!sending}
                     multiline
                     maxLength={500}
+                    // Web-specific improvements
+                    autoComplete="off"
+                    spellCheck={false}
+                    selectTextOnFocus={true}
                   />
                   <TouchableOpacity
                     style={[styles.sendButton, sending && { opacity: 0.5 }]}
@@ -350,6 +365,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginRight: 8,
     maxHeight: 100,
+    // Web-specific improvements
+    outlineStyle: 'none',
+    cursor: 'text',
   },
   sendButton: {
     backgroundColor: COLORS.primary,

@@ -60,17 +60,29 @@ export class NotificationService implements INotificationService {
    * Update user notification settings
    */
   async updateNotificationSettings(
-    userId: string, 
+    userId: string,
     settings: NotificationSettings
   ): Promise<void> {
     try {
-      console.log('NotificationService: Updating notification settings for user:', userId, settings);
-      
+      // Validate settings object
+      if (!settings || typeof settings !== 'object') {
+        throw new Error('Invalid settings object provided');
+      }
+
+      // Ensure all required properties exist with default values
+      const validatedSettings: NotificationSettings = {
+        email: settings.email ?? true,
+        sms: settings.sms ?? true,
+        push: settings.push ?? (Platform.OS !== 'web'),
+      };
+
+      console.log('NotificationService: Updating notification settings for user:', userId, validatedSettings);
+
       await AsyncStorage.setItem(
-        `${this.SETTINGS_KEY}_${userId}`, 
-        JSON.stringify(settings)
+        `${this.SETTINGS_KEY}_${userId}`,
+        JSON.stringify(validatedSettings)
       );
-      
+
       console.log('NotificationService: Settings updated successfully');
     } catch (error: any) {
       console.error('NotificationService: Error updating settings:', error);
@@ -112,17 +124,29 @@ export class NotificationService implements INotificationService {
    * Update user notification preferences
    */
   async updateNotificationPreferences(
-    userId: string, 
+    userId: string,
     preferences: NotificationPreferences
   ): Promise<void> {
     try {
-      console.log('NotificationService: Updating notification preferences for user:', userId, preferences);
-      
+      // Validate preferences object
+      if (!preferences || typeof preferences !== 'object') {
+        throw new Error('Invalid preferences object provided');
+      }
+
+      // Ensure all required properties exist with default values
+      const validatedPreferences: NotificationPreferences = {
+        orderUpdates: preferences.orderUpdates ?? true,
+        promotions: preferences.promotions ?? true,
+        newsletter: preferences.newsletter ?? true,
+      };
+
+      console.log('NotificationService: Updating notification preferences for user:', userId, validatedPreferences);
+
       await AsyncStorage.setItem(
-        `${this.PREFERENCES_KEY}_${userId}`, 
-        JSON.stringify(preferences)
+        `${this.PREFERENCES_KEY}_${userId}`,
+        JSON.stringify(validatedPreferences)
       );
-      
+
       console.log('NotificationService: Preferences updated successfully');
     } catch (error: any) {
       console.error('NotificationService: Error updating preferences:', error);
@@ -324,10 +348,10 @@ export class NotificationService implements INotificationService {
       }
 
       console.log('NotificationService: Getting push notification token');
-      
-      const token = await Notifications.getExpoPushTokenAsync({
-        projectId: 'your-expo-project-id', // Replace with actual project ID
-      });
+
+      // For Expo Go, we don't need to specify projectId
+      // For production builds, you would need to configure this properly
+      const token = await Notifications.getExpoPushTokenAsync();
 
       console.log('NotificationService: Push token obtained');
       return token.data;

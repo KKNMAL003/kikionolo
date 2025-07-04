@@ -1,11 +1,21 @@
 import { Platform } from 'react-native';
 
 const webTargetOrigins = [
-  'http://localhost:8081', // Your parent dev server
-  'https://kiki.dev', // Your production parent
-  'http://localhost:3000',
-  // Add your Expo web preview origin if it's different (e.g., from Metro bundler)
-  // Often something like "http://localhost:19006" or "http://localhost:8080"
+  // Development URLs
+  'http://localhost:8081', // Expo dev server
+  'http://localhost:19006', // Expo web preview
+  'http://localhost:3000', // Common dev server
+  'http://localhost:3001', // Alternative dev port
+  'http://localhost:5000', // Alternative dev port
+  'http://localhost:5173', // Vite dev server
+  'http://localhost:8080', // Alternative dev port
+  // User app production URLs
+  'https://orders-onologroup.online',
+  'https://orders-onologroup.netlify.app',
+  // Dashboard/Management app production URLs
+  'https://manager-onologroup.online',
+  'https://www.manager-onologroup.online',
+  'https://manager-onologroup.netlify.app',
 ];
 
 // Global error handler utility for web and React Native environments.

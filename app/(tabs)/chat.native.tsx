@@ -242,6 +242,17 @@ export default function ChatScreen() {
                     </Text>
                   </View>
                 }
+                // Performance optimizations
+                removeClippedSubviews={true}
+                maxToRenderPerBatch={10}
+                updateCellsBatchingPeriod={50}
+                initialNumToRender={15}
+                windowSize={10}
+                getItemLayout={(data, index) => ({
+                  length: 80, // Estimated height of MessageBubble
+                  offset: 80 * index,
+                  index,
+                })}
                 onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
                 onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
               />

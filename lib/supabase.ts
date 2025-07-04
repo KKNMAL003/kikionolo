@@ -41,9 +41,19 @@ const handleNetworkError = (error: any, context: string) => {
       console.error('2. Select your project');
       console.error('3. Go to "Settings" → "API" → "Configuration"');
       console.error('4. Under "Web origins (CORS)", add these URLs:');
+      console.error('   Development URLs:');
       console.error('   - http://localhost:8081');
       console.error('   - http://localhost:19006');
       console.error('   - http://localhost:3000');
+      console.error('   - http://localhost:3001');
+      console.error('   - http://localhost:5173');
+      console.error('   User App URLs:');
+      console.error('   - https://orders-onologroup.online');
+      console.error('   - https://orders-onologroup.netlify.app');
+      console.error('   Dashboard URLs:');
+      console.error('   - https://manager-onologroup.online');
+      console.error('   - https://www.manager-onologroup.online');
+      console.error('   - https://manager-onologroup.netlify.app');
       console.error('   - Your current development URL');
       console.error('5. Save the changes and refresh your app');
       console.error('');
@@ -334,9 +344,16 @@ export const runConnectionDiagnostics = async () => {
       if (Platform.OS === 'web') {
         console.log('⚠️  CORS configuration needed for web platform');
         console.log('💡 Add your development URLs to Supabase CORS settings:');
+        console.log('   Development URLs:');
         console.log('   - http://localhost:8081');
         console.log('   - http://localhost:19006');
-        console.log('   - Your production domain');
+        console.log('   - http://localhost:3000');
+        console.log('   - http://localhost:5173');
+        console.log('   Production URLs:');
+        console.log('   - https://orders-onologroup.online');
+        console.log('   - https://orders-onologroup.netlify.app');
+        console.log('   - https://manager-onologroup.online');
+        console.log('   - https://manager-onologroup.netlify.app');
         console.log('   - Current URL:', window?.location?.origin || 'Unknown');
       } else {
         console.log('❌ Connection issues detected');

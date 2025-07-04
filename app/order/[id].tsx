@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { COLORS } from '../../constants/colors';
 import { useOrders } from '../../contexts/OrdersContext';
+import { useOrder } from '../../hooks/queries/useOrderQueries';
 import Header from '../../components/Header';
 import OrderStatusTracker from '../../components/OrderStatusTracker';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,10 +14,45 @@ import Toast from 'react-native-toast-message';
 export default function OrderDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { getOrderById, cancelOrder } = useOrders();
+  const { cancelOrder } = useOrders();
 
-  const order = getOrderById(id);
+  // Use fresh data from database instead of cached context data
+  const { data: order, isLoading, error } = useOrder(id);
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Header showBackButton />
+        <View style={styles.content}>
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading order details...</Text>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Header showBackButton />
+        <View style={styles.content}>
+          <View style={styles.notFoundContainer}>
+            <Ionicons name="alert-circle-outline" size={64} color={COLORS.error} />
+            <Text style={styles.notFoundTitle}>Error Loading Order</Text>
+            <Text style={styles.notFoundText}>
+              There was an error loading the order details. Please try again.
+            </Text>
+            <Button title="Go Back" onPress={() => router.back()} style={styles.goBackButton} />
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Order not found state
   if (!order) {
     return (
       <SafeAreaView style={styles.container}>
@@ -96,6 +132,8 @@ export default function OrderDetailsScreen() {
     switch (status) {
       case 'pending':
         return '#FFC107';
+      case 'order_received':
+      case 'order_confirmed':
       case 'confirmed':
       case 'preparing':
       case 'out_for_delivery':
@@ -113,6 +151,9 @@ export default function OrderDetailsScreen() {
     switch (status) {
       case 'pending':
         return 'Pending';
+      case 'order_received':
+        return 'Order Received';
+      case 'order_confirmed':
       case 'confirmed':
         return 'Confirmed';
       case 'preparing':
@@ -234,6 +275,15 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: COLORS.text.white,
+    fontSize: 16,
   },
   header: {
     flexDirection: 'row',

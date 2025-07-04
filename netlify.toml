@@ -5,7 +5,29 @@
 [build.environment]
   NODE_VERSION = "18"
 
+# API redirects
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
-  status = 200 
+  status = 200
+
+# SPA redirects for React Router
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Headers for CORS and security
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

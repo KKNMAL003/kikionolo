@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   TextInput,
   StyleSheet,
@@ -37,6 +37,8 @@ export default function CustomTextInput({
   onRightIconPress,
   ...rest
 }: CustomTextInputProps) {
+  const inputRef = useRef<TextInput>(null);
+
   // Enhanced keyboard dismissal
   const handleSubmitEditing = (e) => {
     // Always dismiss keyboard when done is pressed or when editing finishes
@@ -57,16 +59,28 @@ export default function CustomTextInput({
     }
   };
 
+  // Handle container press to focus input (especially important for web)
+  const handleContainerPress = () => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
   return (
     <View style={[styles.container, containerStyle]}>
       {label && <Text style={styles.label}>{label}</Text>}
-      <View style={styles.inputContainer}>
+      <TouchableOpacity
+        style={styles.inputContainer}
+        onPress={handleContainerPress}
+        activeOpacity={1}
+      >
         {leftIcon && (
           <View style={styles.leftIconContainer}>
             <Ionicons name={leftIcon} size={20} color={COLORS.text.gray} />
           </View>
         )}
         <TextInput
+          ref={inputRef}
           style={[
             styles.input,
             isTextArea && styles.textArea,
@@ -83,6 +97,11 @@ export default function CustomTextInput({
           // Enhanced keyboard management
           enablesReturnKeyAutomatically={true}
           clearButtonMode={Platform.OS === 'ios' ? 'while-editing' : 'never'}
+          // Web-specific improvements
+          autoComplete={Platform.OS === 'web' ? 'off' : undefined}
+          spellCheck={Platform.OS === 'web' ? false : undefined}
+          // Ensure proper focus behavior on web
+          selectTextOnFocus={Platform.OS === 'web'}
           {...rest}
         />
         {rightIcon && (
@@ -90,7 +109,7 @@ export default function CustomTextInput({
             <Ionicons name={rightIcon} size={20} color={COLORS.text.gray} />
           </TouchableOpacity>
         )}
-      </View>
+      </TouchableOpacity>
       {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
@@ -110,18 +129,24 @@ const styles = StyleSheet.create({
     position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: COLORS.background,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    minHeight: 48,
   },
   input: {
     flex: 1,
-    backgroundColor: COLORS.background,
-    borderRadius: 8,
+    backgroundColor: 'transparent',
     padding: 12,
     color: COLORS.text.white,
     fontSize: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    // Enhanced for better UX
-    minHeight: 48,
+    borderWidth: 0,
+    // Web-specific improvements
+    ...(Platform.OS === 'web' && {
+      outlineStyle: 'none',
+      cursor: 'text',
+    }),
   },
   inputWithLeftIcon: {
     paddingLeft: 40,

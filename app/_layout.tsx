@@ -15,6 +15,7 @@ import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { initializeConnectionTest } from '../utils/connectionTest';
 import { queryClient } from '../utils/queryClient';
 import { useAuth } from '../contexts/AuthContext';
+// import PerformanceMonitor from '../components/PerformanceMonitor';
 
 // Enhanced Auth guard component with better navigation management
 function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -195,6 +196,7 @@ export default function RootLayout() {
               />
             </Stack>
           </AuthGuard>
+          {/* <PerformanceMonitor /> */}
         </ContextProviders>
       </SafeAreaProvider>
     </GestureHandlerRootView>

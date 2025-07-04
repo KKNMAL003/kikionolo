@@ -113,8 +113,8 @@ export class MessageService implements IMessageService {
         query = query.range(filters.offset, (filters.offset + (filters.limit || 50)) - 1);
       }
 
-      // Order by creation date (newest first)
-      query = query.order('created_at', { ascending: false });
+      // Order by creation date (oldest first for proper chat flow)
+      query = query.order('created_at', { ascending: true });
 
       const { data: messagesData, error } = await query;
 

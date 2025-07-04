@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { messageService } from '../services/messages/MessageService';
 import { useAuth } from './AuthContext';
 import type { Message, MessageFilters, CreateMessageRequest } from '../services/interfaces/IMessageService';
@@ -14,6 +14,7 @@ interface MessagesContextType {
   markAsRead: (messageId: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   refreshMessages: () => Promise<void>;
+  loadMoreMessages: () => Promise<void>;
   getMessagesByDate: (date: string) => Promise<Message[]>;
   deleteMessage: (messageId: string) => Promise<boolean>;
 }
@@ -219,9 +220,9 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
         
         // Update messages map
         messagesMapRef.current.set(newMessage.id, enhancedMessage);
-        
-        // Return new array with message added at beginning
-        return [enhancedMessage, ...prev];
+
+        // Return new array with message added at end (newest messages at bottom)
+        return [...prev, enhancedMessage];
       });
       
     } catch (error: any) {
@@ -296,6 +297,45 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
     await Promise.all([loadMessages(), loadUnreadCount()]);
   }, [loadMessages, loadUnreadCount]);
 
+  const loadMoreMessages = useCallback(async (): Promise<void> => {
+    if (!user || user.isGuest || isLoading) return;
+
+    try {
+      setIsLoading(true);
+      console.log('MessagesContext: Loading more messages for user:', user.id);
+
+      const currentCount = messages.length;
+      const fetchedMessages = await messageService.getMessages(user.id, {
+        limit: 25, // Load fewer messages for pagination
+        offset: currentCount,
+      });
+
+      if (isMountedRef.current && fetchedMessages.length > 0) {
+        // Add new messages to existing map
+        fetchedMessages.forEach(msg => {
+          if (!messagesMapRef.current.has(msg.id)) {
+            messagesMapRef.current.set(msg.id, {
+              ...msg,
+              _clientKey: msg.id + '-' + Date.now()
+            });
+          }
+        });
+
+        // Update state with all messages from map (oldest first for proper chat flow)
+        const allMessages = Array.from(messagesMapRef.current.values())
+          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+        setMessages(allMessages);
+      }
+    } catch (error) {
+      console.error('MessagesContext: Error loading more messages:', error);
+    } finally {
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
+    }
+  }, [user, messages.length, isLoading]);
+
   const getMessagesByDate = useCallback(async (date: string): Promise<Message[]> => {
     if (!user || user.isGuest) {
       return [];
@@ -346,19 +386,32 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
     }
   }, [loadUnreadCount]);
 
-  const value: MessagesContextType = {
+  // Memoize the context value to prevent unnecessary re-renders
+  const value: MessagesContextType = useMemo(() => ({
     messages,
     unreadCount,
     isLoading,
-    
+
     // Message methods
     sendMessage,
     markAsRead,
     markAllAsRead,
     refreshMessages,
+    loadMoreMessages,
     getMessagesByDate,
     deleteMessage,
-  };
+  }), [
+    messages,
+    unreadCount,
+    isLoading,
+    sendMessage,
+    markAsRead,
+    markAllAsRead,
+    refreshMessages,
+    loadMoreMessages,
+    getMessagesByDate,
+    deleteMessage,
+  ]);
 
   return (
     <MessagesContext.Provider value={value}>

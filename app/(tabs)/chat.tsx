@@ -18,6 +18,7 @@ import { useMessages } from '../../contexts/MessagesContext';
 import { Ionicons } from '@expo/vector-icons';
 import MessageBubble from '../../components/MessageBubble';
 import { addRealtimeErrorListener, removeRealtimeErrorListener } from '../../services/realtime/RealtimeManager';
+import TestDataGenerator from '../../components/TestDataGenerator';
 
 export default function ChatScreen() {
   const { user } = useAuth();
@@ -178,6 +179,9 @@ export default function ChatScreen() {
         </View>
       )}
       
+      {/* Performance Testing Tools */}
+      <TestDataGenerator />
+
       {/* Pull to refresh header */}
       <View style={styles.refreshHeader}>
         <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton}>
@@ -214,10 +218,23 @@ export default function ChatScreen() {
               </View>
             }
             inverted={false}
-            // Data is already sorted by created_at desc in MessagesContext
+            // Data is now sorted oldest first for proper chat flow
             showsVerticalScrollIndicator={false}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
             onRefresh={handleRefresh}
             refreshing={false}
+            // Performance optimizations
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            updateCellsBatchingPeriod={50}
+            initialNumToRender={15}
+            windowSize={10}
+            getItemLayout={(data, index) => ({
+              length: 80, // Estimated height of MessageBubble
+              offset: 80 * index,
+              index,
+            })}
           />
         )}
         

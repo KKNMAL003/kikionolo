@@ -1,10 +1,26 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Platform } from 'react-native';
 import { notificationService } from '../services/notifications/NotificationService';
 import { useAuth } from './AuthContext';
-import type { 
-  NotificationSettings, 
-  NotificationPreferences 
+import type {
+  NotificationSettings,
+  NotificationPreferences
 } from '../services/interfaces/INotificationService';
+
+// Debounce utility
+const useDebounce = (callback: Function, delay: number) => {
+  const timeoutRef = useRef<NodeJS.Timeout>();
+
+  return useCallback((...args: any[]) => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = setTimeout(() => {
+      callback(...args);
+    }, delay);
+  }, [callback, delay]);
+};
 
 // Notifications Context Types
 interface NotificationsContextType {
@@ -36,12 +52,13 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     newsletter: true,
   });
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // Auth context
   const { user, isAuthenticated } = useAuth();
-  
-  // Refs for cleanup
+
+  // Refs for cleanup and optimization
   const isMountedRef = useRef(true);
+  const lastUpdateRef = useRef<{ settings?: NotificationSettings; preferences?: NotificationPreferences }>({});
 
   // Cleanup on unmount
   useEffect(() => {
@@ -137,32 +154,81 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     }
   }, [user]);
 
-  const updateBothSettings = useCallback(async (
-    settings: NotificationSettings, 
+  // Debounced update function to prevent excessive API calls
+  const debouncedUpdateBoth = useDebounce(async (
+    settings: NotificationSettings,
     preferences: NotificationPreferences
+  ) => {
+    if (!user || user.isGuest) return;
+
+    try {
+      console.log('NotificationsContext: Debounced update - saving settings and preferences');
+
+      await Promise.all([
+        notificationService.updateNotificationSettings(user.id, settings),
+        notificationService.updateNotificationPreferences(user.id, preferences),
+      ]);
+
+      console.log('NotificationsContext: Debounced update completed successfully');
+    } catch (error) {
+      console.error('NotificationsContext: Error in debounced update:', error);
+    }
+  }, 1000); // 1 second debounce
+
+  const updateBothSettings = useCallback(async (
+    settings?: NotificationSettings,
+    preferences?: NotificationPreferences
   ): Promise<void> => {
     if (!user || user.isGuest) {
       throw new Error('User not authenticated');
     }
 
     try {
-      console.log('NotificationsContext: Updating both settings and preferences');
-      
-      await Promise.all([
-        notificationService.updateNotificationSettings(user.id, settings),
-        notificationService.updateNotificationPreferences(user.id, preferences),
-      ]);
-      
+      // Validate and provide defaults for settings and preferences
+      const validatedSettings: NotificationSettings = settings ? {
+        email: settings.email ?? true,
+        sms: settings.sms ?? true,
+        push: settings.push ?? (Platform.OS !== 'web'),
+      } : {
+        email: true,
+        sms: true,
+        push: Platform.OS !== 'web',
+      };
+
+      const validatedPreferences: NotificationPreferences = preferences ? {
+        orderUpdates: preferences.orderUpdates ?? true,
+        promotions: preferences.promotions ?? true,
+        newsletter: preferences.newsletter ?? false,
+      } : {
+        orderUpdates: true,
+        promotions: true,
+        newsletter: false,
+      };
+
+      console.log('NotificationsContext: Validated settings:', validatedSettings);
+      console.log('NotificationsContext: Validated preferences:', validatedPreferences);
+
+      // Update local state immediately for responsive UI
       if (isMountedRef.current) {
-        setNotificationSettings(settings);
-        setNotificationPreferences(preferences);
-        console.log('NotificationsContext: Both settings updated successfully');
+        setNotificationSettings(validatedSettings);
+        setNotificationPreferences(validatedPreferences);
+        console.log('NotificationsContext: Local state updated immediately');
       }
+
+      // Store current values for comparison
+      lastUpdateRef.current = {
+        settings: validatedSettings,
+        preferences: validatedPreferences
+      };
+
+      // Debounce the actual API call
+      debouncedUpdateBoth(validatedSettings, validatedPreferences);
+
     } catch (error) {
       console.error('NotificationsContext: Error updating both settings:', error);
       throw error;
     }
-  }, [user]);
+  }, [user, debouncedUpdateBoth]);
 
   const registerForPushNotifications = useCallback(async (): Promise<boolean> => {
     if (!user || user.isGuest) {
@@ -170,23 +236,29 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       return false;
     }
 
+    // Check if push notifications are enabled in settings
+    if (!notificationSettings.push) {
+      console.log('NotificationsContext: Push notifications disabled in settings');
+      return false;
+    }
+
     try {
       console.log('NotificationsContext: Registering for push notifications');
-      
+
       // Request permissions first
       const hasPermission = await notificationService.requestPushPermissions();
       if (!hasPermission) {
         console.log('NotificationsContext: Push notification permission denied');
         return false;
       }
-      
+
       // Get push token
       const token = await notificationService.getPushToken();
       if (!token) {
         console.log('NotificationsContext: Failed to get push token');
         return false;
       }
-      
+
       // Register token
       await notificationService.registerPushToken({
         userId: user.id,
@@ -194,14 +266,14 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
         platform: 'ios', // This would be determined dynamically in a real app
         createdAt: new Date().toISOString(),
       });
-      
+
       console.log('NotificationsContext: Push notifications registered successfully');
       return true;
     } catch (error) {
       console.error('NotificationsContext: Error registering for push notifications:', error);
       return false;
     }
-  }, [user]);
+  }, [user, notificationSettings.push]);
 
   const requestPushPermissions = useCallback(async (): Promise<boolean> => {
     try {
@@ -222,11 +294,12 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     await loadSettings();
   }, [loadSettings]);
 
-  const value: NotificationsContextType = {
+  // Memoize the context value to prevent unnecessary re-renders
+  const value: NotificationsContextType = useMemo(() => ({
     notificationSettings,
     notificationPreferences,
     isLoading,
-    
+
     // Notification methods
     updateNotificationSettings,
     updateNotificationPreferences,
@@ -234,7 +307,17 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     registerForPushNotifications,
     requestPushPermissions,
     refreshSettings,
-  };
+  }), [
+    notificationSettings,
+    notificationPreferences,
+    isLoading,
+    updateNotificationSettings,
+    updateNotificationPreferences,
+    updateBothSettings,
+    registerForPushNotifications,
+    requestPushPermissions,
+    refreshSettings,
+  ]);
 
   return (
     <NotificationsContext.Provider value={value}>

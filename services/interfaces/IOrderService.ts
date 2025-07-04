@@ -17,8 +17,10 @@ export interface OrderItem {
   price: number;
 }
 
-export type OrderStatus = 
+export type OrderStatus =
   | 'pending'
+  | 'order_received'
+  | 'order_confirmed'
   | 'confirmed'
   | 'preparing'
   | 'out_for_delivery'

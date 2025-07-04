@@ -32,7 +32,7 @@ A modern React Native/Expo app for LPG gas delivery and communication, powered b
    # or
    npm install
    ```
-3. Copy `.env.example` to `.env` and fill in your Supabase and PayPal credentials.
+3. Copy `.env.example` to `.env` and fill in your Supabase credentials.
 
 ### Running the App
 
@@ -83,8 +83,6 @@ See `types/env.d.ts` for required variables:
 
 - `EXPO_PUBLIC_SUPABASE_URL`
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
-- `EXPO_PUBLIC_PAYPAL_CLIENT_ID`
-- `EXPO_PUBLIC_PAYPAL_SECRET`
 
 ## Folder Structure
 
@@ -157,9 +155,9 @@ PayFast requires publicly accessible URLs for return/cancel/notify URLs. During 
 
 2. Set up proper return URLs:
    ```typescript
-   return_url: 'https://yourdomain.com/payfast-success'
-   cancel_url: 'https://yourdomain.com/payfast-cancel'
-   notify_url: 'https://yourdomain.com/api/payfast-notify'
+   return_url: 'https://orders-onologroup.online/payfast-success'
+   cancel_url: 'https://orders-onologroup.online/payfast-cancel'
+   notify_url: 'https://orders-onologroup.online/api/payfast-notify'
    ```
 
 3. Implement deep linking to redirect back to app from web URLs.

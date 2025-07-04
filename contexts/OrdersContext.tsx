@@ -1,7 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { orderService } from '../services/orders/OrderService';
 import { useAuth } from './AuthContext';
+import { notifyOrderCreated, notifyOrderStatusChanged } from '../utils/dashboard-communication';
+import { supabase } from '../lib/supabase';
 import type { Order, CreateOrderRequest, OrderFilters } from '../services/interfaces/IOrderService';
 
 // Orders Context Types
@@ -58,6 +60,40 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
       setOrders([]);
     }
   }, [user, isAuthenticated]);
+
+  // Real-time subscriptions for order updates
+  useEffect(() => {
+    if (!user || user.isGuest || !isAuthenticated) return;
+
+    console.log('OrdersContext: Setting up real-time subscriptions for user:', user.id);
+
+    // Subscribe to order changes for this user
+    const ordersChannel = supabase
+      .channel('orders-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all changes (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'orders',
+          filter: `customer_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('OrdersContext: Real-time order update received:', payload);
+
+          // Refresh orders when any change occurs
+          // This ensures we always have the latest status
+          loadOrders();
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on unmount or user change
+    return () => {
+      console.log('OrdersContext: Cleaning up real-time subscriptions');
+      supabase.removeChannel(ordersChannel);
+    };
+  }, [user, isAuthenticated, loadOrders]);
 
   // Load orders from service
   const loadOrders = useCallback(async () => {
@@ -126,7 +162,7 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
       };
 
       const newOrder = await orderService.createOrder(orderWithUser);
-      
+
       if (isMountedRef.current) {
         // Add to local state (real-time subscription might also add it, but this ensures immediate UI update)
         setOrders(prev => {
@@ -136,12 +172,15 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
           }
           return prev;
         });
-        
+
         // Update storage
         const updatedOrders = [newOrder, ...orders];
         await AsyncStorage.setItem('@onolo_orders', JSON.stringify(updatedOrders));
+
+        // Notify dashboard about new order
+        notifyOrderCreated(newOrder);
       }
-      
+
       console.log('OrdersContext: Order created successfully:', newOrder.id);
       return newOrder;
     } catch (error: any) {
@@ -166,22 +205,25 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
       
       if (success && isMountedRef.current) {
         // Update local state
-        setOrders(prev => 
-          prev.map(order => 
-            order.id === orderId 
+        setOrders(prev =>
+          prev.map(order =>
+            order.id === orderId
               ? { ...order, status: 'cancelled' }
               : order
           )
         );
-        
+
         // Update storage
-        const updatedOrders = orders.map(order => 
-          order.id === orderId 
+        const updatedOrders = orders.map(order =>
+          order.id === orderId
             ? { ...order, status: 'cancelled' }
             : order
         );
         await AsyncStorage.setItem('@onolo_orders', JSON.stringify(updatedOrders));
-        
+
+        // Notify dashboard about status change
+        notifyOrderStatusChanged(orderId, 'cancelled');
+
         console.log('OrdersContext: Order cancelled successfully');
       }
       
@@ -227,18 +269,28 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, orders]);
 
-  const value: OrdersContextType = {
+  // Memoize the context value to prevent unnecessary re-renders
+  const value: OrdersContextType = useMemo(() => ({
     orders,
     isLoading,
     isProcessingOrder,
-    
+
     // Order methods
     createOrder,
     getOrderById,
     cancelOrder,
     refreshOrders,
     getOrderStats,
-  };
+  }), [
+    orders,
+    isLoading,
+    isProcessingOrder,
+    createOrder,
+    getOrderById,
+    cancelOrder,
+    refreshOrders,
+    getOrderStats,
+  ]);
 
   return (
     <OrdersContext.Provider value={value}>

@@ -2,6 +2,7 @@ import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';
 import CryptoJS from 'crypto-js';
 import MD5 from 'crypto-js/md5';
+import { getPaymentReturnUrls } from '../config/deployment';
 
 // PayFast configuration for production
 const PAYFAST_CONFIG = {
@@ -82,13 +83,9 @@ function generateSignature(data: Record<string, string | number>, passphrase?: s
 
 // Get appropriate URLs based on environment
 function getPayFastUrls(orderId: string) {
-  // Use your Netlify production URL for both web and mobile
-  const baseUrl = 'https://mellifluous-valkyrie-f9877a.netlify.app';
-  return {
-    returnUrl: `${baseUrl}/payfast-success?orderId=${orderId}`,
-    cancelUrl: `${baseUrl}/payfast-cancel?orderId=${orderId}`,
-    notifyUrl: `${baseUrl}/api/payfast-notify`,
-  };
+  // Use centralized configuration
+  const urls = getPaymentReturnUrls(orderId);
+  return urls.payfast;
 }
 
 // Create PayFast payment URL with exact field names and validation
@@ -258,9 +255,9 @@ export function testSignatureGeneration() {
   const testData = {
     merchant_id: PAYFAST_CONFIG.merchantId,
     merchant_key: PAYFAST_CONFIG.merchantKey,
-    return_url: 'https://app.onologroup.com/payfast-success',
-    cancel_url: 'https://app.onologroup.com/payfast-cancel',
-    notify_url: 'https://app.onologroup.com/api/payfast-notify',
+    return_url: 'https://orders-onologroup.online/payfast-success',
+    cancel_url: 'https://orders-onologroup.online/payfast-cancel',
+    notify_url: 'https://orders-onologroup.online/api/payfast-notify',
     name_first: 'Test',
     name_last: 'Customer',
     email_address: 'test@example.com',

@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 
 interface OrderStatusTrackerProps {
-  status: 'pending' | 'confirmed' | 'preparing' | 'out_for_delivery' | 'delivered' | 'cancelled';
+  status: 'pending' | 'order_received' | 'order_confirmed' | 'confirmed' | 'preparing' | 'out_for_delivery' | 'delivered' | 'cancelled';
   orderDate: string;
   estimatedDelivery?: string;
 }
@@ -37,10 +37,24 @@ export default function OrderStatusTracker({
   orderDate,
   estimatedDelivery,
 }: OrderStatusTrackerProps) {
+
+
   const getStatusIndex = (currentStatus: string) => {
     if (currentStatus === 'cancelled') return -1;
     if (currentStatus === 'pending') return -1;
-    return STATUS_STEPS.findIndex((step) => step.key === currentStatus);
+
+    // Map database status values to component status values
+    const statusMapping: { [key: string]: string } = {
+      'order_received': 'confirmed',
+      'order_confirmed': 'confirmed',
+      'confirmed': 'confirmed',
+      'preparing': 'preparing',
+      'out_for_delivery': 'out_for_delivery',
+      'delivered': 'delivered',
+    };
+
+    const mappedStatus = statusMapping[currentStatus] || currentStatus;
+    return STATUS_STEPS.findIndex((step) => step.key === mappedStatus);
   };
 
   const currentStatusIndex = getStatusIndex(status);
@@ -55,6 +69,8 @@ export default function OrderStatusTracker({
     switch (status) {
       case 'pending':
         return 'Your order has been received and is being processed.';
+      case 'order_received':
+      case 'order_confirmed':
       case 'confirmed':
         return 'Your order has been confirmed and is being prepared.';
       case 'preparing':

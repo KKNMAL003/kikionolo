@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import React, { useState, memo, useCallback, useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 import { Product } from '../constants/products';
 import Button from './Button';
+import LazyImage from './LazyImage';
 import Toast from 'react-native-toast-message';
 
 interface ProductCardProps {
@@ -11,27 +12,28 @@ interface ProductCardProps {
   onAddToCart: (product: Product, quantity: number) => void;
 }
 
-export default function ProductCard({ product, onAddToCart }: ProductCardProps) {
-  const imageSources: Record<string, any> = {
+const ProductCard = memo<ProductCardProps>(({ product, onAddToCart }) => {
+  // Memoize image sources to prevent recreation on every render
+  const imageSources = useMemo(() => ({
     'gas-cylinder-9kg': require('../assets/images/Gas-Cylinder-9kg.jpg'),
     'gas-cylinder-19kg': require('../assets/images/Gas-Cylinder-19kg.jpg'),
     'gas-cylinder-48kg': require('../assets/images/Gas-Cylinder-48kg.jpg'),
-  };
+  }), []);
 
-  const productImage = imageSources[product.image];
+  const productImage = imageSources[product.image as keyof typeof imageSources];
   const [quantity, setQuantity] = useState(1);
 
-  const increaseQuantity = () => {
+  const increaseQuantity = useCallback(() => {
     setQuantity((prev) => prev + 1);
-  };
+  }, []);
 
-  const decreaseQuantity = () => {
+  const decreaseQuantity = useCallback(() => {
     if (quantity > 1) {
       setQuantity((prev) => prev - 1);
     }
-  };
+  }, [quantity]);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = useCallback(() => {
     onAddToCart(product, quantity);
 
     // Show toast notification
@@ -45,13 +47,18 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
 
     // Reset quantity after adding to cart
     setQuantity(1);
-  };
+  }, [onAddToCart, product, quantity]);
 
   return (
     <View style={styles.container}>
       <View style={styles.iconContainer}>
         {productImage ? (
-          <Image source={productImage} style={{ width: 72, height: 72, resizeMode: 'contain' }} />
+          <LazyImage
+            source={productImage}
+            width={72}
+            height={72}
+            style={{ resizeMode: 'contain' }}
+          />
         ) : (
           <Ionicons
             name={product.type === 'gas' ? 'flame-outline' : 'water-outline'}
@@ -87,7 +94,11 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
       <Button title="Add to Cart" onPress={handleAddToCart} style={styles.button} />
     </View>
   );
-}
+});
+
+ProductCard.displayName = 'ProductCard';
+
+export default ProductCard;
 
 const styles = StyleSheet.create({
   container: {

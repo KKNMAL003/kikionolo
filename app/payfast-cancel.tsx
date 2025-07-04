@@ -51,7 +51,7 @@ export default function PayFastCancelScreen() {
       Toast.show({
         type: 'info',
         text1: 'Try Another Payment Method',
-        text2: 'Consider using PayPal, EFT, or Cash on Delivery',
+        text2: 'Consider using EFT or Cash on Delivery',
         position: 'bottom',
         visibilityTime: 4000,
       });

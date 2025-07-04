@@ -795,12 +795,25 @@ export default function ProfileScreen() {
 
   // Handle settings updates
   const handleUpdateSettings = async (updates: any) => {
-    // Split settings
-    const { notificationSettings: ns, notificationPreferences: np } = updates;
-    await updateBothSettings(ns, np);
-    // If push notifications are enabled, register for push notifications
-    if (ns.push) {
-      await registerForPushNotifications();
+    // Only handle notification settings updates
+    if (updates.notificationSettings || updates.notificationPreferences) {
+      const { notificationSettings: ns, notificationPreferences: np } = updates;
+
+      // Validate that we have valid objects before calling updateBothSettings
+      if (ns || np) {
+        await updateBothSettings(ns, np);
+        // If push notifications are enabled, register for push notifications
+        if (ns?.push) {
+          await registerForPushNotifications();
+        }
+      }
+    }
+
+    // Handle other types of settings updates (like security settings) here if needed
+    // For now, we just log them
+    if (updates.securitySettings) {
+      console.log('Security settings update:', updates.securitySettings);
+      // TODO: Implement security settings update logic
     }
   };
 

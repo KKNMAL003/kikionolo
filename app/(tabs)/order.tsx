@@ -28,6 +28,17 @@ export default function OrderScreen() {
           renderItem={({ item }) => <ProductCard product={item} onAddToCart={handleAddToCart} />}
           contentContainerStyle={styles.productsList}
           showsVerticalScrollIndicator={false}
+          // Performance optimizations
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={5}
+          updateCellsBatchingPeriod={50}
+          initialNumToRender={10}
+          windowSize={5}
+          getItemLayout={(data, index) => ({
+            length: 200, // Estimated height of ProductCard
+            offset: 200 * index,
+            index,
+          })}
         />
       </View>
     </SafeAreaView>

@@ -304,7 +304,7 @@ export const sendOrderConfirmationEmail = async (orderData: OrderEmailData): Pro
     `;
 
     // Send email via Netlify function instead of direct API call
-    const response = await fetch('https://mellifluous-valkyrie-f9877a.netlify.app/.netlify/functions/send-email', {
+    const response = await fetch('https://orders-onologroup.netlify.app/.netlify/functions/send-email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -318,14 +318,16 @@ export const sendOrderConfirmationEmail = async (orderData: OrderEmailData): Pro
       }),
     });
 
+    // Read response body only once
+    const responseText = await response.text();
+
     if (!response.ok) {
       let errorData;
       try {
-        errorData = await response.json();
+        errorData = JSON.parse(responseText);
       } catch (parseError) {
-        const text = await response.text();
-        console.error('Error sending email - non-JSON response:', text);
-        errorData = { error: 'Server returned non-JSON response' };
+        console.error('Error sending email - non-JSON response:', responseText);
+        errorData = { error: 'Server returned non-JSON response', details: responseText };
       }
       console.error('Error sending email:', errorData);
       return false;
@@ -333,9 +335,10 @@ export const sendOrderConfirmationEmail = async (orderData: OrderEmailData): Pro
 
     let result;
     try {
-      result = await response.json();
+      result = JSON.parse(responseText);
     } catch (parseError) {
       console.error('Error parsing response:', parseError);
+      console.error('Response text:', responseText);
       return false;
     }
     console.log('Email sent successfully:', result);
@@ -448,7 +451,7 @@ export const sendOrderStatusUpdateEmail = async (
     `;
 
     // Send email via Netlify function instead of direct API call
-    const response = await fetch('https://mellifluous-valkyrie-f9877a.netlify.app/.netlify/functions/send-email', {
+    const response = await fetch('https://orders-onologroup.netlify.app/.netlify/functions/send-email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -462,14 +465,16 @@ export const sendOrderStatusUpdateEmail = async (
       }),
     });
 
+    // Read response body only once
+    const responseText = await response.text();
+
     if (!response.ok) {
       let errorData;
       try {
-        errorData = await response.json();
+        errorData = JSON.parse(responseText);
       } catch (parseError) {
-        const text = await response.text();
-        console.error('Error sending status update email - non-JSON response:', text);
-        errorData = { error: 'Server returned non-JSON response' };
+        console.error('Error sending status update email - non-JSON response:', responseText);
+        errorData = { error: 'Server returned non-JSON response', details: responseText };
       }
       console.error('Error sending status update email:', errorData);
       return false;
@@ -477,9 +482,10 @@ export const sendOrderStatusUpdateEmail = async (
 
     let result;
     try {
-      result = await response.json();
+      result = JSON.parse(responseText);
     } catch (parseError) {
       console.error('Error parsing status update response:', parseError);
+      console.error('Response text:', responseText);
       return false;
     }
     console.log('Status update email sent successfully:', result);
