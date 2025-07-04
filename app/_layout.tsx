@@ -129,7 +129,7 @@ export default function RootLayout() {
                 gestureEnabled: true,
                 gestureDirection: 'horizontal',
               }}
-              initialRouteName={user ? "(tabs)" : "welcome"}
+              initialRouteName="welcome"
             >
               <Stack.Screen
                 name="(tabs)"
