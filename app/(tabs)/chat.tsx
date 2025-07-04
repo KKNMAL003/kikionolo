@@ -86,11 +86,11 @@ export default function ChatScreen() {
       });
       
       console.log('Message sent successfully');
-      
+
       // Scroll to bottom after a short delay to ensure new message is rendered
       setTimeout(() => {
         if (flatListRef.current) {
-          flatListRef.current.scrollToOffset({ offset: 0, animated: true });
+          flatListRef.current.scrollToEnd({ animated: true });
         }
       }, 300);
       

@@ -1,4 +1,4 @@
-import React, { useState, memo, useCallback, useMemo } from 'react';
+import React, { useState, memo, useCallback, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
@@ -6,6 +6,7 @@ import { Product } from '../constants/products';
 import Button from './Button';
 import LazyImage from './LazyImage';
 import Toast from 'react-native-toast-message';
+import { preloadImages } from '../utils/imagePreloader';
 
 interface ProductCardProps {
   product: Product;
@@ -22,6 +23,17 @@ const ProductCard = memo<ProductCardProps>(({ product, onAddToCart }) => {
 
   const productImage = imageSources[product.image as keyof typeof imageSources];
   const [quantity, setQuantity] = useState(1);
+
+  // Preload all product images on component mount for better performance
+  useEffect(() => {
+    // Preload all product images in the background
+    const imageSourcesArray = Object.values(imageSources).filter(Boolean);
+    if (imageSourcesArray.length > 0) {
+      preloadImages(imageSourcesArray).catch(error => {
+        console.warn('Failed to preload some product images:', error);
+      });
+    }
+  }, [imageSources]);
 
   const increaseQuantity = useCallback(() => {
     setQuantity((prev) => prev + 1);

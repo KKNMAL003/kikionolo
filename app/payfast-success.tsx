@@ -88,16 +88,29 @@ export default function PayFastSuccessScreen() {
                 
                 sendOrderConfirmationEmail(emailData).catch((error) => {
                   console.error('Error sending PayFast confirmation email:', error);
+                  // Show a subtle notification about email issue
+                  setTimeout(() => {
+                    Toast.show({
+                      type: 'info',
+                      text1: 'Email Notification',
+                      text2: 'Payment confirmed! If you don\'t receive an email, please check your spam folder.',
+                      position: 'bottom',
+                      visibilityTime: 4000,
+                    });
+                  }, 3000); // Show after the main success message
                 });
               }
               
-              // Show success message
+              // Show enhanced success message
+              const hasEmail = orderData.customerEmail && orderData.customerEmail.trim() !== '';
               Toast.show({
                 type: 'success',
-                text1: 'Order Placed Successfully!',
-                text2: 'Your PayFast payment has been processed and order created.',
+                text1: '🎉 Payment Successful!',
+                text2: hasEmail
+                  ? `Order #${newOrder.id.slice(-6)} created. Payment processed via PayFast. Confirmation email sent to ${orderData.customerEmail}`
+                  : `Order #${newOrder.id.slice(-6)} created and payment processed via PayFast.`,
                 position: 'bottom',
-                visibilityTime: 4000,
+                visibilityTime: 6000, // Show longer for payment confirmation
               });
             } catch (orderError: any) {
               console.error('Error creating order after payment:', orderError);

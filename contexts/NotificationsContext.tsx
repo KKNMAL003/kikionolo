@@ -294,13 +294,8 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     await loadSettings();
   }, [loadSettings]);
 
-  // Memoize the context value to prevent unnecessary re-renders
-  const value: NotificationsContextType = useMemo(() => ({
-    notificationSettings,
-    notificationPreferences,
-    isLoading,
-
-    // Notification methods
+  // Memoize methods separately to prevent unnecessary re-renders
+  const methods = useMemo(() => ({
     updateNotificationSettings,
     updateNotificationPreferences,
     updateBothSettings,
@@ -308,15 +303,25 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     requestPushPermissions,
     refreshSettings,
   }), [
-    notificationSettings,
-    notificationPreferences,
-    isLoading,
     updateNotificationSettings,
     updateNotificationPreferences,
     updateBothSettings,
     registerForPushNotifications,
     requestPushPermissions,
     refreshSettings,
+  ]);
+
+  // Memoize the context value with optimized dependencies
+  const value: NotificationsContextType = useMemo(() => ({
+    notificationSettings,
+    notificationPreferences,
+    isLoading,
+    ...methods,
+  }), [
+    notificationSettings,
+    notificationPreferences,
+    isLoading,
+    methods,
   ]);
 
   return (

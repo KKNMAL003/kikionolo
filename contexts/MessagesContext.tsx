@@ -118,55 +118,59 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
 
     console.log('MessagesContext: Setting up real-time event listeners');
 
-    // Subscribe to new messages
+    // Subscribe to new messages with optimized duplicate prevention
     const unsubscribeMessages = messageService.onMessageReceived((message) => {
       if (!isMountedRef.current) return;
-      
+
       console.log('MessagesContext: New message received:', message.id);
-      
-      setMessages(prev => {
-        // Check if we already have this message
-        if (prev.some(msg => msg.id === message.id)) {
-          return prev;
-        }
-        
-        // Add to messages map with client key
-        const enhancedMessage = {
-          ...message,
-          _clientKey: message.id + '-' + Date.now() // Ensure unique keys
-        };
-        messagesMapRef.current.set(message.id, enhancedMessage);
-        
-        // Return a new array with the message added
-        return [enhancedMessage, ...prev];
-      });
-      
+
+      // Check map first for better performance
+      if (messagesMapRef.current.has(message.id)) {
+        console.log('MessagesContext: Duplicate message ignored:', message.id);
+        return;
+      }
+
+      // Add to messages map with client key
+      const enhancedMessage = {
+        ...message,
+        _clientKey: message.id + '-' + Date.now() // Ensure unique keys
+      };
+      messagesMapRef.current.set(message.id, enhancedMessage);
+
+      setMessages(prev => [enhancedMessage, ...prev]);
+
       // Update unread count if it's from staff and unread
       if (message.senderType === 'staff' && !message.isRead) {
         setUnreadCount(prev => prev + 1);
       }
     });
 
-    // Subscribe to message updates
+    // Subscribe to message updates with optimized processing
     const unsubscribeUpdates = messageService.onMessageUpdated((messageId, updates) => {
       if (!isMountedRef.current) return;
-      
+
       console.log('MessagesContext: Message updated:', messageId, updates);
-      
-      setMessages(prev => 
-        prev.map(msg => 
-          msg.id === messageId 
-            ? { ...msg, ...updates, _clientKey: msg._clientKey } // Preserve client key
+
+      // Check if message exists in map first
+      const existingMsg = messagesMapRef.current.get(messageId);
+      if (!existingMsg) {
+        console.log('MessagesContext: Update for unknown message:', messageId);
+        return;
+      }
+
+      // Update message in map first
+      const updatedMessage = { ...existingMsg, ...updates };
+      messagesMapRef.current.set(messageId, updatedMessage);
+
+      // Update state with optimized check
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === messageId
+            ? updatedMessage
             : msg
         )
       );
-      
-      // Update message in map
-      const existingMsg = messagesMapRef.current.get(messageId);
-      if (existingMsg) {
-        messagesMapRef.current.set(messageId, { ...existingMsg, ...updates });
-      }
-      
+
       // Update unread count if read status changed
       if (updates.isRead !== undefined) {
         loadUnreadCount();
@@ -181,7 +185,16 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
       setUnreadCount(count);
     });
 
-    // Store unsubscribe functions
+    // Clean up any existing subscriptions before adding new ones
+    unsubscribeFuncsRef.current.forEach(unsubscribe => {
+      try {
+        unsubscribe();
+      } catch (error) {
+        console.warn('MessagesContext: Error cleaning up subscription:', error);
+      }
+    });
+
+    // Store new unsubscribe functions
     unsubscribeFuncsRef.current = [
       unsubscribeMessages,
       unsubscribeUpdates,
@@ -386,13 +399,8 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
     }
   }, [loadUnreadCount]);
 
-  // Memoize the context value to prevent unnecessary re-renders
-  const value: MessagesContextType = useMemo(() => ({
-    messages,
-    unreadCount,
-    isLoading,
-
-    // Message methods
+  // Memoize methods separately to prevent unnecessary re-renders
+  const methods = useMemo(() => ({
     sendMessage,
     markAsRead,
     markAllAsRead,
@@ -401,9 +409,6 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
     getMessagesByDate,
     deleteMessage,
   }), [
-    messages,
-    unreadCount,
-    isLoading,
     sendMessage,
     markAsRead,
     markAllAsRead,
@@ -411,6 +416,19 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
     loadMoreMessages,
     getMessagesByDate,
     deleteMessage,
+  ]);
+
+  // Memoize the context value with optimized dependencies
+  const value: MessagesContextType = useMemo(() => ({
+    messages,
+    unreadCount,
+    isLoading,
+    ...methods,
+  }), [
+    messages,
+    unreadCount,
+    isLoading,
+    methods,
   ]);
 
   return (

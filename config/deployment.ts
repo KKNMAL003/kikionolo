@@ -96,6 +96,7 @@ export const DASHBOARD_CONFIG = {
     'https://www.manager-onologroup.online',
     'https://manager-onologroup.netlify.app',
     // Development URLs
+    'http://localhost:8081', // Expo dev server
     'http://localhost:3000',
     'http://localhost:8080',
     'http://localhost:5173', // Vite dev server

@@ -135,14 +135,29 @@ export default function CheckoutScreen() {
         };
         sendOrderConfirmationEmail(emailData).catch((error) => {
           console.error('Error sending order confirmation email:', error);
+          // Show a subtle notification about email issue
+          setTimeout(() => {
+            Toast.show({
+              type: 'info',
+              text1: 'Email Notification',
+              text2: 'Order confirmed! If you don\'t receive an email, please check your spam folder.',
+              position: 'bottom',
+              visibilityTime: 4000,
+            });
+          }, 2000); // Show after the main success message
         });
       }
 
+      // Show enhanced success notification
+      const hasEmail = formData.email && formData.email.trim() !== '';
       Toast.show({
         type: 'success',
-        text1: 'Order Placed Successfully',
-        text2: 'Your order has been received.',
+        text1: '🎉 Order Placed Successfully!',
+        text2: hasEmail
+          ? `Order #${newOrder.id.slice(-6)} created. Confirmation email sent to ${formData.email}`
+          : `Order #${newOrder.id.slice(-6)} has been received and is being processed.`,
         position: 'bottom',
+        visibilityTime: 5000, // Show longer for more info
       });
       clearCart();
       router.replace('/profile');

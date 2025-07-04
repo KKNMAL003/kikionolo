@@ -1,6 +1,9 @@
-import React, { useState, memo } from 'react';
+import React, { useState, memo, useEffect } from 'react';
 import { Image, View, ActivityIndicator, StyleSheet, ImageProps } from 'react-native';
 import { COLORS } from '../constants/colors';
+
+// Simple in-memory cache for loaded images
+const imageCache = new Map<string, boolean>();
 
 interface LazyImageProps extends Omit<ImageProps, 'source'> {
   source: any;
@@ -10,25 +13,43 @@ interface LazyImageProps extends Omit<ImageProps, 'source'> {
   height?: number;
 }
 
-const LazyImage = memo<LazyImageProps>(({ 
-  source, 
-  placeholder, 
-  fallback, 
-  width = 100, 
-  height = 100, 
-  style, 
-  ...props 
+const LazyImage = memo<LazyImageProps>(({
+  source,
+  placeholder,
+  fallback,
+  width = 100,
+  height = 100,
+  style,
+  ...props
 }) => {
-  const [loading, setLoading] = useState(true);
+  // Generate cache key from source
+  const cacheKey = typeof source === 'object' && source.uri ? source.uri : JSON.stringify(source);
+  const isCached = imageCache.has(cacheKey);
+
+  const [loading, setLoading] = useState(!isCached);
   const [error, setError] = useState(false);
 
+  // Preload image if not cached
+  useEffect(() => {
+    if (!isCached && typeof source === 'object' && source.uri) {
+      // Preload network images
+      Image.prefetch(source.uri).catch(() => {
+        // Ignore prefetch errors, let the main Image component handle them
+      });
+    }
+  }, [source, isCached, cacheKey]);
+
   const handleLoadStart = () => {
-    setLoading(true);
+    if (!isCached) {
+      setLoading(true);
+    }
     setError(false);
   };
 
   const handleLoadEnd = () => {
     setLoading(false);
+    // Mark as cached for future renders
+    imageCache.set(cacheKey, true);
   };
 
   const handleError = () => {

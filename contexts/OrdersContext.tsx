@@ -268,27 +268,32 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, orders]);
 
-  // Memoize the context value to prevent unnecessary re-renders
-  const value: OrdersContextType = useMemo(() => ({
-    orders,
-    isLoading,
-    isProcessingOrder,
-
-    // Order methods
+  // Memoize methods separately to prevent unnecessary re-renders
+  const methods = useMemo(() => ({
     createOrder,
     getOrderById,
     cancelOrder,
     refreshOrders,
     getOrderStats,
   }), [
-    orders,
-    isLoading,
-    isProcessingOrder,
     createOrder,
     getOrderById,
     cancelOrder,
     refreshOrders,
     getOrderStats,
+  ]);
+
+  // Memoize the context value with optimized dependencies
+  const value: OrdersContextType = useMemo(() => ({
+    orders,
+    isLoading,
+    isProcessingOrder,
+    ...methods,
+  }), [
+    orders,
+    isLoading,
+    isProcessingOrder,
+    methods,
   ]);
 
   return (

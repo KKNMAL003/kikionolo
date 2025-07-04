@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { authService } from '../services/auth/AuthService';
 import type { User } from '../services/interfaces/IAuthService';
 
@@ -162,19 +162,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const value: AuthContextType = {
-    user,
-    isLoading,
-    isAuthenticated,
-    isGuest,
-    
-    // Auth methods
+  // Memoize methods separately to prevent unnecessary re-renders
+  const methods = useMemo(() => ({
     login,
     loginAsGuest,
     register,
     logout,
     refreshUser,
-  };
+  }), [
+    login,
+    loginAsGuest,
+    register,
+    logout,
+    refreshUser,
+  ]);
+
+  // Memoize the context value with optimized dependencies
+  const value: AuthContextType = useMemo(() => ({
+    user,
+    isLoading,
+    isAuthenticated,
+    isGuest,
+    ...methods,
+  }), [
+    user,
+    isLoading,
+    isAuthenticated,
+    isGuest,
+    methods,
+  ]);
 
   return (
     <AuthContext.Provider value={value}>

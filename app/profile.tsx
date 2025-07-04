@@ -381,9 +381,13 @@ export default function ProfileScreen() {
   }, [user, parseAddress, dismissKeyboard, isSaving]);
 
   const handleLogout = async () => {
-    await logout();
-    // Use replace to reset navigation stack and prevent going back to profile
-    router.replace('/(tabs)');
+    try {
+      await logout();
+      // Use replace to reset navigation stack and prevent going back to profile
+      router.replace('/(tabs)');
+    } catch (error) {
+      console.error('Profile: handleLogout error:', error);
+    }
   };
 
   const handleLogin = () => {

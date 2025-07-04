@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../../constants/colors';
@@ -6,12 +6,26 @@ import { PRODUCTS } from '../../constants/products';
 import Header from '../../components/Header';
 import ProductCard from '../../components/ProductCard';
 import { useCart } from '../../context/CartContext';
+import { preloadImages } from '../../utils/imagePreloader';
 
 export default function OrderScreen() {
   const { addToCart } = useCart();
 
   // Filter products to show only gas products
   const gasProducts = PRODUCTS.filter((product) => product.type === 'gas');
+
+  // Preload all product images when screen loads
+  useEffect(() => {
+    const imageSources = [
+      require('../../assets/images/Gas-Cylinder-9kg.jpg'),
+      require('../../assets/images/Gas-Cylinder-19kg.jpg'),
+      require('../../assets/images/Gas-Cylinder-48kg.jpg'),
+    ];
+
+    preloadImages(imageSources).catch(error => {
+      console.warn('Failed to preload product images:', error);
+    });
+  }, []);
 
   const handleAddToCart = (product, quantity) => {
     addToCart(product, quantity);

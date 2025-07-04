@@ -1,5 +1,5 @@
 import 'react-native-get-random-values';
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -14,14 +14,11 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { v4 as uuidv4 } from 'uuid';
 import { COLORS } from '../../constants/colors';
 import Header from '../../components/Header';
 import { WebView } from 'react-native-webview';
-import { useAuth } from '../../contexts/AuthContext';
-import { useMessages } from '../../contexts/MessagesContext';
 import MessageBubble from '../../components/MessageBubble';
-import type { Message } from '../../services/interfaces/IMessageService';
+import { useChat } from '../../hooks/useChat';
 import { Ionicons } from '@expo/vector-icons';
 
 // ChatScreen: Main chat UI for live staff and AI assistant
@@ -31,124 +28,30 @@ import { Ionicons } from '@expo/vector-icons';
 // - Allows starting a new chat (adds a system message)
 export default function ChatScreen() {
   const chatbaseUrl = 'https://www.chatbase.co/chatbot-iframe/SzxvYORICrmmckhOCkvB6';
-  const { user } = useAuth();
-  const { 
-    messages, 
-    unreadCount, 
-    markAsRead, 
-    markAllAsRead, 
-    sendMessage,
+
+  // Use shared chat logic hook
+  const {
+    input,
+    sending,
+    isLiveChatVisible,
+    activeConversationDate,
+    conversationDates,
+    currentChatMessages,
+    flatListRef,
+    setInput,
+    setLiveChatVisible,
+    setActiveConversationDate,
+    handleSendMessage,
+    startNewChat,
+    unreadCount,
     isLoading,
-  } = useMessages();
-  
-  const [input, setInput] = useState('');
-  const [sending, setSending] = useState(false);
-  const [isLiveChatVisible, setLiveChatVisible] = useState(false);
-  const [activeConversationDate, setActiveConversationDate] = useState<string | null>(null);
-  const flatListRef = useRef<FlatList>(null);
+  } = useChat({
+    autoMarkAsRead: true,
+    enableConversationDates: true,
+    scrollDelay: 300,
+  });
 
-  // Set active conversation to today when opening live chat
-  useEffect(() => {
-    if (isLiveChatVisible && !activeConversationDate) {
-      const today = new Date().toISOString().split('T')[0];
-      setActiveConversationDate(today);
-    }
-  }, [isLiveChatVisible, activeConversationDate]);
 
-  // Mark messages as read when viewing them
-  useEffect(() => {
-    if (isLiveChatVisible && unreadCount > 0) {
-      markAllAsRead();
-    }
-  }, [isLiveChatVisible, unreadCount, markAllAsRead]);
-
-  const handleSendMessage = async () => {
-    if (!input.trim() || !user || sending) {
-      console.log('SendMessage blocked: Input is empty, no user, or already sending.');
-      return;
-    }
-
-    setSending(true);
-    const messageContent = input.trim();
-    setInput('');
-
-    try {
-      if (!user.id) {
-        throw new Error('User ID is required to send a message');
-      }
-      
-      await sendMessage({
-        userId: user.id,
-        subject: messageContent,
-        message: messageContent,
-        logType: 'user_message',
-        senderType: 'customer'
-      });
-      
-      console.log('Message sent successfully');
-      
-      // Scroll to bottom after a short delay to ensure new message is rendered
-      setTimeout(() => {
-        if (flatListRef.current) {
-          flatListRef.current.scrollToEnd({ animated: true });
-        }
-      }, 300);
-      
-    } catch (error: any) {
-      console.error('Error sending message:', error.message);
-      // Restore input on error
-      setInput(messageContent);
-    } finally {
-      setSending(false);
-    }
-  };
-
-  // Safely filter and process dates
-  const conversationDates = useMemo(() => {
-    // Group messages by date for conversation history
-    const dates = new Set<string>();
-    messages.forEach((msg) => {
-      // Validate date before processing
-      try {
-        if (msg.createdAt && !isNaN(new Date(msg.createdAt).getTime())) {
-          dates.add(new Date(msg.createdAt).toISOString().split('T')[0]);
-        }
-      } catch (error) {
-        console.warn('Invalid date in message:', error);
-      }
-    });
-    return Array.from(dates).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-  }, [messages]);
-
-  // Safely filter messages by date
-  const currentChatMessages = useMemo(() => {
-    // Filter messages for the active conversation date
-    if (!activeConversationDate) return [];
-    
-    // Create a processed copy to ensure we have unique client-side IDs
-    return messages.filter((msg) => {
-      try {
-        // Validate date before processing
-        if (!msg.createdAt || isNaN(new Date(msg.createdAt).getTime())) {
-          return false;
-        }
-        return new Date(msg.createdAt).toISOString().split('T')[0] === activeConversationDate;
-      } catch (error) {
-        console.warn('Error filtering message by date:', error);
-        return false;
-      }
-    }).map(msg => ({
-      ...msg,
-      // Ensure each message has a unique client-side key
-      _clientKey: msg.id + '-' + (msg._clientKey || uuidv4().substring(0, 8))
-    }));
-  }, [messages, activeConversationDate]);
-
-  const startNewChat = () => {
-    // Start a new chat for today
-    const today = new Date().toISOString().split('T')[0];
-    setActiveConversationDate(today);
-  };
 
   // Safely format a date string, handling potential invalid dates
   const formatThreadDate = (dateStr: string) => {
