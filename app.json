@@ -40,7 +40,16 @@
       "bundler": "metro",
       "output": "single",
       "favicon": "./assets/images/favicon.png",
-      "name": "Onolo Group Orders"
+      "template": "./web/index.html",
+      "name": "Onolo Group Orders",
+      "themeColor": "#FF6B35",
+      "backgroundColor": "#000000",
+      "description": "Order gas cylinders and fuel delivery from Onolo Group",
+      "lang": "en",
+      "scope": "/",
+      "startUrl": "/",
+      "display": "standalone",
+      "orientation": "portrait"
     },
     "plugins": [
       [
