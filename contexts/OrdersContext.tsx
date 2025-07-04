@@ -46,6 +46,52 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Load orders from storage (fallback)
+  const loadOrdersFromStorage = useCallback(async () => {
+    try {
+      console.log('OrdersContext: Loading orders from AsyncStorage fallback');
+      const storedOrders = await AsyncStorage.getItem('@onolo_orders');
+      if (storedOrders && isMountedRef.current) {
+        const parsedOrders = JSON.parse(storedOrders);
+        setOrders(parsedOrders);
+        console.log(`OrdersContext: Loaded ${parsedOrders.length} orders from storage`);
+      }
+    } catch (error) {
+      console.error('OrdersContext: Error loading orders from storage:', error);
+    }
+  }, []);
+
+  // Load orders from service
+  const loadOrders = useCallback(async () => {
+    if (!user || user.isGuest) return;
+
+    try {
+      setIsLoading(true);
+      console.log('OrdersContext: Loading orders for user:', user.id);
+
+      const fetchedOrders = await orderService.getOrders(user.id, {
+        limit: 100, // Load recent orders
+      });
+
+      if (isMountedRef.current) {
+        setOrders(fetchedOrders);
+
+        // Also save to storage as backup
+        await AsyncStorage.setItem('@onolo_orders', JSON.stringify(fetchedOrders));
+
+        console.log(`OrdersContext: Loaded ${fetchedOrders.length} orders`);
+      }
+    } catch (error) {
+      console.error('OrdersContext: Error loading orders:', error);
+      // Fallback to storage
+      await loadOrdersFromStorage();
+    } finally {
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
+    }
+  }, [user, loadOrdersFromStorage]);
+
   // Load orders when user changes
   useEffect(() => {
     if (user) {
@@ -59,7 +105,7 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
       // Clear orders when logged out
       setOrders([]);
     }
-  }, [user, isAuthenticated]);
+  }, [user, isAuthenticated, loadOrders, loadOrdersFromStorage]);
 
   // Real-time subscriptions for order updates
   useEffect(() => {
@@ -94,53 +140,6 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
       supabase.removeChannel(ordersChannel);
     };
   }, [user, isAuthenticated, loadOrders]);
-
-  // Load orders from service
-  const loadOrders = useCallback(async () => {
-    if (!user || user.isGuest) return;
-
-    try {
-      setIsLoading(true);
-      console.log('OrdersContext: Loading orders for user:', user.id);
-      
-      const fetchedOrders = await orderService.getOrders(user.id, {
-        limit: 100, // Load recent orders
-      });
-      
-      if (isMountedRef.current) {
-        setOrders(fetchedOrders);
-        
-        // Also save to storage as backup
-        await AsyncStorage.setItem('@onolo_orders', JSON.stringify(fetchedOrders));
-        
-        console.log(`OrdersContext: Loaded ${fetchedOrders.length} orders`);
-      }
-    } catch (error) {
-      console.error('OrdersContext: Error loading orders:', error);
-      // Fallback to storage
-      await loadOrdersFromStorage();
-    } finally {
-      if (isMountedRef.current) {
-        setIsLoading(false);
-      }
-    }
-  }, [user]);
-
-  // Load orders from storage (fallback)
-  const loadOrdersFromStorage = useCallback(async () => {
-    try {
-      console.log('OrdersContext: Loading orders from AsyncStorage fallback');
-      const storedOrders = await AsyncStorage.getItem('@onolo_orders');
-      
-      if (storedOrders && isMountedRef.current) {
-        const parsedOrders = JSON.parse(storedOrders);
-        setOrders(parsedOrders);
-        console.log(`OrdersContext: Loaded ${parsedOrders.length} orders from storage`);
-      }
-    } catch (error) {
-      console.error('OrdersContext: Error loading orders from storage:', error);
-    }
-  }, []);
 
   // Order methods
   const createOrder = useCallback(async (orderData: Omit<CreateOrderRequest, 'userId'>): Promise<Order> => {
