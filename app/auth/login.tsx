@@ -56,7 +56,10 @@ export default function LoginScreen() {
     try {
       const success = await login(email, password);
       if (success) {
-        router.replace('/(tabs)');
+        // Add small delay to ensure auth state is properly set
+        setTimeout(() => {
+          router.replace('/(tabs)');
+        }, 100);
       } else {
         // Display error in toast
         Toast.show({
@@ -92,7 +95,10 @@ export default function LoginScreen() {
   const handleGuestLogin = async () => {
     try {
       await loginAsGuest();
-      router.replace('/(tabs)');
+      // Add small delay to ensure auth state is properly set
+      setTimeout(() => {
+        router.replace('/(tabs)');
+      }, 100);
     } catch (error: any) {
       console.error('Guest login error:', error);
       Toast.show({

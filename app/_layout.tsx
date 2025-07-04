@@ -15,6 +15,7 @@ import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { initializeConnectionTest } from '../utils/connectionTest';
 import { queryClient } from '../utils/queryClient';
 import { useAuth } from '../contexts/AuthContext';
+import LoadingScreen from '@/components/LoadingScreen';
 // import PerformanceMonitor from '../components/PerformanceMonitor';
 
 // Enhanced Auth guard component with better navigation management
@@ -59,13 +60,13 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
           router.replace('/(tabs)');
         }
       }
-    }, 50); // Reduced timeout to minimize flash
+    }, 25); // Further reduced timeout to minimize flash
 
     return () => clearTimeout(timeoutId);
   }, [user, segments, router, isLoading]);
 
   if (isLoading) {
-    return null;
+    return <LoadingScreen message="Signing you in..." />;
   }
 
   return <>{children}</>;
@@ -124,7 +125,8 @@ export default function RootLayout() {
               screenOptions={{
                 headerShown: false,
                 contentStyle: { backgroundColor: COLORS.background },
-                animation: 'slide_from_right',
+                animation: 'fade',
+                animationDuration: 200,
                 // Enhanced gesture handling
                 gestureEnabled: true,
                 gestureDirection: 'horizontal',
@@ -135,6 +137,8 @@ export default function RootLayout() {
                 name="(tabs)"
                 options={{
                   headerShown: false,
+                  animation: 'fade',
+                  animationDuration: 150,
                   // Reset stack when navigating to tabs
                   animationTypeForReplace: 'push',
                 }}
@@ -181,6 +185,8 @@ export default function RootLayout() {
                 options={{
                   headerShown: false,
                   gestureEnabled: false,
+                  animation: 'fade',
+                  animationDuration: 150,
                 }}
               />
               <Stack.Screen
@@ -188,6 +194,8 @@ export default function RootLayout() {
                 options={{
                   presentation: 'modal',
                   gestureEnabled: false,
+                  animation: 'fade',
+                  animationDuration: 150,
                   // Prevent going back from login
                   headerLeft: () => null,
                 }}

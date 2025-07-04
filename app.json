@@ -11,21 +11,23 @@
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000000"
     },
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
-        }
-      }
+        },
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.onologroup.orders"
     },
     "android": {
       "package": "com.onologroup.orders",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#000000"
       },
       "usesCleartextTraffic": true,
       "config": {
@@ -53,7 +55,7 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#000000"
         }
       ],
       "expo-font",
@@ -63,7 +65,13 @@
       "typedRoutes": true
     },
     "extra": {
-      "EXPO_PUBLIC_MAPBOX_TOKEN": "pk.eyJ1Ijoia2tubWFsMDAzIiwiYSI6ImNtOWI2NGF1MjBjdWwya3M1Mmxua3hqaXgifQ._PMbFD1tTIq4zmjGCwnAHg"
+      "EXPO_PUBLIC_MAPBOX_TOKEN": "pk.eyJ1Ijoia2tubWFsMDAzIiwiYSI6ImNtOWI2NGF1MjBjdWwya3M1Mmxua3hqaXgifQ._PMbFD1tTIq4zmjGCwnAHg",
+      "router": {
+        "origin": "https://orders-onologroup.online"
+      },
+      "eas": {
+        "projectId": "e090dcb7-fcfe-45d5-80c8-9c032738c2bb"
+      }
     }
   }
 }
