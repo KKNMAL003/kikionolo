@@ -31,8 +31,11 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     const inAuthGroup = segments[0] === 'auth';
     const inTabsGroup = segments[0] === '(tabs)';
     const inWelcome = segments[0] === 'welcome';
+    const inCheckout = segments[0] === 'checkout';
+    const inProfile = segments[0] === 'profile';
+    const inPayFast = segments[0]?.startsWith('payfast-');
 
-    // Improved logic: prevent navigation conflicts
+    // Improved logic: prevent navigation conflicts and unwanted redirects
     const timeoutId = setTimeout(() => {
       try {
         if (!user) {
@@ -42,19 +45,21 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
           }
         } else {
           // Authenticated - only redirect if on welcome or auth pages
-          if (inWelcome || inAuthGroup) {
+          // Don't redirect if user is on checkout, profile, or payfast pages
+          if ((inWelcome || inAuthGroup) && !inCheckout && !inProfile && !inPayFast) {
             router.replace('/(tabs)');
           }
         }
       } catch (error) {
         console.error('Navigation error in AuthGuard:', error);
-        if (!user) {
+        // Only fallback redirect if not on protected pages
+        if (!user && !inWelcome && !inAuthGroup) {
           router.replace('/welcome');
-        } else {
+        } else if (user && (inWelcome || inAuthGroup) && !inCheckout && !inProfile && !inPayFast) {
           router.replace('/(tabs)');
         }
       }
-    }, 100);
+    }, 50); // Reduced timeout to minimize flash
 
     return () => clearTimeout(timeoutId);
   }, [user, segments, router, isLoading]);
@@ -124,7 +129,7 @@ export default function RootLayout() {
                 gestureEnabled: true,
                 gestureDirection: 'horizontal',
               }}
-              initialRouteName="(tabs)"
+              initialRouteName={user ? "(tabs)" : "welcome"}
             >
               <Stack.Screen
                 name="(tabs)"
@@ -169,6 +174,13 @@ export default function RootLayout() {
                 options={{
                   presentation: 'card',
                   gestureEnabled: true,
+                }}
+              />
+              <Stack.Screen
+                name="welcome"
+                options={{
+                  headerShown: false,
+                  gestureEnabled: false,
                 }}
               />
               <Stack.Screen
