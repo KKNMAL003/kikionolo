@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "user-app",
-    "slug": "user-app",
+    "name": "Onolo Group Orders",
+    "slug": "onolo-group-orders",
     "scheme": "onolo",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -22,7 +22,7 @@
       }
     },
     "android": {
-      "package": "com.appacella.userapp",
+      "package": "com.onologroup.orders",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -37,7 +37,9 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./public/favicon.png",
+      "name": "Onolo Group Orders",
+      "template": "./public/index.html"
     },
     "plugins": [
       [
