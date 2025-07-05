@@ -6,7 +6,7 @@ import {
   StyleSheet,
   StyleProp,
   ViewStyle,
-  FlatList,
+  ScrollView,
   TouchableOpacity,
   Keyboard,
   Platform,
@@ -132,11 +132,15 @@ export default function AddressAutocomplete({
       {showSuggestions && suggestions.length > 0 && (
         <TouchableWithoutFeedback onPressIn={handleSuggestionsPressIn}>
           <View style={styles.suggestionsContainer} ref={suggestionsContainerRef}>
-            <FlatList
-              data={suggestions}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
+            <ScrollView
+              style={styles.suggestionsList}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled={true}
+            >
+              {suggestions.map((item) => (
                 <TouchableOpacity
+                  key={item.id}
                   style={styles.suggestionItem}
                   onPress={() => handleSelect(item)}
                 >
@@ -148,10 +152,8 @@ export default function AddressAutocomplete({
                   />
                   <Text style={styles.suggestionText}>{item.place_name}</Text>
                 </TouchableOpacity>
-              )}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-            />
+              ))}
+            </ScrollView>
           </View>
         </TouchableWithoutFeedback>
       )}
@@ -210,6 +212,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+  },
+  suggestionsList: {
+    maxHeight: 200,
   },
   suggestionItem: {
     flexDirection: 'row',
