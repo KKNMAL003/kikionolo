@@ -6,12 +6,14 @@ import type { User } from '../services/interfaces/IAuthService';
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  isLoggingOut: boolean;
   isAuthenticated: boolean;
   isGuest: boolean;
-  
+
   // Auth methods
   login: (email: string, password: string) => Promise<boolean>;
   loginAsGuest: () => Promise<void>;
+  createNewGuestSession: () => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -23,6 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // State
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   
   // Refs for cleanup
   const isMountedRef = useRef(true);
@@ -112,12 +115,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginAsGuest = useCallback(async (): Promise<void> => {
     try {
       const result = await authService.loginAsGuest();
-      
+
       if (result.success && result.user) {
         setUser(result.user);
       }
     } catch (error) {
       console.error('AuthContext: Guest login error:', error);
+    }
+  }, []);
+
+  const createNewGuestSession = useCallback(async (): Promise<void> => {
+    try {
+      const result = await authService.createNewGuestSession();
+
+      if (result.success && result.user) {
+        setUser(result.user);
+      }
+    } catch (error) {
+      console.error('AuthContext: Create new guest session error:', error);
     }
   }, []);
 
@@ -144,12 +159,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async (): Promise<void> => {
     try {
-      await authService.logout();
+      console.log('AuthContext: Starting logout process for user:', user?.isGuest ? 'guest' : 'registered');
+
+      // Set logout state to trigger smooth transition
+      setIsLoggingOut(true);
+
+      if (user?.isGuest) {
+        await authService.logoutGuest(user.id);
+        console.log('AuthContext: Guest logout completed');
+      } else {
+        await authService.logout();
+        console.log('AuthContext: Registered user logout completed');
+      }
+
+      // Longer delay for registered users to ensure Supabase logout completes
+      const delay = user?.isGuest ? 150 : 250;
+      await new Promise(resolve => setTimeout(resolve, delay));
+
       setUser(null);
+      console.log('AuthContext: User state cleared');
+
+      // Brief delay before clearing logout state to allow navigation
+      setTimeout(() => {
+        if (isMountedRef.current) {
+          setIsLoggingOut(false);
+          console.log('AuthContext: Logout transition completed');
+        }
+      }, 400);
+
     } catch (error) {
       console.error('AuthContext: Logout error:', error);
+      // Clear logout state on error
+      setIsLoggingOut(false);
     }
-  }, []);
+  }, [user]);
 
   const refreshUser = useCallback(async (): Promise<void> => {
     try {
@@ -166,12 +209,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const methods = useMemo(() => ({
     login,
     loginAsGuest,
+    createNewGuestSession,
     register,
     logout,
     refreshUser,
   }), [
     login,
     loginAsGuest,
+    createNewGuestSession,
     register,
     logout,
     refreshUser,
@@ -181,12 +226,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value: AuthContextType = useMemo(() => ({
     user,
     isLoading,
+    isLoggingOut,
     isAuthenticated,
     isGuest,
     ...methods,
   }), [
     user,
     isLoading,
+    isLoggingOut,
     isAuthenticated,
     isGuest,
     methods,

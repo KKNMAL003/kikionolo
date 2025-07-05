@@ -1,13 +1,24 @@
 export interface Order {
   id: string;
+  userId?: string;
   customerName: string;
   customerEmail: string;
+  customerPhone?: string;
   deliveryAddress: string;
   paymentMethod: string;
   totalAmount: number;
   items: OrderItem[];
   status: OrderStatus;
   date: string;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  deliveryDate?: string;
+  preferredDeliveryWindow?: string;
+  estimatedDelivery?: string;
+  trackingInfo?: string;
+  driverId?: string;
+  isGuestOrder?: boolean; // Flag to identify guest orders stored locally
 }
 
 export interface OrderItem {

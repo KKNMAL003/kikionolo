@@ -27,6 +27,7 @@ import Toast from 'react-native-toast-message';
 import CustomTextInput from '../components/CustomTextInput';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import DeliveryScheduler from '../components/DeliveryScheduler';
+import GuestOrderInfo from '../components/GuestOrderInfo';
 
 import { sendOrderConfirmationEmail } from '../utils/email';
 import { initiatePayFastPayment } from '../utils/payfast';
@@ -314,6 +315,9 @@ export default function CheckoutScreen() {
                 keyboardType="email-address"
               />
             </View>
+
+            {/* Show guest order info for guest users */}
+            <GuestOrderInfo visible={user?.isGuest || false} />
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Delivery Address</Text>

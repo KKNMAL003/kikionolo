@@ -1,13 +1,14 @@
 import { supabase } from '../../lib/supabase';
-import type { 
-  IOrderService, 
-  Order, 
-  OrderItem, 
-  CreateOrderRequest, 
-  UpdateOrderRequest, 
-  OrderFilters 
+import type {
+  IOrderService,
+  Order,
+  OrderItem,
+  CreateOrderRequest,
+  UpdateOrderRequest,
+  OrderFilters
 } from '../interfaces/IOrderService';
 import type { SupabaseOrder, SupabaseOrderItem, OrderWithItems, OrderStats } from './types';
+import { guestOrderNotificationService } from '../notifications/GuestOrderNotificationService';
 
 export class OrderService implements IOrderService {
   private static instance: OrderService;
@@ -27,7 +28,15 @@ export class OrderService implements IOrderService {
     try {
       console.log('OrderService: Creating new order:', request);
 
-      // Prepare order record for Supabase
+      // Check if this is a guest user (ID starts with 'guest-')
+      const isGuestUser = request.userId.startsWith('guest-');
+
+      if (isGuestUser) {
+        // Create local order for guest users
+        return await this.createGuestOrder(request);
+      }
+
+      // Prepare order record for Supabase (authenticated users only)
       const orderRecord = {
         user_id: request.userId,
         customer_id: request.userId,
@@ -80,7 +89,7 @@ export class OrderService implements IOrderService {
       // Return formatted order
       const formattedOrder = this.formatOrder(newOrder, request.items);
       console.log('OrderService: Order created successfully:', formattedOrder.id);
-      
+
       return formattedOrder;
     } catch (error: any) {
       console.error('OrderService: Error creating order:', error);
@@ -89,11 +98,62 @@ export class OrderService implements IOrderService {
   }
 
   /**
+   * Create a local order for guest users (not saved to database)
+   */
+  private async createGuestOrder(request: CreateOrderRequest): Promise<Order> {
+    console.log('OrderService: Creating guest order locally:', request);
+
+    // Generate a local order ID
+    const orderId = `guest-order-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // Create local order object
+    const guestOrder: Order = {
+      id: orderId,
+      userId: request.userId,
+      customerName: request.customerName,
+      customerEmail: request.customerEmail,
+      customerPhone: request.customerPhone,
+      deliveryAddress: request.deliveryAddress,
+      paymentMethod: request.paymentMethod,
+      totalAmount: request.totalAmount,
+      status: 'pending',
+      items: request.items,
+      notes: request.notes || '',
+      date: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      deliveryDate: request.deliveryDate || new Date().toISOString().split('T')[0],
+      preferredDeliveryWindow: request.preferredDeliveryWindow || undefined,
+      isGuestOrder: true, // Flag to identify guest orders
+    };
+
+    // Notify about the guest order (non-blocking)
+    try {
+      await guestOrderNotificationService.notifyGuestOrder(guestOrder);
+    } catch (error) {
+      console.error('OrderService: Failed to notify about guest order, but continuing:', error);
+    }
+
+    console.log('OrderService: Guest order created locally:', guestOrder.id);
+    return guestOrder;
+  }
+
+  /**
    * Get all orders for a user
    */
   async getOrders(userId: string, filters?: OrderFilters): Promise<Order[]> {
     try {
       console.log('OrderService: Fetching orders for user:', userId, filters);
+
+      // Check if this is a guest user
+      const isGuestUser = userId.startsWith('guest-');
+
+      if (isGuestUser) {
+        // Guest users don't have orders in the database
+        // Orders are managed locally by OrdersContext
+        console.log('OrderService: Guest user detected, returning empty array (orders managed locally)');
+        return [];
+      }
 
       let query = supabase
         .from('orders')
@@ -140,7 +200,7 @@ export class OrderService implements IOrderService {
         throw new Error(error.message);
       }
 
-      const formattedOrders = ordersData?.map((orderData: OrderWithItems) => 
+      const formattedOrders = ordersData?.map((orderData: OrderWithItems) =>
         this.formatOrderWithItems(orderData)
       ) || [];
 
@@ -253,9 +313,19 @@ export class OrderService implements IOrderService {
     try {
       console.log('OrderService: Cancelling order:', orderId);
 
+      // Check if this is a guest order
+      const isGuestOrder = orderId.startsWith('guest-order-');
+
+      if (isGuestOrder) {
+        // Guest orders are managed locally by OrdersContext
+        // Just return true as the actual cancellation is handled there
+        console.log('OrderService: Guest order cancellation handled locally');
+        return true;
+      }
+
       const { error } = await supabase
         .from('orders')
-        .update({ 
+        .update({
           status: 'cancelled',
           updated_at: new Date().toISOString(),
         })
@@ -280,6 +350,21 @@ export class OrderService implements IOrderService {
   async getOrderStats(userId: string): Promise<OrderStats> {
     try {
       console.log('OrderService: Fetching order stats for user:', userId);
+
+      // Check if this is a guest user
+      const isGuestUser = userId.startsWith('guest-');
+
+      if (isGuestUser) {
+        // Guest users don't have orders in the database
+        // Stats are calculated locally by OrdersContext
+        console.log('OrderService: Guest user detected, returning empty stats (managed locally)');
+        return {
+          total: 0,
+          pending: 0,
+          completed: 0,
+          cancelled: 0,
+        };
+      }
 
       const { data: orders, error } = await supabase
         .from('orders')

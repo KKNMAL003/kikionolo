@@ -15,6 +15,7 @@ export default function ProfileSettingsScreen({
   user,
   onSetUpTwoFactor,
   onLogout,
+  onNewGuestSession,
 }: {
   settingsScreen: string;
   setSettingsScreen: (screen: string) => void;
@@ -24,6 +25,7 @@ export default function ProfileSettingsScreen({
   user: any;
   onSetUpTwoFactor: () => void;
   onLogout?: () => void;
+  onNewGuestSession?: () => void;
 }) {
   const router = useRouter();
 
@@ -128,13 +130,26 @@ export default function ProfileSettingsScreen({
               <Text style={{ color: COLORS.text.white, fontSize: 16, marginLeft: 12 }}>Help & Support</Text>
               <Ionicons name="chevron-forward" size={20} color={COLORS.text.gray} style={{ marginLeft: 'auto' }} />
             </TouchableOpacity>
+            {user?.isGuest && onNewGuestSession && (
+              <TouchableOpacity
+                style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}
+                onPress={onNewGuestSession}
+              >
+                <Ionicons name="refresh-outline" size={24} color={COLORS.primary} />
+                <Text style={{ color: COLORS.primary, fontSize: 16, marginLeft: 12 }}>
+                  Start New Guest Session
+                </Text>
+              </TouchableOpacity>
+            )}
             {onLogout && (
               <TouchableOpacity
                 style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}
                 onPress={onLogout}
               >
                 <Ionicons name="log-out-outline" size={24} color={COLORS.error} />
-                <Text style={{ color: COLORS.error, fontSize: 16, marginLeft: 12 }}>Sign Out</Text>
+                <Text style={{ color: COLORS.error, fontSize: 16, marginLeft: 12 }}>
+                  {user?.isGuest ? 'Clear Guest Session' : 'Sign Out'}
+                </Text>
               </TouchableOpacity>
             )}
           </View>

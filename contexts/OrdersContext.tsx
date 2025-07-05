@@ -5,6 +5,7 @@ import { useAuth } from './AuthContext';
 import { notifyOrderCreated, notifyOrderStatusChanged } from '../utils/dashboard-communication';
 import { supabase } from '../lib/supabase';
 import type { Order, CreateOrderRequest, OrderFilters } from '../services/interfaces/IOrderService';
+import { guestOrderNotificationService } from '../services/notifications/GuestOrderNotificationService';
 
 // Orders Context Types
 interface OrdersContextType {
@@ -46,20 +47,32 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Get storage key for user-specific orders
+  const getOrdersStorageKey = useCallback((userId: string) => {
+    return `@onolo_orders_${userId}`;
+  }, []);
+
   // Load orders from storage (fallback)
   const loadOrdersFromStorage = useCallback(async () => {
+    if (!user) return;
+
     try {
-      console.log('OrdersContext: Loading orders from AsyncStorage fallback');
-      const storedOrders = await AsyncStorage.getItem('@onolo_orders');
+      console.log('OrdersContext: Loading orders from AsyncStorage for user:', user.id);
+      const storageKey = getOrdersStorageKey(user.id);
+      const storedOrders = await AsyncStorage.getItem(storageKey);
       if (storedOrders && isMountedRef.current) {
         const parsedOrders = JSON.parse(storedOrders);
         setOrders(parsedOrders);
-        console.log(`OrdersContext: Loaded ${parsedOrders.length} orders from storage`);
+        console.log(`OrdersContext: Loaded ${parsedOrders.length} orders from storage for user ${user.id}`);
+      } else {
+        // No orders found for this user
+        setOrders([]);
       }
     } catch (error) {
       console.error('OrdersContext: Error loading orders from storage:', error);
+      setOrders([]);
     }
-  }, []);
+  }, [user, getOrdersStorageKey]);
 
   // Load orders from service
   const loadOrders = useCallback(async () => {
@@ -76,8 +89,9 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
       if (isMountedRef.current) {
         setOrders(fetchedOrders);
 
-        // Also save to storage as backup
-        await AsyncStorage.setItem('@onolo_orders', JSON.stringify(fetchedOrders));
+        // Also save to user-specific storage as backup
+        const storageKey = getOrdersStorageKey(user.id);
+        await AsyncStorage.setItem(storageKey, JSON.stringify(fetchedOrders));
 
         console.log(`OrdersContext: Loaded ${fetchedOrders.length} orders`);
       }
@@ -90,7 +104,7 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       }
     }
-  }, [user, loadOrdersFromStorage]);
+  }, [user, loadOrdersFromStorage, getOrdersStorageKey]);
 
   // Load orders when user changes
   useEffect(() => {
@@ -172,9 +186,10 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
           return prev;
         });
 
-        // Update storage
+        // Update user-specific storage
         const updatedOrders = [newOrder, ...orders];
-        await AsyncStorage.setItem('@onolo_orders', JSON.stringify(updatedOrders));
+        const storageKey = getOrdersStorageKey(user.id);
+        await AsyncStorage.setItem(storageKey, JSON.stringify(updatedOrders));
 
         // Notify dashboard about new order
         notifyOrderCreated(newOrder);
@@ -190,7 +205,7 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
         setIsProcessingOrder(false);
       }
     }
-  }, [user, orders]);
+  }, [user, orders, getOrdersStorageKey]);
 
   const getOrderById = useCallback((id: string): Order | undefined => {
     return orders.find(order => order.id === id);
@@ -199,10 +214,13 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
   const cancelOrder = useCallback(async (orderId: string): Promise<boolean> => {
     try {
       console.log('OrdersContext: Cancelling order:', orderId);
-      
+
       const success = await orderService.cancelOrder(orderId);
-      
+
       if (success && isMountedRef.current) {
+        // Find the order being cancelled for notification purposes
+        const orderToCancel = orders.find(order => order.id === orderId);
+
         // Update local state
         setOrders(prev =>
           prev.map(order =>
@@ -212,26 +230,40 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
           )
         );
 
-        // Update storage
+        // Update user-specific storage
         const updatedOrders = orders.map(order =>
           order.id === orderId
             ? { ...order, status: 'cancelled' }
             : order
         );
-        await AsyncStorage.setItem('@onolo_orders', JSON.stringify(updatedOrders));
+        const storageKey = getOrdersStorageKey(user.id);
+        await AsyncStorage.setItem(storageKey, JSON.stringify(updatedOrders));
 
-        // Notify dashboard about status change
-        notifyOrderStatusChanged(orderId, 'cancelled');
+        // Notify about cancellation
+        if (orderToCancel?.isGuestOrder) {
+          // Notify about guest order cancellation
+          try {
+            await guestOrderNotificationService.notifyGuestOrderCancellation(
+              orderId,
+              orderToCancel.customerName
+            );
+          } catch (error) {
+            console.error('OrdersContext: Failed to notify about guest order cancellation:', error);
+          }
+        } else {
+          // Notify dashboard about authenticated user order status change
+          notifyOrderStatusChanged(orderId, 'cancelled');
+        }
 
         console.log('OrdersContext: Order cancelled successfully');
       }
-      
+
       return success;
     } catch (error: any) {
       console.error('OrdersContext: Error cancelling order:', error);
       return false;
     }
-  }, [orders]);
+  }, [orders, user, getOrdersStorageKey]);
 
   const refreshOrders = useCallback(async (): Promise<void> => {
     console.log('OrdersContext: Refreshing orders');

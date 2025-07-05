@@ -147,14 +147,41 @@ export class AuthService implements IAuthService {
   }
 
   /**
+   * Clear guest session and associated data
+   */
+  async logoutGuest(guestUserId?: string): Promise<void> {
+    try {
+      console.log('AuthService: Clearing guest session for:', guestUserId);
+
+      if (guestUserId) {
+        // Import AsyncStorage dynamically to avoid issues
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+
+        // Clear guest-specific orders
+        const ordersKey = `@onolo_orders_${guestUserId}`;
+        await AsyncStorage.removeItem(ordersKey);
+        console.log('AuthService: Cleared guest orders for:', guestUserId);
+
+        // Clear any other guest-specific data if needed
+        // Add more cleanup here as needed
+      }
+
+      console.log('AuthService: Guest session cleared');
+    } catch (error: any) {
+      console.error('AuthService: Guest logout error:', error);
+      // Don't throw error for logout, just log it
+    }
+  }
+
+  /**
    * Create a guest session
    */
   async loginAsGuest(): Promise<AuthResult> {
     try {
       console.log('AuthService: Creating guest session');
-      
+
       const guestUser: User = {
-        id: 'guest-' + Date.now(),
+        id: 'guest-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
         name: 'Guest User',
         email: '',
         phone: '',
@@ -162,6 +189,7 @@ export class AuthService implements IAuthService {
         isGuest: true,
       };
 
+      console.log('AuthService: Created guest user with ID:', guestUser.id);
       return {
         success: true,
         user: guestUser,
@@ -173,6 +201,14 @@ export class AuthService implements IAuthService {
         error: error.message || 'Failed to create guest session',
       };
     }
+  }
+
+  /**
+   * Create a new guest session (for switching guest sessions)
+   */
+  async createNewGuestSession(): Promise<AuthResult> {
+    console.log('AuthService: Creating new guest session');
+    return this.loginAsGuest();
   }
 
   /**

@@ -16,11 +16,12 @@ import { initializeConnectionTest } from '../utils/connectionTest';
 import { queryClient } from '../utils/queryClient';
 import { useAuth } from '../contexts/AuthContext';
 import LoadingScreen from '@/components/LoadingScreen';
+import LogoutTransition from '../components/LogoutTransition';
 // import PerformanceMonitor from '../components/PerformanceMonitor';
 
 // Enhanced Auth guard component with better navigation management
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isLoggingOut } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
@@ -39,13 +40,13 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     // Improved logic: prevent navigation conflicts and unwanted redirects
     const timeoutId = setTimeout(() => {
       try {
-        if (!user) {
-          // Not authenticated - only redirect if not already on welcome or auth
+        if (!user && !isLoading) {
+          // Not authenticated and not loading - only redirect if not already on welcome or auth
           if (!inWelcome && !inAuthGroup) {
             router.replace('/welcome');
           }
-        } else {
-          // Authenticated - only redirect if on welcome or auth pages
+        } else if (user && !isLoading) {
+          // Authenticated and not loading - only redirect if on welcome or auth pages
           // Don't redirect if user is on checkout, profile, or payfast pages
           if ((inWelcome || inAuthGroup) && !inCheckout && !inProfile && !inPayFast) {
             router.replace('/(tabs)');
@@ -53,14 +54,14 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.error('Navigation error in AuthGuard:', error);
-        // Only fallback redirect if not on protected pages
-        if (!user && !inWelcome && !inAuthGroup) {
+        // Only fallback redirect if not loading and not on protected pages
+        if (!user && !isLoading && !inWelcome && !inAuthGroup) {
           router.replace('/welcome');
-        } else if (user && (inWelcome || inAuthGroup) && !inCheckout && !inProfile && !inPayFast) {
+        } else if (user && !isLoading && (inWelcome || inAuthGroup) && !inCheckout && !inProfile && !inPayFast) {
           router.replace('/(tabs)');
         }
       }
-    }, 25); // Further reduced timeout to minimize flash
+    }, 50); // Slightly increased timeout to allow loading state to settle
 
     return () => clearTimeout(timeoutId);
   }, [user, segments, router, isLoading]);
@@ -69,7 +70,11 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     return <LoadingScreen message="Signing you in..." />;
   }
 
-  return <>{children}</>;
+  return (
+    <LogoutTransition isLoggingOut={isLoggingOut}>
+      {children}
+    </LogoutTransition>
+  );
 }
 
 // Context providers wrapper to keep layout clean

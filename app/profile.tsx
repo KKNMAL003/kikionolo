@@ -67,7 +67,9 @@ export default function ProfileScreen() {
     user,
     logout,
     isAuthenticated,
+    isGuest,
     refreshUser,
+    createNewGuestSession,
   } = useAuth();
   const { 
     orders,
@@ -382,9 +384,8 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     try {
+      // Logout will handle navigation through AuthGuard
       await logout();
-      // Use replace to reset navigation stack and prevent going back to profile
-      router.replace('/(tabs)');
     } catch (error) {
       console.error('Profile: handleLogout error:', error);
     }
@@ -393,6 +394,27 @@ export default function ProfileScreen() {
   const handleLogin = () => {
     // Use replace to prevent stacking
     router.replace('/auth/login');
+  };
+
+  const handleNewGuestSession = async () => {
+    try {
+      await createNewGuestSession();
+      // Show success message
+      Toast.show({
+        type: 'success',
+        text1: 'New Guest Session',
+        text2: 'Started fresh guest session',
+        position: 'top',
+      });
+    } catch (error) {
+      console.error('Profile: handleNewGuestSession error:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to create new guest session',
+        position: 'top',
+      });
+    }
   };
 
   const handleClose = () => {
@@ -465,7 +487,14 @@ export default function ProfileScreen() {
     <TouchableOpacity style={styles.orderCard} onPress={() => handleViewOrderDetails(item.id)}>
       <View style={styles.orderHeader}>
         <View>
-          <Text style={styles.orderNumber}>Order #{item.id.slice(-6)}</Text>
+          <View style={styles.orderNumberRow}>
+            <Text style={styles.orderNumber}>Order #{item.id.slice(-6)}</Text>
+            {item.isGuestOrder && (
+              <View style={styles.guestBadge}>
+                <Text style={styles.guestBadgeText}>Guest</Text>
+              </View>
+            )}
+          </View>
           <Text style={styles.orderDate}>{formatDate(item.date)}</Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
@@ -785,7 +814,8 @@ export default function ProfileScreen() {
             onUpdateSettings={handleUpdateSettings}
             user={user}
             onSetUpTwoFactor={handleSetUpTwoFactor}
-            onLogout={isAuthenticated ? handleLogout : undefined}
+            onLogout={user ? handleLogout : undefined}
+            onNewGuestSession={isGuest ? handleNewGuestSession : undefined}
           />
         );
 
@@ -850,7 +880,12 @@ export default function ProfileScreen() {
           <View style={styles.avatarContainer}>
             <Ionicons name="person" size={40} color={COLORS.text.white} />
           </View>
-          <Text style={styles.userName}>{user?.name || 'Guest User'}</Text>
+          <Text style={styles.userName}>
+            {user?.name || 'Guest User'}
+            {isGuest && user?.id && (
+              <Text style={styles.guestId}> #{user.id.split('-').pop()?.substring(0, 6)}</Text>
+            )}
+          </Text>
 
           {pendingOrdersCount > 0 && (
             <TouchableOpacity style={styles.orderBadge} onPress={() => setActiveTab('orders')}>
@@ -963,6 +998,11 @@ const styles = StyleSheet.create({
     color: COLORS.text.white,
     fontSize: 20,
     fontWeight: 'bold',
+  },
+  guestId: {
+    color: COLORS.text.gray,
+    fontSize: 14,
+    fontWeight: 'normal',
   },
   orderBadge: {
     marginTop: 8,
@@ -1103,10 +1143,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
+  orderNumberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   orderNumber: {
     color: COLORS.text.white,
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  guestBadge: {
+    backgroundColor: COLORS.secondary + '30',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  guestBadgeText: {
+    color: COLORS.secondary,
+    fontSize: 10,
+    fontWeight: '600',
   },
   orderDate: {
     color: COLORS.text.gray,
