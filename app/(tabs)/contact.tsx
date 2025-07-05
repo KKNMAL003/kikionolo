@@ -1,12 +1,24 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Linking, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { COLORS } from '../../constants/colors';
 import { COMPANY } from '../../constants/company';
 
 export default function ContactScreen() {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const router = useRouter();
+
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      // Fallback to menu tab if can't go back
+      router.replace('/(tabs)/menu');
+    }
+  };
 
   const handleSend = async () => {
     if (!message.trim()) {
@@ -29,25 +41,34 @@ export default function ContactScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Contact Us</Text>
-      <Text style={styles.subtitle}>Send us a message and we'll get back to you soon.</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Type your message here..."
-        placeholderTextColor={COLORS.text.gray}
-        value={message}
-        onChangeText={setMessage}
-        multiline
-        numberOfLines={5}
-        editable={!sending}
-      />
-      <TouchableOpacity
-        style={[styles.button, sending && { opacity: 0.6 }]}
-        onPress={handleSend}
-        disabled={sending}
-      >
-        <Text style={styles.buttonText}>{sending ? 'Sending...' : 'Send'}</Text>
-      </TouchableOpacity>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton} activeOpacity={0.7}>
+          <Ionicons name="arrow-back" size={24} color={COLORS.text.white} />
+        </TouchableOpacity>
+        <Text style={styles.title}>Contact Us</Text>
+        <View style={styles.placeholder} />
+      </View>
+
+      <View style={styles.content}>
+        <Text style={styles.subtitle}>Send us a message and we'll get back to you soon.</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Type your message here..."
+          placeholderTextColor={COLORS.text.gray}
+          value={message}
+          onChangeText={setMessage}
+          multiline
+          numberOfLines={5}
+          editable={!sending}
+        />
+        <TouchableOpacity
+          style={[styles.button, sending && { opacity: 0.6 }]}
+          onPress={handleSend}
+          disabled={sending}
+        >
+          <Text style={styles.buttonText}>{sending ? 'Sending...' : 'Send'}</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -56,15 +77,34 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-    padding: 24,
-    justifyContent: 'center',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: COLORS.background,
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: COLORS.card,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: COLORS.primary,
-    marginBottom: 12,
     textAlign: 'center',
+    flex: 1,
+  },
+  placeholder: {
+    width: 40, // Same width as back button to center the title
+  },
+  content: {
+    flex: 1,
+    padding: 24,
+    justifyContent: 'center',
   },
   subtitle: {
     fontSize: 16,
