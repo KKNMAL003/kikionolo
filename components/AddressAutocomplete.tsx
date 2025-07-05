@@ -11,7 +11,9 @@ import {
   Keyboard,
   Platform,
   TouchableWithoutFeedback,
+  KeyboardAvoidingView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 
 // Use env variable if available, otherwise fallback to the provided public token
@@ -62,16 +64,17 @@ export default function AddressAutocomplete({
   }, [query]);
 
   const handleSelect = (feature: any) => {
-    setQuery(feature.place_name);
+    const selectedAddress = feature.place_name || feature;
+    setQuery(selectedAddress);
     setShowSuggestions(false);
     setSuggestions([]);
-    onAddressSelect(feature);
+    onAddressSelect(selectedAddress);
     Keyboard.dismiss();
   };
 
   const handleChangeText = (text: string) => {
     setQuery(text);
-    setShowSuggestions(true);
+    setShowSuggestions(text.length >= 3);
     onAddressSelect(text); // keep parent in sync
   };
 
@@ -85,37 +88,70 @@ export default function AddressAutocomplete({
     // Do nothing, prevents blur
   };
 
+  const clearInput = () => {
+    setQuery('');
+    setSuggestions([]);
+    setShowSuggestions(false);
+    onAddressSelect('');
+    inputRef.current?.focus();
+  };
+
   return (
     <View style={[styles.container, style]}>
       {label && <Text style={styles.label}>{label}</Text>}
-      <TextInput
-        ref={inputRef}
-        style={styles.input}
-        value={query}
-        onChangeText={handleChangeText}
-        placeholder={placeholder}
-        placeholderTextColor="#9A9A9A"
-        returnKeyType="done"
-        onBlur={handleBlur}
-        onFocus={() => setShowSuggestions(true)}
-        blurOnSubmit={true}
-        enablesReturnKeyAutomatically={true}
-        clearButtonMode={Platform.OS === 'ios' ? 'while-editing' : 'never'}
-        autoCorrect={false}
-        autoCapitalize="none"
-      />
+      <View style={styles.inputContainer}>
+        <Ionicons
+          name="location-outline"
+          size={20}
+          color={COLORS.text.gray}
+          style={styles.inputIcon}
+        />
+        <TextInput
+          ref={inputRef}
+          style={styles.input}
+          value={query}
+          onChangeText={handleChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={COLORS.text.gray}
+          returnKeyType="done"
+          onBlur={handleBlur}
+          onFocus={() => setShowSuggestions(query.length >= 3)}
+          blurOnSubmit={true}
+          enablesReturnKeyAutomatically={true}
+          autoCorrect={false}
+          autoCapitalize="words"
+          textContentType="fullStreetAddress"
+          autoComplete="street-address"
+        />
+        {query.length > 0 && (
+          <TouchableOpacity onPress={clearInput} style={styles.clearButton}>
+            <Ionicons name="close-circle" size={20} color={COLORS.text.gray} />
+          </TouchableOpacity>
+        )}
+      </View>
       {showSuggestions && suggestions.length > 0 && (
         <TouchableWithoutFeedback onPressIn={handleSuggestionsPressIn}>
           <View style={styles.suggestionsContainer} ref={suggestionsContainerRef}>
-            {suggestions.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.suggestionItem}
-                onPress={() => handleSelect(item)}
-              >
-                <Text style={styles.suggestionText}>{item.place_name}</Text>
-              </TouchableOpacity>
-            ))}
+            <FlatList
+              data={suggestions}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.suggestionItem}
+                  onPress={() => handleSelect(item)}
+                >
+                  <Ionicons
+                    name="location"
+                    size={16}
+                    color={COLORS.primary}
+                    style={styles.suggestionIcon}
+                  />
+                  <Text style={styles.suggestionText}>{item.place_name}</Text>
+                </TouchableOpacity>
+              )}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            />
           </View>
         </TouchableWithoutFeedback>
       )}
@@ -129,45 +165,65 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   label: {
-    color: '#BBBBBB',
+    color: COLORS.text.lightGray,
     fontSize: 14,
     marginBottom: 8,
     fontWeight: '500',
   },
-  input: {
-    backgroundColor: '#121212',
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.card,
     borderRadius: 8,
-    padding: 12,
-    color: '#FFFFFF',
-    fontSize: 16,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: COLORS.border,
     minHeight: 48,
+  },
+  inputIcon: {
+    marginLeft: 12,
+    marginRight: 8,
+  },
+  input: {
+    flex: 1,
+    color: COLORS.text.white,
+    fontSize: 16,
+    paddingVertical: 12,
+    paddingRight: 8,
+  },
+  clearButton: {
+    padding: 8,
+    marginRight: 4,
   },
   suggestionsContainer: {
     position: 'absolute',
     top: 60,
     left: 0,
     right: 0,
-    backgroundColor: '#222',
+    backgroundColor: COLORS.card,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: COLORS.border,
     zIndex: 100,
-    maxHeight: 180,
+    maxHeight: 200,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: COLORS.border,
+  },
+  suggestionIcon: {
+    marginRight: 10,
   },
   suggestionText: {
-    color: '#fff',
+    color: COLORS.text.white,
     fontSize: 15,
+    flex: 1,
   },
 });

@@ -289,9 +289,15 @@ export default function CheckoutScreen() {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <ScrollView style={styles.scrollView}>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollViewContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Contact Information</Text>
               <CustomTextInput
@@ -299,6 +305,8 @@ export default function CheckoutScreen() {
                 placeholder="Full Name"
                 value={formData.name}
                 onChangeText={(text) => handleChange('name', text)}
+                autoComplete="name"
+                textContentType="name"
               />
               <CustomTextInput
                 leftIcon="call-outline"
@@ -306,13 +314,17 @@ export default function CheckoutScreen() {
                 value={formData.phone}
                 onChangeText={(text) => handleChange('phone', text)}
                 keyboardType="phone-pad"
+                autoComplete="tel"
+                textContentType="telephoneNumber"
               />
               <CustomTextInput
                 leftIcon="mail-outline"
-                placeholder="Email Address"
+                placeholder="Email Address (Optional)"
                 value={formData.email}
                 onChangeText={(text) => handleChange('email', text)}
                 keyboardType="email-address"
+                autoComplete="email"
+                textContentType="emailAddress"
               />
             </View>
 
@@ -324,6 +336,7 @@ export default function CheckoutScreen() {
               <AddressAutocomplete
                 onAddressSelect={(address) => handleChange('address', address)}
                 value={formData.address}
+                placeholder="Enter your delivery address..."
               />
             </View>
 
@@ -477,6 +490,9 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     paddingHorizontal: 16,
+  },
+  scrollViewContent: {
+    paddingBottom: 100, // Extra padding for keyboard
   },
   section: {
     marginBottom: 24,

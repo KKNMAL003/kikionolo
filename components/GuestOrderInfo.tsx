@@ -32,12 +32,14 @@ export default function GuestOrderInfo({ visible }: GuestOrderInfoProps) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: COLORS.primary + '10', // 10% opacity
+    backgroundColor: COLORS.primary + '20', // 20% opacity for better visibility
     borderRadius: 8,
-    padding: 12,
+    padding: 16,
     marginVertical: 8,
-    borderLeftWidth: 3,
+    borderLeftWidth: 4,
     borderLeftColor: COLORS.primary,
+    borderWidth: 1,
+    borderColor: COLORS.primary + '30',
   },
   iconContainer: {
     marginRight: 12,
@@ -47,14 +49,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text.primary,
-    marginBottom: 4,
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text.white,
+    marginBottom: 6,
   },
   description: {
-    fontSize: 12,
-    color: COLORS.text.secondary,
-    lineHeight: 16,
+    fontSize: 13,
+    color: COLORS.text.lightGray,
+    lineHeight: 18,
   },
 });
